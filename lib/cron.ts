@@ -7,9 +7,9 @@ export function startCronJobs() {
   if (cronStarted) return
   cronStarted = true
 
-  // Send task reminders every 20 minutes
-  cron.schedule('*/20 * * * *', async () => {
-    console.log('[Cron] Sending 20-min task reminders...')
+  // Send task reminders every 3 hours
+  cron.schedule('0 */3 * * *', async () => {
+    console.log('[Cron] Sending 3-hour task reminders...')
     try {
       await sendPendingTaskReminders()
       console.log('[Cron] Reminders sent.')
@@ -18,5 +18,5 @@ export function startCronJobs() {
     }
   })
 
-  console.log('[Cron] 20-minute task reminder cron started.')
+  console.log('[Cron] 3-hour task reminder cron started.')
 }

@@ -60,7 +60,7 @@ export default function SettingsPage() {
     greenapi_instance_id: '',
     greenapi_api_token: '',
     greenapi_api_url: 'https://api.green-api.com',
-    reminder_interval_minutes: '20',
+    reminder_interval_minutes: '180',
   })
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ successCount: number; total: number; report: TestResult[] } | null>(null)
@@ -242,10 +242,10 @@ export default function SettingsPage() {
             <select value={settings.reminder_interval_minutes}
               onChange={e => setSettings({ ...settings, reminder_interval_minutes: e.target.value })}
               className={inputClass}>
-              <option value="15">Every 15 minutes</option>
-              <option value="20">Every 20 minutes</option>
-              <option value="30">Every 30 minutes</option>
               <option value="60">Every 60 minutes</option>
+              <option value="180">Every 3 hours</option>
+              <option value="360">Every 6 hours</option>
+              <option value="1440">Every 24 hours</option>
             </select>
             <p className="text-slate-400 text-xs mt-1.5">
               Sends pending task reminders to each department at this interval (only when there are incomplete tasks).
