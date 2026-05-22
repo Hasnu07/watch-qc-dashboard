@@ -18,6 +18,21 @@ interface Settings {
   reminder_interval_minutes: string
 }
 
+const TASK_DEFAULT_ROWS = [
+  { dept: 'ACCOUNTING' as Department, items: [{ key: 'ACCOUNTING_MARK_PAYMENT', label: 'Mark Payment Status' }] },
+  { dept: 'SALES' as Department, items: [
+    { key: 'SALES_SET_PRICE', label: 'Set Price' },
+    { key: 'SALES_UPLOAD_DRIVE', label: 'Upload to Drive' },
+    { key: 'SALES_UPLOAD_STOCK_GROUP', label: 'Upload to Stock Group' },
+    { key: 'SALES_UPDATE_B2B', label: 'Update B2B Prices' },
+  ]},
+  { dept: 'LOGISTICS' as Department, items: [
+    { key: 'LOGISTICS_SET_LOCATION', label: 'Set Location' },
+    { key: 'LOGISTICS_UPDATE_COST', label: 'Update Logistics Cost' },
+    { key: 'LOGISTICS_ACCESSORIES', label: 'Accessories (all)' },
+  ]},
+]
+
 interface TestResult {
   name: string
   number: string
@@ -44,6 +59,7 @@ export default function SettingsPage() {
   const [testError, setTestError] = useState('')
   const [members, setMembers] = useState<TeamMember[]>([])
   const [newMember, setNewMember] = useState({ name: '', whatsapp_number: '', department: 'LOGISTICS' as Department })
+  const [taskDefaults, setTaskDefaults] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
   const [addingMember, setAddingMember] = useState(false)
@@ -53,7 +69,11 @@ export default function SettingsPage() {
   const fetchSettings = useCallback(async () => {
     try {
       const res = await fetch('/api/settings')
-      if (res.ok) setSettings(await res.json())
+      if (res.ok) {
+        const data = await res.json()
+        setSettings(data)
+        try { setTaskDefaults(JSON.parse(data.task_assignment_defaults || '{}')) } catch { /* ignore */ }
+      }
     } catch (err) { console.error(err) }
   }, [])
 
@@ -83,7 +103,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ ...settings, task_assignment_defaults: JSON.stringify(taskDefaults) }),
       })
       if (!res.ok) throw new Error('Failed')
       setSavedMsg('Settings saved!')
@@ -214,6 +234,42 @@ export default function SettingsPage() {
               Sends pending task reminders to each department at this interval (only when there are incomplete tasks).
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* Task Assignment Defaults */}
+      <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 mb-6 shadow-sm">
+        <h2 className="text-xl font-black text-slate-900 mb-1 flex items-center gap-2">📋 Task Assignment Defaults</h2>
+        <p className="text-slate-500 text-sm mb-5">Who is auto-assigned to each task when a new watch is added or Auto Assign is clicked.</p>
+        <div className="flex flex-col gap-5">
+          {TASK_DEFAULT_ROWS.map(({ dept, items }) => {
+            const cfg = DEPT_CONFIG[dept]
+            return (
+              <div key={dept}>
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg mb-3 border ${cfg.bg} ${cfg.border}`}>
+                  <span>{cfg.icon}</span>
+                  <span className={`text-sm font-bold uppercase tracking-wide ${cfg.color}`}>{cfg.label}</span>
+                </div>
+                <div className="flex flex-col gap-2 pl-1">
+                  {items.map(({ key, label }) => (
+                    <div key={key} className="flex items-center gap-3">
+                      <span className="text-slate-600 text-sm w-44 flex-shrink-0">{label}</span>
+                      <select
+                        value={taskDefaults[key] || ''}
+                        onChange={e => setTaskDefaults(prev => ({ ...prev, [key]: e.target.value }))}
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                      >
+                        <option value="">— Not set —</option>
+                        {members.map(m => (
+                          <option key={m.id} value={m.name}>{m.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </section>
 

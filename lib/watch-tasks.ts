@@ -66,15 +66,27 @@ async function getMembersByDept() {
   return map
 }
 
-export async function assignWatchTasks(watchId: number, watchName: string, silent = false) {
-  const membersByDept = await getMembersByDept()
+async function getTaskDefaults(): Promise<Record<string, string>> {
+  const setting = await prisma.setting.findUnique({ where: { key: 'task_assignment_defaults' } })
+  if (!setting?.value) return {}
+  try { return JSON.parse(setting.value) } catch { return {} }
+}
 
-  // Set assigned_to on every task for this watch based on department
+function resolveAssignee(taskType: string, dept: string, taskDefaults: Record<string, string>, membersByDept: Record<string, string>): string | null {
+  // Per-task default wins; accessories share one key; fall back to dept member
+  if (taskDefaults[taskType]) return taskDefaults[taskType]
+  if (taskType.startsWith('LOGISTICS_ACCESSORIES') && taskDefaults['LOGISTICS_ACCESSORIES']) return taskDefaults['LOGISTICS_ACCESSORIES']
+  return membersByDept[dept] ?? null
+}
+
+export async function assignWatchTasks(watchId: number, watchName: string, silent = false) {
+  const [membersByDept, taskDefaults] = await Promise.all([getMembersByDept(), getTaskDefaults()])
+
+  // Set assigned_to on every task for this watch based on per-task defaults or department
   const tasks = await prisma.watchTask.findMany({ where: { watch_id: watchId } })
   await Promise.all(
     tasks.map(t => {
-      const dept = t.department as string
-      const assignee = membersByDept[dept] ?? null
+      const assignee = resolveAssignee(t.task_type, t.department as string, taskDefaults, membersByDept)
       return prisma.watchTask.update({ where: { id: t.id }, data: { assigned_to: assignee } })
     })
   )
@@ -105,14 +117,13 @@ export async function createWatchTasks(watchId: number, watchName: string) {
   const existing = await prisma.watchTask.count({ where: { watch_id: watchId } })
   if (existing > 0) return
 
-  // Look up dept members for auto-assignment
-  const membersByDept = await getMembersByDept()
+  const [membersByDept, taskDefaults] = await Promise.all([getMembersByDept(), getTaskDefaults()])
 
   await prisma.watchTask.createMany({
     data: WATCH_TASKS.map(t => ({
       ...t,
       watch_id: watchId,
-      assigned_to: membersByDept[t.department] ?? null,
+      assigned_to: resolveAssignee(t.task_type, t.department, taskDefaults, membersByDept),
     })),
   })
 

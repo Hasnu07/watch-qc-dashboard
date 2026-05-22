@@ -4,7 +4,10 @@ import { prisma } from '@/lib/prisma'
 const SETTING_KEYS = [
   'greenapi_instance_id',
   'greenapi_api_token',
+  'greenapi_api_url',
   'auto_message_time',
+  'reminder_interval_minutes',
+  'task_assignment_defaults',
 ]
 
 export async function GET() {
@@ -16,7 +19,10 @@ export async function GET() {
     const result: Record<string, string> = {
       greenapi_instance_id: '',
       greenapi_api_token: '',
+      greenapi_api_url: 'https://api.green-api.com',
       auto_message_time: '08:00',
+      reminder_interval_minutes: '20',
+      task_assignment_defaults: '{}',
     }
 
     for (const s of settings) {
