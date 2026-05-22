@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
+
+async function getGreenAPISettings() {
+  const [inst, tok, url] = await Promise.all([
+    prisma.setting.findUnique({ where: { key: 'greenapi_instance_id' } }),
+    prisma.setting.findUnique({ where: { key: 'greenapi_api_token' } }),
+    prisma.setting.findUnique({ where: { key: 'greenapi_api_url' } }),
+  ])
+  if (!inst?.value || !tok?.value) return null
+  return { instanceId: inst.value, token: tok.value, apiUrl: url?.value || 'https://api.green-api.com' }
+}
 
 export async function GET() {
   try {
@@ -30,6 +41,17 @@ export async function POST(req: NextRequest) {
     const member = await prisma.teamMember.create({
       data: { name, whatsapp_number: cleanNumber, department: dept },
     })
+
+    // Fire-and-forget welcome message
+    getGreenAPISettings().then(settings => {
+      if (!settings) return
+      sendWhatsAppMessage(
+        settings.instanceId, settings.token,
+        toChatId(cleanNumber),
+        `👋 Welcome to Watch QC Dashboard, ${name}! You've been added to the ${dept.charAt(0) + dept.slice(1).toLowerCase()} team.`,
+        settings.apiUrl
+      ).catch(console.error)
+    }).catch(console.error)
 
     return NextResponse.json(member, { status: 201 })
   } catch (err) {
