@@ -4,6 +4,8 @@ import { emitWatchTaskEvent } from './events'
 
 type Dept = 'ACCOUNTING' | 'SALES' | 'LOGISTICS'
 
+const APP_LINK = 'https://qc-dashboard-q907.onrender.com'
+
 const WATCH_TASKS = [
   { department: 'ACCOUNTING' as const, task_type: 'ACCOUNTING_MARK_PAYMENT' as const, is_locked: false },
   { department: 'SALES' as const, task_type: 'SALES_SET_PRICE' as const, is_locked: false },
@@ -103,7 +105,7 @@ async function notifyAssignedPersons(
       const number = memberMap.get(name.toLowerCase())
       if (!number) return Promise.resolve()
       const taskLines = labels.map(l => `• ${l}`).join('\n')
-      const msg = `📋 ${intro}: *${watchName}*\n\nYour assigned tasks:\n${taskLines}`
+      const msg = `📋 ${intro}: *${watchName}*\n\nYour assigned tasks:\n${taskLines}\n\n🔗 ${APP_LINK}`
       return sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(number), msg, settings.apiUrl)
     })
   )
@@ -159,13 +161,13 @@ export async function checkAndUnlockLocation(watchId: number) {
       await prisma.watchTask.update({ where: { id: task.id }, data: { is_locked: false } })
       emitWatchTaskEvent({ type: 'task_unlocked', watch_task_id: task.id, watch_id: watchId })
       const watchLabel = [watch.brand, watch.model].filter(Boolean).join(' ') || watch.name
-      notifyDept('LOGISTICS', `${watchLabel} is ready for location update. Payment has been confirmed.`).catch(console.error)
+      notifyDept('LOGISTICS', `${watchLabel} is ready for location update. Payment has been confirmed.\n\n🔗 ${APP_LINK}`).catch(console.error)
     }
   }
 }
 
 export async function sendTaskCompletedNotification(dept: Dept, watchName: string, taskLabel: string) {
-  notifyDept(dept, `${watchName} — ${taskLabel} has been marked complete.`).catch(console.error)
+  notifyDept(dept, `${watchName} — ${taskLabel} has been marked complete.\n\n🔗 ${APP_LINK}`).catch(console.error)
 }
 
 export async function sendPendingTaskReminders() {
@@ -198,7 +200,7 @@ export async function sendPendingTaskReminders() {
       .map(({ watchName, labels }) => `• ${watchName}: ${labels.join(', ')}`)
       .join('\n')
 
-    const message = `Reminder — Pending tasks:\n${lines}`
+    const message = `Reminder — Pending tasks:\n${lines}\n\n🔗 ${APP_LINK}`
     const members = await prisma.teamMember.findMany({ where: { department: dept } })
     await Promise.allSettled(
       members.map(m =>

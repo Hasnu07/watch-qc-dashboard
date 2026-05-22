@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       sendWhatsAppMessage(
         settings.instanceId, settings.token,
         toChatId(cleanNumber),
-        `👋 Welcome to Watch QC Dashboard, ${name}! You've been added to the ${dept.charAt(0) + dept.slice(1).toLowerCase()} team.`,
+        `👋 Welcome to Watch QC Dashboard, ${name}! You've been added to the ${dept.charAt(0) + dept.slice(1).toLowerCase()} team.\n\n🔗 https://qc-dashboard-q907.onrender.com`,
         settings.apiUrl
       ).catch(console.error)
     }).catch(console.error)
