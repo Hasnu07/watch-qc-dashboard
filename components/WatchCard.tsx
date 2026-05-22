@@ -4,6 +4,8 @@ import Image from 'next/image'
 import { formatCurrency } from '@/lib/utils'
 
 type WatchStage = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
+type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
+type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
 
 interface Watch {
   id: number
@@ -27,12 +29,22 @@ interface Watch {
   b2b_price: string | number
   stage: WatchStage
   is_sold: boolean
+  payment_status: PaymentStatus
+  total_amount: number | null
+  location_status: LocationStatus
+  location_from: string | null
+  location_to: string | null
+  transit_pickup_date: string | null
+  transit_carrier: string | null
+  transit_tracking_number: string | null
+  received_date: string | null
 }
 
 interface WatchCardProps {
   watch: Watch
   onAdvance: (id: number, stage: WatchStage) => void
   onMarkSold: (id: number) => void
+  onCardClick: (watch: Watch) => void
 }
 
 const STAGES: WatchStage[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
@@ -73,20 +85,46 @@ const STAGE_CFG = {
   },
 }
 
-export default function WatchCard({ watch, onAdvance, onMarkSold }: WatchCardProps) {
+export default function WatchCard({ watch, onAdvance, onMarkSold, onCardClick }: WatchCardProps) {
   const cfg = STAGE_CFG[watch.stage]
   const stageIdx = STAGES.indexOf(watch.stage)
 
-  const handleAction = () => {
+  const handleAction = (e: React.MouseEvent) => {
+    e.stopPropagation()
     if (watch.stage === 'SALES') onMarkSold(watch.id)
     else onAdvance(watch.id, cfg.nextStage)
   }
 
   const tags = [watch.case_material, watch.dial_colour, watch.bracelet].filter(Boolean)
 
-  return (
-    <div className={`bg-white rounded-2xl overflow-hidden border-l-4 ${cfg.leftBorder} border border-slate-200 shadow-sm hover:shadow-md transition-all group flex flex-col`}>
+  // Payment badge
+  const payLabel = watch.payment_status === 'PAID' ? '✓ Paid' : watch.payment_status === 'PARTIAL' ? '⏳ Partial' : '✗ Unpaid'
+  const payCls = watch.payment_status === 'PAID'
+    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    : watch.payment_status === 'PARTIAL'
+      ? 'bg-amber-50 text-amber-700 border-amber-200'
+      : 'bg-red-50 text-red-600 border-red-200'
 
+  // Location badge
+  const transitDays = watch.transit_pickup_date
+    ? Math.floor((Date.now() - new Date(watch.transit_pickup_date).getTime()) / (1000 * 60 * 60 * 24))
+    : null
+  const locLabel = watch.location_status === 'IN_TRANSIT'
+    ? `🚚 Transit${transitDays != null ? ` · Day ${transitDays}` : ''}`
+    : watch.location_status === 'IN_STOCK'
+      ? '✅ In Stock'
+      : '📬 Incoming'
+  const locCls = watch.location_status === 'IN_TRANSIT'
+    ? 'bg-blue-50 text-blue-700 border-blue-200'
+    : watch.location_status === 'IN_STOCK'
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      : 'bg-slate-50 text-slate-600 border-slate-200'
+
+  return (
+    <div
+      onClick={() => onCardClick(watch)}
+      className={`bg-white rounded-2xl overflow-hidden border-l-4 ${cfg.leftBorder} border border-slate-200 shadow-sm hover:shadow-md transition-all group flex flex-col cursor-pointer`}
+    >
       {/* Pipeline bar */}
       <div className="px-4 pt-3 pb-2 bg-slate-50 border-b border-slate-100">
         <div className="flex items-center gap-0.5">
@@ -114,6 +152,12 @@ export default function WatchCard({ watch, onAdvance, onMarkSold }: WatchCardPro
         </div>
       </div>
 
+      {/* Payment + Location badges */}
+      <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 bg-slate-50 border-b border-slate-100">
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${payCls}`}>{payLabel}</span>
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ml-auto ${locCls}`}>{locLabel}</span>
+      </div>
+
       {/* Image */}
       <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
         {watch.image_url ? (
@@ -128,7 +172,7 @@ export default function WatchCard({ watch, onAdvance, onMarkSold }: WatchCardPro
             <span className="text-xs font-medium">No image</span>
           </div>
         )}
-        {/* Stock status pill over image */}
+        {/* Stock status pill */}
         <div className="absolute top-2 right-2">
           <span className={`text-xs font-bold px-2 py-1 rounded-full shadow-sm border ${
             watch.stock_status === 'STOCK'

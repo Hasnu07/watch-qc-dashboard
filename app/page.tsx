@@ -3,11 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import WatchCard from '@/components/WatchCard'
 import AddWatchModal from '@/components/AddWatchModal'
+import WatchDetailModal, { type WatchDetail } from '@/components/WatchDetailModal'
 import TaskCard from '@/components/TaskCard'
 import AutoScrollList from '@/components/AutoScrollList'
 
 type WatchStage = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 type Department = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
+type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
+type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
 
 interface Watch {
   id: number
@@ -31,6 +34,15 @@ interface Watch {
   b2b_price: string | number
   stage: WatchStage
   is_sold: boolean
+  payment_status: PaymentStatus
+  total_amount: number | null
+  location_status: LocationStatus
+  location_from: string | null
+  location_to: string | null
+  transit_pickup_date: string | null
+  transit_carrier: string | null
+  transit_tracking_number: string | null
+  received_date: string | null
 }
 
 interface TeamMember {
@@ -87,6 +99,7 @@ export default function DashboardPage() {
   const [members, setMembers] = useState<TeamMember[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [showAddWatch, setShowAddWatch] = useState(false)
+  const [selectedWatch, setSelectedWatch] = useState<Watch | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [sseConnected, setSseConnected] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -267,6 +280,7 @@ export default function DashboardPage() {
                   watch={watch}
                   onAdvance={advanceStage}
                   onMarkSold={markSold}
+                  onCardClick={(w) => setSelectedWatch(w)}
                 />
               ))}
             </div>
@@ -345,6 +359,14 @@ export default function DashboardPage() {
 
       {showAddWatch && (
         <AddWatchModal onClose={() => setShowAddWatch(false)} onAdded={fetchWatches} />
+      )}
+
+      {selectedWatch && (
+        <WatchDetailModal
+          watch={selectedWatch as WatchDetail}
+          onClose={() => setSelectedWatch(null)}
+          onUpdated={() => { fetchWatches(); setSelectedWatch(null) }}
+        />
       )}
     </div>
   )

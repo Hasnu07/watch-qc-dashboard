@@ -18,22 +18,38 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-
     const {
       brand, model, ref_no, serial_no, watch_date,
       bought_from, currency, purchase_price, convert_rate,
       case_material, dial_colour, bracelet,
       stock_status, origin,
       image_url, website_price, b2b_price,
+      payment_status,
+      total_amount,
+      location_status,
+      location_from, location_to,
+      transit_pickup_date, transit_carrier, transit_tracking_number,
     } = body
 
     if (website_price == null || b2b_price == null) {
       return NextResponse.json({ error: 'Website price and B2B price are required' }, { status: 400 })
     }
 
-    // Auto-generate display name
     const nameParts = [brand, model].filter(Boolean)
     const name = nameParts.length > 0 ? nameParts.join(' ') : (ref_no || 'Unnamed Watch')
+
+    // Calculate USD total_amount if not provided
+    const pp = purchase_price ? parseFloat(purchase_price) : null
+    const cr = convert_rate ? parseFloat(convert_rate) : null
+    const computedTotal = total_amount
+      ? parseFloat(total_amount)
+      : pp
+        ? (currency === 'USD' || !cr ? pp : +(pp * cr).toFixed(2))
+        : null
+
+    // Set received_date if location is IN_STOCK
+    const locStatus = location_status || 'INCOMING'
+    const receivedDate = locStatus === 'IN_STOCK' ? new Date() : null
 
     const watch = await prisma.watch.create({
       data: {
@@ -44,8 +60,8 @@ export async function POST(req: NextRequest) {
         watch_date: watch_date || null,
         bought_from: bought_from || null,
         currency: currency || 'USD',
-        purchase_price: purchase_price ? parseFloat(purchase_price) : null,
-        convert_rate: convert_rate ? parseFloat(convert_rate) : null,
+        purchase_price: pp,
+        convert_rate: cr,
         case_material: case_material || null,
         dial_colour: dial_colour || null,
         bracelet: bracelet || null,
@@ -55,6 +71,15 @@ export async function POST(req: NextRequest) {
         image_url: image_url || null,
         website_price: parseFloat(website_price),
         b2b_price: parseFloat(b2b_price),
+        payment_status: payment_status || 'NOT_PAID',
+        total_amount: computedTotal,
+        location_status: locStatus,
+        location_from: location_from || null,
+        location_to: location_to || null,
+        transit_pickup_date: transit_pickup_date ? new Date(transit_pickup_date) : null,
+        transit_carrier: transit_carrier || null,
+        transit_tracking_number: transit_tracking_number || null,
+        received_date: receivedDate,
       },
     })
 

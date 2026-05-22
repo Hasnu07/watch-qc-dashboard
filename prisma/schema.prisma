@@ -19,41 +19,70 @@ enum WatchStage {
   SALES
 }
 
+enum PaymentStatus {
+  NOT_PAID
+  PARTIAL
+  PAID
+}
+
+enum LocationStatus {
+  INCOMING
+  IN_TRANSIT
+  IN_STOCK
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+  CRYPTO
+}
+
 model Watch {
   id             Int        @id @default(autoincrement())
-
-  // Identity
   brand          String?
   model          String?
   ref_no         String?
   serial_no      String?
-  watch_date     String?    // e.g. "2023" or "2021-06"
-
-  // Purchase
+  watch_date     String?
   bought_from    String?
   currency       String     @default("USD")
   purchase_price Decimal?   @db.Decimal(12, 2)
-  convert_rate   Decimal?   @db.Decimal(12, 6)  // rate to USD, e.g. 1 GBP = 1.27 USD
-
-  // Watch details (AI-filled)
+  convert_rate   Decimal?   @db.Decimal(12, 6)
   case_material  String?
   dial_colour    String?
   bracelet       String?
-
-  // Status
-  stock_status   String     @default("STOCK")   // "STOCK" | "INCOMING"
+  stock_status   String     @default("STOCK")
   origin         String?
-
-  // Display / listing
-  name           String     // Auto-generated: "Brand Model" or custom
+  name           String
   image_url      String?
   website_price  Decimal    @db.Decimal(12, 2)
   b2b_price      Decimal    @db.Decimal(12, 2)
-
-  // Pipeline
   stage          WatchStage @default(LOGISTICS)
   is_sold        Boolean    @default(false)
+  payment_status          PaymentStatus  @default(NOT_PAID)
+  total_amount            Float?
+  location_status         LocationStatus @default(INCOMING)
+  location_from           String?
+  location_to             String?
+  transit_pickup_date     DateTime?
+  transit_carrier         String?
+  transit_tracking_number String?
+  received_date           DateTime?
   created_at     DateTime   @default(now())
+  payments       WatchPayment[]
+}
+
+model WatchPayment {
+  id             Int           @id @default(autoincrement())
+  watch_id       Int
+  watch          Watch         @relation(fields: [watch_id], references: [id], onDelete: Cascade)
+  amount         Float
+  currency       String        @default("USD")
+  payment_method PaymentMethod @default(CASH)
+  payment_date   DateTime      @default(now())
+  notes          String?
+  created_at     DateTime      @default(now())
 }
 
 model TeamMember {
