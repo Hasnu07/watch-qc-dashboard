@@ -101,6 +101,7 @@ export default function AdminTasksPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [showForm, setShowForm] = useState(false)
 
   const [form, setForm] = useState({
     assigned_by_id: '',
@@ -143,6 +144,7 @@ export default function AdminTasksPage() {
       })
       if (res.ok) {
         setForm({ assigned_by_id: '', team_member_id: '', message_text: '', reminder_interval_minutes: '' })
+        setShowForm(false)
         fetchTasks()
       }
     } catch (err) { console.error(err) }
@@ -184,12 +186,22 @@ export default function AdminTasksPage() {
         <div className="max-w-3xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
 
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">📌 Admin Tasks</h1>
-            <p className="text-slate-500 text-sm mt-1">Assign custom tasks between team members with optional WhatsApp reminders.</p>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">📌 Admin Tasks</h1>
+              <p className="text-slate-500 text-sm mt-1">Assign custom tasks between team members with optional WhatsApp reminders.</p>
+            </div>
+            <button
+              onClick={() => setShowForm(v => !v)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-sm transition-all"
+            >
+              <span className="text-lg leading-none">{showForm ? '×' : '+'}</span>
+              {showForm ? 'Cancel' : 'Assign Task'}
+            </button>
           </div>
 
           {/* Assign Form */}
+          {showForm && (
           <section className="bg-white rounded-2xl border-2 border-slate-200 p-5 mb-6 shadow-sm">
             <h2 className="text-base font-black text-slate-900 mb-5">Assign New Task</h2>
             <form onSubmit={assignTask} className="flex flex-col gap-5">
@@ -259,6 +271,7 @@ export default function AdminTasksPage() {
               </button>
             </form>
           </section>
+          )}
 
           {/* Filter tabs */}
           <div className="flex gap-2 mb-4">
