@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 
 type Department = 'ACCOUNTING' | 'SALES' | 'LOGISTICS'
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
+type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
 
 interface WatchInfo {
   id: number
@@ -57,7 +58,6 @@ const TASK_LABELS: Record<string, string> = {
   LOGISTICS_UPDATE_COST: 'Update Logistics Cost',
 }
 
-// Accessory task types — rendered as a grouped dropdown, not individual rows
 const ACCESSORY_TASK_TYPES = [
   'LOGISTICS_ACCESSORIES_BOX',
   'LOGISTICS_ACCESSORIES_PAPERS',
@@ -81,9 +81,19 @@ const PAY_COLORS: Record<PaymentStatus, string> = {
   PARTIAL: 'bg-amber-50 text-amber-700 border-amber-200',
   PAID: 'bg-emerald-50 text-emerald-700 border-emerald-200',
 }
-
 const PAY_LABELS: Record<PaymentStatus, string> = {
   NOT_PAID: 'Not Paid', PARTIAL: 'Partial', PAID: 'Paid',
+}
+
+const LOC_COLORS: Record<LocationStatus, string> = {
+  INCOMING: 'bg-slate-100 text-slate-700 border-slate-300',
+  IN_TRANSIT: 'bg-blue-50 text-blue-700 border-blue-300',
+  IN_STOCK: 'bg-emerald-50 text-emerald-700 border-emerald-300',
+}
+const LOC_LABELS: Record<LocationStatus, string> = {
+  INCOMING: '📬 Incoming',
+  IN_TRANSIT: '🚚 In Transit',
+  IN_STOCK: '✅ In Stock',
 }
 
 const SIMPLE_TASKS = ['SALES_UPLOAD_DRIVE', 'SALES_UPLOAD_STOCK_GROUP', 'SALES_UPDATE_B2B']
@@ -97,11 +107,19 @@ interface TaskRowProps {
 function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  // Payment state
   const [payStatus, setPayStatus] = useState<PaymentStatus>(task.watch.payment_status)
+  // Price state
   const [websitePrice, setWebsitePrice] = useState(String(task.watch.website_price || ''))
   const [b2bPrice, setB2bPrice] = useState(String(task.watch.b2b_price || ''))
+  // Cost state
   const [cost, setCost] = useState(String(task.watch.logistics_cost || ''))
   const [costCurrency, setCostCurrency] = useState(task.watch.logistics_cost_currency || 'USD')
+  // Location state
+  const [locStatus, setLocStatus] = useState<LocationStatus>('IN_STOCK')
+  const [locFrom, setLocFrom] = useState('')
+  const [locTo, setLocTo] = useState('')
 
   useEffect(() => { setPayStatus(task.watch.payment_status) }, [task.watch.payment_status])
   useEffect(() => { setWebsitePrice(String(task.watch.website_price || '')) }, [task.watch.website_price])
@@ -118,7 +136,12 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
     )
   }
 
-  const hasInlineForm = ['ACCOUNTING_MARK_PAYMENT', 'SALES_SET_PRICE', 'LOGISTICS_UPDATE_COST'].includes(task.task_type)
+  const hasInlineForm = [
+    'ACCOUNTING_MARK_PAYMENT',
+    'SALES_SET_PRICE',
+    'LOGISTICS_UPDATE_COST',
+    'LOGISTICS_SET_LOCATION',
+  ].includes(task.task_type)
 
   const handleClick = async () => {
     if (saving) return
@@ -157,6 +180,19 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
     finally { setSaving(false) }
   }
 
+  const handleSaveLocation = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSaving(true)
+    try {
+      await onComplete(task.id, {
+        location_status: locStatus,
+        location_from: locFrom.trim() || null,
+        location_to: locTo.trim() || null,
+      })
+      setOpen(false)
+    } finally { setSaving(false) }
+  }
+
   return (
     <div className={`rounded-xl border transition-all ${task.is_completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
       <div className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer select-none" onClick={handleClick}>
@@ -181,6 +217,8 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
 
       {open && !task.is_completed && (
         <div className="px-3 pb-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
+
+          {/* ── Payment ── */}
           {task.task_type === 'ACCOUNTING_MARK_PAYMENT' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-1.5">
@@ -194,11 +232,13 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
                 ))}
               </div>
               <button onClick={handleSavePayment} disabled={saving}
-                className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50 transition-colors">
+                className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">
                 {saving ? 'Saving…' : 'Save & Complete'}
               </button>
             </div>
           )}
+
+          {/* ── Price ── */}
           {task.task_type === 'SALES_SET_PRICE' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-2">
@@ -216,11 +256,13 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
                 </div>
               </div>
               <button onClick={handleSavePrice} disabled={saving || !websitePrice || !b2bPrice}
-                className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50 transition-colors">
+                className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">
                 {saving ? 'Saving…' : 'Save & Complete'}
               </button>
             </div>
           )}
+
+          {/* ── Logistics cost ── */}
           {task.task_type === 'LOGISTICS_UPDATE_COST' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-2">
@@ -233,7 +275,43 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
                 </select>
               </div>
               <button onClick={handleSaveCost} disabled={saving || !cost}
-                className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50 transition-colors">
+                className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">
+                {saving ? 'Saving…' : 'Save & Complete'}
+              </button>
+            </div>
+          )}
+
+          {/* ── Set Location ── */}
+          {task.task_type === 'LOGISTICS_SET_LOCATION' && (
+            <div className="pt-2.5 flex flex-col gap-2">
+              {/* Status selector */}
+              <div className="flex gap-1.5">
+                {(['INCOMING', 'IN_TRANSIT', 'IN_STOCK'] as LocationStatus[]).map(s => (
+                  <button key={s} type="button" onClick={() => setLocStatus(s)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                      locStatus === s ? LOC_COLORS[s] : 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'
+                    }`}>
+                    {LOC_LABELS[s]}
+                  </button>
+                ))}
+              </div>
+              {/* From / To */}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-1 block">From</label>
+                  <input type="text" value={locFrom} onChange={e => setLocFrom(e.target.value)}
+                    placeholder="e.g. Supplier"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-1 block">Location / To</label>
+                  <input type="text" value={locTo} onChange={e => setLocTo(e.target.value)}
+                    placeholder="e.g. London Office"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
+                </div>
+              </div>
+              <button onClick={handleSaveLocation} disabled={saving}
+                className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">
                 {saving ? 'Saving…' : 'Save & Complete'}
               </button>
             </div>
@@ -244,7 +322,7 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
   )
 }
 
-// ── Accessories grouped row ────────────────────────────────────────────────
+// ── Accessories grouped row ──────────────────────────────────────────────
 
 interface AccessoriesGroupProps {
   tasks: WatchTask[]
@@ -255,12 +333,30 @@ interface AccessoriesGroupProps {
 function AccessoriesGroup({ tasks, onComplete, onUncomplete }: AccessoriesGroupProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState<number | null>(null)
+  const [savingAll, setSavingAll] = useState(false)
 
   const completedCount = tasks.filter(t => t.is_completed).length
   const allDone = completedCount === tasks.length
+  const someSelected = completedCount > 0 && !allDone
+
+  // Main checkbox: if all done → uncomplete all; else → complete all remaining
+  const handleMainClick = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (savingAll || saving !== null) return
+    setSavingAll(true)
+    try {
+      if (allDone) {
+        await Promise.all(tasks.map(t => onUncomplete(t.id)))
+      } else {
+        await Promise.all(tasks.filter(t => !t.is_completed).map(t => onComplete(t.id)))
+      }
+    } finally {
+      setSavingAll(false)
+    }
+  }
 
   const handleToggle = async (task: WatchTask) => {
-    if (saving !== null) return
+    if (saving !== null || savingAll) return
     setSaving(task.id)
     try {
       if (task.is_completed) await onUncomplete(task.id)
@@ -271,17 +367,35 @@ function AccessoriesGroup({ tasks, onComplete, onUncomplete }: AccessoriesGroupP
   }
 
   return (
-    <div className={`rounded-xl border transition-all ${allDone ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
-      {/* Header row — click to expand */}
+    <div className={`rounded-xl border transition-all ${
+      allDone ? 'bg-emerald-50/50 border-emerald-100' :
+      someSelected ? 'bg-amber-50/30 border-amber-100' :
+      'bg-white border-slate-100 hover:border-slate-200'
+    }`}>
+      {/* Header row */}
       <div
         className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer select-none"
         onClick={() => setOpen(o => !o)}
       >
-        {/* Aggregate check */}
-        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${
-          allDone ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 bg-white'
-        }`}>
-          {allDone && <span className="text-white text-[10px] font-black leading-none">✓</span>}
+        {/* Main checkbox */}
+        <div
+          onClick={handleMainClick}
+          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer ${
+            allDone
+              ? 'bg-emerald-500 border-emerald-500'
+              : someSelected
+                ? 'bg-white border-amber-400 hover:border-amber-500'
+                : 'border-slate-300 hover:border-indigo-400 bg-white'
+          }`}
+        >
+          {savingAll
+            ? <span className="text-slate-400 text-[10px] animate-spin inline-block">⟳</span>
+            : allDone
+              ? <span className="text-white text-[10px] font-black leading-none">✓</span>
+              : someSelected
+                ? <span className="text-amber-500 text-[10px] font-black leading-none">—</span>
+                : null
+          }
         </div>
 
         <span className={`text-sm flex-1 font-medium ${allDone ? 'line-through text-slate-400' : 'text-slate-700'}`}>
@@ -291,8 +405,8 @@ function AccessoriesGroup({ tasks, onComplete, onUncomplete }: AccessoriesGroupP
         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mr-1 ${
           allDone
             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            : completedCount > 0
-              ? 'bg-indigo-50 text-indigo-600 border-indigo-200'
+            : someSelected
+              ? 'bg-amber-50 text-amber-700 border-amber-200'
               : 'bg-slate-50 text-slate-500 border-slate-200'
         }`}>
           {completedCount}/{tasks.length}
@@ -496,7 +610,6 @@ export default function WatchTaskPanel({ className }: Props) {
   return (
     <div className={className}>
       <div className="p-4">
-        {/* Summary pill */}
         <div className="flex items-center gap-2 mb-4 px-4 py-2.5 bg-white rounded-xl border border-slate-200 shadow-sm">
           <span className="text-slate-500 text-sm font-medium">
             {totalPending === 0

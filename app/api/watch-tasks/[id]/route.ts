@@ -59,6 +59,18 @@ export async function PATCH(
         })
         checkAndUnlockLocation(task.watch_id).catch(console.error)
       }
+      // Location from LOGISTICS_SET_LOCATION task → save to watch
+      if (task.task_type === 'LOGISTICS_SET_LOCATION') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const locData: any = {}
+        if (body.metadata.location_status) locData.location_status = body.metadata.location_status
+        if (body.metadata.location_from !== undefined) locData.location_from = body.metadata.location_from || null
+        if (body.metadata.location_to !== undefined) locData.location_to = body.metadata.location_to || null
+        if (body.metadata.location_status === 'IN_STOCK') locData.received_date = new Date()
+        if (Object.keys(locData).length > 0) {
+          await prisma.watch.update({ where: { id: task.watch_id }, data: locData })
+        }
+      }
     }
 
     // Emit SSE + notify on completion
