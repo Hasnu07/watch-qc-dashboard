@@ -146,7 +146,7 @@ export default function SettingsPage() {
   const membersByDept = (dept: Department) => members.filter(m => m.department === dept)
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8 flex-1 overflow-y-auto">
+    <div className="max-w-3xl mx-auto px-4 py-6 flex-1 overflow-y-auto sm:px-6 sm:py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-black text-slate-900 mb-1">⚙️ Settings</h1>
         <p className="text-slate-500 font-medium">Configure integrations and manage your team</p>
@@ -378,7 +378,7 @@ export default function SettingsPage() {
             })}
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
             <input type="text" value={newMember.name}
               onChange={e => setNewMember({ ...newMember, name: e.target.value })}
               placeholder="Full name"
