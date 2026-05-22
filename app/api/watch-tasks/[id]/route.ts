@@ -20,6 +20,7 @@ export async function PATCH(
     }
     if (body.is_locked !== undefined) data.is_locked = body.is_locked
     if (body.metadata !== undefined) data.metadata = body.metadata
+    if ('assigned_to' in body) data.assigned_to = body.assigned_to || null
 
     const task = await prisma.watchTask.update({
       where: { id },

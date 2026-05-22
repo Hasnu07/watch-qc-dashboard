@@ -1,35 +1,23 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 type Department = 'ACCOUNTING' | 'SALES' | 'LOGISTICS'
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
 type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
 
+interface TeamMember { id: number; name: string; department: string }
+
 interface WatchInfo {
-  id: number
-  name: string
-  brand: string | null
-  model: string | null
-  ref_no: string | null
-  payment_status: PaymentStatus
-  website_price: string | number
-  b2b_price: string | number
-  logistics_cost: number | null
-  logistics_cost_currency: string | null
+  id: number; name: string; brand: string | null; model: string | null; ref_no: string | null
+  payment_status: PaymentStatus; website_price: string | number; b2b_price: string | number
+  logistics_cost: number | null; logistics_cost_currency: string | null
 }
 
 interface WatchTask {
-  id: number
-  watch_id: number
-  department: Department
-  task_type: string
-  is_completed: boolean
-  completed_at: string | null
-  is_locked: boolean
-  assigned_to: string | null
-  metadata: Record<string, unknown> | null
-  watch: WatchInfo
+  id: number; watch_id: number; department: Department; task_type: string
+  is_completed: boolean; completed_at: string | null; is_locked: boolean
+  assigned_to: string | null; metadata: Record<string, unknown> | null; watch: WatchInfo
 }
 
 const DEPT_CONFIG = {
@@ -37,29 +25,22 @@ const DEPT_CONFIG = {
   SALES:      { label: 'Sales',      icon: '🤝', color: 'text-emerald-700', border: 'border-emerald-200', bg: 'bg-emerald-50', solid: 'bg-emerald-500' },
   LOGISTICS:  { label: 'Logistics',  icon: '📦', color: 'text-blue-700', border: 'border-blue-200', bg: 'bg-blue-50', solid: 'bg-blue-500' },
 }
-
 const DEPT_ORDER: Department[] = ['ACCOUNTING', 'SALES', 'LOGISTICS']
 
 const TASK_LABELS: Record<string, string> = {
   ACCOUNTING_MARK_PAYMENT: 'Mark Payment Status',
-  SALES_SET_PRICE: 'Set Price',
-  SALES_UPLOAD_DRIVE: 'Upload to Drive',
-  SALES_UPLOAD_STOCK_GROUP: 'Upload to Stock Group',
-  SALES_UPDATE_B2B: 'Update B2B Prices',
-  LOGISTICS_SET_LOCATION: 'Set Location',
-  LOGISTICS_UPDATE_COST: 'Update Logistics Cost',
+  SALES_SET_PRICE: 'Set Price', SALES_UPLOAD_DRIVE: 'Upload to Drive',
+  SALES_UPLOAD_STOCK_GROUP: 'Upload to Stock Group', SALES_UPDATE_B2B: 'Update B2B Prices',
+  LOGISTICS_SET_LOCATION: 'Set Location', LOGISTICS_UPDATE_COST: 'Update Logistics Cost',
 }
 
 const ACCESSORY_TASK_TYPES = [
-  'LOGISTICS_ACCESSORIES_BOX', 'LOGISTICS_ACCESSORIES_PAPERS',
-  'LOGISTICS_ACCESSORIES_EXTRA_LINKS', 'LOGISTICS_ACCESSORIES_WARRANTY_CARD',
-  'LOGISTICS_ACCESSORIES_HANG_TAG',
+  'LOGISTICS_ACCESSORIES_BOX', 'LOGISTICS_ACCESSORIES_PAPERS', 'LOGISTICS_ACCESSORIES_EXTRA_LINKS',
+  'LOGISTICS_ACCESSORIES_WARRANTY_CARD', 'LOGISTICS_ACCESSORIES_HANG_TAG',
 ]
 const ACCESSORY_LABELS: Record<string, string> = {
-  LOGISTICS_ACCESSORIES_BOX: 'Box',
-  LOGISTICS_ACCESSORIES_PAPERS: 'Papers',
-  LOGISTICS_ACCESSORIES_EXTRA_LINKS: 'Extra Links',
-  LOGISTICS_ACCESSORIES_WARRANTY_CARD: 'Warranty Card',
+  LOGISTICS_ACCESSORIES_BOX: 'Box', LOGISTICS_ACCESSORIES_PAPERS: 'Papers',
+  LOGISTICS_ACCESSORIES_EXTRA_LINKS: 'Extra Links', LOGISTICS_ACCESSORIES_WARRANTY_CARD: 'Warranty Card',
   LOGISTICS_ACCESSORIES_HANG_TAG: 'Hang Tag',
 }
 
@@ -67,15 +48,15 @@ const CURRENCIES = ['USD', 'GBP', 'EUR', 'HKD', 'AED']
 
 const PAY_COLORS: Record<PaymentStatus, string> = {
   NOT_PAID: 'bg-red-50 text-red-700 border-red-200',
-  PARTIAL:  'bg-amber-50 text-amber-700 border-amber-200',
-  PAID:     'bg-emerald-50 text-emerald-700 border-emerald-200',
+  PARTIAL: 'bg-amber-50 text-amber-700 border-amber-200',
+  PAID: 'bg-emerald-50 text-emerald-700 border-emerald-200',
 }
 const PAY_LABELS: Record<PaymentStatus, string> = { NOT_PAID: 'Not Paid', PARTIAL: 'Partial', PAID: 'Paid' }
 
 const LOC_COLORS: Record<LocationStatus, string> = {
-  INCOMING:   'bg-slate-100 text-slate-700 border-slate-300',
+  INCOMING: 'bg-slate-100 text-slate-700 border-slate-300',
   IN_TRANSIT: 'bg-blue-50 text-blue-700 border-blue-300',
-  IN_STOCK:   'bg-emerald-50 text-emerald-700 border-emerald-300',
+  IN_STOCK: 'bg-emerald-50 text-emerald-700 border-emerald-300',
 }
 const LOC_LABELS: Record<LocationStatus, string> = {
   INCOMING: '📬 Incoming', IN_TRANSIT: '🚚 In Transit', IN_STOCK: '✅ In Stock',
@@ -83,15 +64,94 @@ const LOC_LABELS: Record<LocationStatus, string> = {
 
 const SIMPLE_TASKS = ['SALES_UPLOAD_DRIVE', 'SALES_UPLOAD_STOCK_GROUP', 'SALES_UPDATE_B2B']
 
+// ── Assignee picker ────────────────────────────────────────────────────────
+
+interface AssigneePickerProps {
+  currentAssignee: string | null
+  teamMembers: TeamMember[]
+  onAssign: (name: string | null) => Promise<void>
+}
+
+function AssigneePicker({ currentAssignee, teamMembers, onAssign }: AssigneePickerProps) {
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const handleSelect = async (name: string | null) => {
+    setOpen(false)
+    setSaving(true)
+    try { await onAssign(name) } finally { setSaving(false) }
+  }
+
+  return (
+    <div ref={ref} className="relative flex-shrink-0" onClick={e => e.stopPropagation()}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        disabled={saving}
+        className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all disabled:opacity-50 ${
+          currentAssignee
+            ? 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100'
+            : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-indigo-300 hover:text-indigo-500'
+        }`}
+      >
+        {saving ? <span className="animate-spin inline-block">⟳</span>
+          : currentAssignee ? <>👤 {currentAssignee}</>
+          : <>+ Assign</>}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-20 bg-white rounded-xl border border-slate-200 shadow-lg min-w-[120px] py-1 overflow-hidden">
+          {teamMembers.map(m => (
+            <button
+              key={m.id}
+              onClick={() => handleSelect(m.name)}
+              className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                currentAssignee === m.name
+                  ? 'bg-violet-50 text-violet-700 font-bold'
+                  : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              👤 {m.name}
+            </button>
+          ))}
+          {currentAssignee && (
+            <>
+              <div className="border-t border-slate-100 my-1" />
+              <button
+                onClick={() => handleSelect(null)}
+                className="w-full text-left px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-50 hover:text-red-500 transition-colors"
+              >
+                Remove
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Task row ───────────────────────────────────────────────────────────────
 
 interface TaskRowProps {
   task: WatchTask
+  teamMembers: TeamMember[]
   onComplete: (taskId: number, metadata?: Record<string, unknown>) => Promise<void>
   onUncomplete: (taskId: number) => Promise<void>
+  onAssign: (taskId: number, name: string | null) => Promise<void>
 }
 
-function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
+function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: TaskRowProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [payStatus, setPayStatus] = useState<PaymentStatus>(task.watch.payment_status)
@@ -112,8 +172,8 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
     return (
       <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-100">
         <span className="text-slate-300 text-sm">🔒</span>
-        <span className="text-slate-400 text-sm">{TASK_LABELS[task.task_type] ?? task.task_type}</span>
-        <span className="ml-auto text-xs text-slate-300 italic">Awaiting payment</span>
+        <span className="text-slate-400 text-sm flex-1">{TASK_LABELS[task.task_type] ?? task.task_type}</span>
+        <span className="text-xs text-slate-300 italic">Awaiting payment</span>
       </div>
     )
   }
@@ -146,25 +206,38 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
 
   return (
     <div className={`rounded-xl border transition-all ${task.is_completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
-      <div className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer select-none" onClick={handleClick}>
+      <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none" onClick={handleClick}>
+        {/* Checkbox */}
         <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-indigo-400 bg-white'}`}>
           {task.is_completed && <span className="text-white text-[10px] font-black leading-none">✓</span>}
           {saving && !task.is_completed && <span className="text-slate-400 text-[10px] animate-spin inline-block">⟳</span>}
         </div>
-        <span className={`text-sm flex-1 leading-snug ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-700 font-medium'}`}>
+
+        {/* Label */}
+        <span className={`text-sm flex-1 leading-snug min-w-0 ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-700 font-medium'}`}>
           {TASK_LABELS[task.task_type] ?? task.task_type}
         </span>
+
+        {/* Payment badge */}
         {task.task_type === 'ACCOUNTING_MARK_PAYMENT' && (
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${PAY_COLORS[task.watch.payment_status]}`}>{PAY_LABELS[task.watch.payment_status]}</span>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${PAY_COLORS[task.watch.payment_status]}`}>{PAY_LABELS[task.watch.payment_status]}</span>
         )}
+
+        {/* Assignee picker */}
+        <AssigneePicker
+          currentAssignee={task.assigned_to}
+          teamMembers={teamMembers}
+          onAssign={(name) => onAssign(task.id, name)}
+        />
+
+        {/* Expand arrow */}
         {hasInlineForm && !task.is_completed && (
-          <span className={`text-slate-400 text-xs transition-transform duration-150 ${open ? 'rotate-180' : ''}`}>▾</span>
+          <span className={`text-slate-400 text-xs transition-transform duration-150 flex-shrink-0 ${open ? 'rotate-180' : ''}`}>▾</span>
         )}
       </div>
 
       {open && !task.is_completed && (
         <div className="px-3 pb-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
-
           {task.task_type === 'ACCOUNTING_MARK_PAYMENT' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-1.5">
@@ -175,48 +248,35 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
                   </button>
                 ))}
               </div>
-              <button onClick={handleSavePayment} disabled={saving} className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">
-                {saving ? 'Saving…' : 'Save & Complete'}
-              </button>
+              <button onClick={handleSavePayment} disabled={saving} className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Save & Complete'}</button>
             </div>
           )}
-
           {task.task_type === 'SALES_SET_PRICE' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-1 block">Website $</label>
-                  <input type="number" value={websitePrice} onChange={e => setWebsitePrice(e.target.value)} placeholder="0.00"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
+                  <input type="number" value={websitePrice} onChange={e => setWebsitePrice(e.target.value)} placeholder="0.00" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
                 </div>
                 <div className="flex-1">
                   <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-1 block">B2B $</label>
-                  <input type="number" value={b2bPrice} onChange={e => setB2bPrice(e.target.value)} placeholder="0.00"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
+                  <input type="number" value={b2bPrice} onChange={e => setB2bPrice(e.target.value)} placeholder="0.00" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
                 </div>
               </div>
-              <button onClick={handleSavePrice} disabled={saving || !websitePrice || !b2bPrice} className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">
-                {saving ? 'Saving…' : 'Save & Complete'}
-              </button>
+              <button onClick={handleSavePrice} disabled={saving || !websitePrice || !b2bPrice} className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Save & Complete'}</button>
             </div>
           )}
-
           {task.task_type === 'LOGISTICS_UPDATE_COST' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-2">
-                <input type="number" value={cost} onChange={e => setCost(e.target.value)} placeholder="Cost amount"
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
-                <select value={costCurrency} onChange={e => setCostCurrency(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400">
+                <input type="number" value={cost} onChange={e => setCost(e.target.value)} placeholder="Cost amount" className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
+                <select value={costCurrency} onChange={e => setCostCurrency(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400">
                   {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <button onClick={handleSaveCost} disabled={saving || !cost} className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">
-                {saving ? 'Saving…' : 'Save & Complete'}
-              </button>
+              <button onClick={handleSaveCost} disabled={saving || !cost} className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Save & Complete'}</button>
             </div>
           )}
-
           {task.task_type === 'LOGISTICS_SET_LOCATION' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-1.5">
@@ -230,18 +290,14 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-1 block">From</label>
-                  <input type="text" value={locFrom} onChange={e => setLocFrom(e.target.value)} placeholder="e.g. Supplier"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
+                  <input type="text" value={locFrom} onChange={e => setLocFrom(e.target.value)} placeholder="e.g. Supplier" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
                 </div>
                 <div className="flex-1">
                   <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-1 block">Location / To</label>
-                  <input type="text" value={locTo} onChange={e => setLocTo(e.target.value)} placeholder="e.g. London Office"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
+                  <input type="text" value={locTo} onChange={e => setLocTo(e.target.value)} placeholder="e.g. London Office" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
                 </div>
               </div>
-              <button onClick={handleSaveLocation} disabled={saving} className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">
-                {saving ? 'Saving…' : 'Save & Complete'}
-              </button>
+              <button onClick={handleSaveLocation} disabled={saving} className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Save & Complete'}</button>
             </div>
           )}
         </div>
@@ -254,11 +310,13 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
 
 interface AccessoriesGroupProps {
   tasks: WatchTask[]
+  teamMembers: TeamMember[]
   onComplete: (taskId: number, metadata?: Record<string, unknown>) => Promise<void>
   onUncomplete: (taskId: number) => Promise<void>
+  onAssign: (taskId: number, name: string | null) => Promise<void>
 }
 
-function AccessoriesGroup({ tasks, onComplete, onUncomplete }: AccessoriesGroupProps) {
+function AccessoriesGroup({ tasks, teamMembers, onComplete, onUncomplete, onAssign }: AccessoriesGroupProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState<number | null>(null)
   const [savingAll, setSavingAll] = useState(false)
@@ -286,9 +344,17 @@ function AccessoriesGroup({ tasks, onComplete, onUncomplete }: AccessoriesGroupP
     } finally { setSaving(null) }
   }
 
+  // Assignee for the group — pick the first non-null, or null
+  const groupAssignee = tasks.find(t => t.assigned_to)?.assigned_to ?? null
+
+  const handleGroupAssign = async (name: string | null) => {
+    await Promise.all(tasks.map(t => onAssign(t.id, name)))
+  }
+
   return (
     <div className={`rounded-xl border transition-all ${allDone ? 'bg-emerald-50/50 border-emerald-100' : someSelected ? 'bg-amber-50/30 border-amber-100' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
-      <div className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer select-none" onClick={() => setOpen(o => !o)}>
+      <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none" onClick={() => setOpen(o => !o)}>
+        {/* Main checkbox */}
         <div onClick={handleMainClick}
           className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer ${allDone ? 'bg-emerald-500 border-emerald-500' : someSelected ? 'bg-white border-amber-400 hover:border-amber-500' : 'border-slate-300 hover:border-indigo-400 bg-white'}`}>
           {savingAll ? <span className="text-slate-400 text-[10px] animate-spin inline-block">⟳</span>
@@ -296,12 +362,23 @@ function AccessoriesGroup({ tasks, onComplete, onUncomplete }: AccessoriesGroupP
             : someSelected ? <span className="text-amber-500 text-[10px] font-black leading-none">—</span>
             : null}
         </div>
+
         <span className={`text-sm flex-1 font-medium ${allDone ? 'line-through text-slate-400' : 'text-slate-700'}`}>Accessories</span>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mr-1 ${allDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : someSelected ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${allDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : someSelected ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
           {completedCount}/{tasks.length}
         </span>
-        <span className={`text-slate-400 text-xs transition-transform duration-150 ${open ? 'rotate-180' : ''}`}>▾</span>
+
+        {/* Group assignee picker */}
+        <AssigneePicker
+          currentAssignee={groupAssignee}
+          teamMembers={teamMembers}
+          onAssign={handleGroupAssign}
+        />
+
+        <span className={`text-slate-400 text-xs transition-transform duration-150 flex-shrink-0 ${open ? 'rotate-180' : ''}`}>▾</span>
       </div>
+
       {open && (
         <div className="px-3 pb-3 pt-1 border-t border-slate-100 flex flex-col gap-1">
           {tasks.map(task => (
@@ -310,7 +387,7 @@ function AccessoriesGroup({ tasks, onComplete, onUncomplete }: AccessoriesGroupP
                 {task.is_completed && <span className="text-white text-[8px] font-black leading-none">✓</span>}
                 {saving === task.id && !task.is_completed && <span className="text-slate-400 text-[8px] inline-block animate-spin">⟳</span>}
               </div>
-              <span className={`text-sm ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-600'}`}>
+              <span className={`text-sm flex-1 ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-600'}`}>
                 {ACCESSORY_LABELS[task.task_type] ?? task.task_type}
               </span>
             </div>
@@ -324,16 +401,15 @@ function AccessoriesGroup({ tasks, onComplete, onUncomplete }: AccessoriesGroupP
 // ── Watch accordion ────────────────────────────────────────────────────────
 
 interface WatchAccordionProps {
-  watchId: number
-  watchName: string
-  tasks: WatchTask[]
-  defaultOpen: boolean
+  watchId: number; watchName: string; tasks: WatchTask[]
+  teamMembers: TeamMember[]; defaultOpen: boolean
   onComplete: (taskId: number, metadata?: Record<string, unknown>) => Promise<void>
   onUncomplete: (taskId: number) => Promise<void>
+  onAssign: (taskId: number, name: string | null) => Promise<void>
   onRefresh: () => void
 }
 
-function WatchAccordion({ watchId, watchName, tasks, defaultOpen, onComplete, onUncomplete, onRefresh }: WatchAccordionProps) {
+function WatchAccordion({ watchId, watchName, tasks, teamMembers, defaultOpen, onComplete, onUncomplete, onAssign, onRefresh }: WatchAccordionProps) {
   const [expanded, setExpanded] = useState(defaultOpen)
   const [assigning, setAssigning] = useState(false)
   const [assignDone, setAssignDone] = useState(false)
@@ -347,7 +423,7 @@ function WatchAccordion({ watchId, watchName, tasks, defaultOpen, onComplete, on
     LOGISTICS:  tasks.filter(t => t.department === 'LOGISTICS'),
   }
 
-  const handleAssign = async (e: React.MouseEvent) => {
+  const handleAutoAssign = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (assigning) return
     setAssigning(true)
@@ -356,56 +432,34 @@ function WatchAccordion({ watchId, watchName, tasks, defaultOpen, onComplete, on
       setAssignDone(true)
       onRefresh()
       setTimeout(() => setAssignDone(false), 3000)
-    } finally {
-      setAssigning(false)
-    }
+    } finally { setAssigning(false) }
   }
 
   return (
-    <div className={`rounded-2xl border overflow-hidden mb-3 shadow-sm transition-all ${allDone ? 'border-emerald-200' : 'border-slate-200'}`}>
-      {/* Watch header */}
-      <div className={`flex items-center gap-2 px-4 py-3.5 transition-colors ${allDone ? 'bg-emerald-50' : 'bg-white'}`}>
-        <button
-          onClick={() => setExpanded(e => !e)}
-          className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
-        >
+    <div className={`rounded-2xl border overflow-hidden mb-3 shadow-sm ${allDone ? 'border-emerald-200' : 'border-slate-200'}`}>
+      {/* Header */}
+      <div className={`flex items-center gap-2 px-4 py-3.5 ${allDone ? 'bg-emerald-50' : 'bg-white'}`}>
+        <button onClick={() => setExpanded(e => !e)} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
           <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${allDone ? 'bg-emerald-500' : 'bg-indigo-500'}`} />
-          <span className={`font-black text-base truncate ${allDone ? 'text-emerald-800' : 'text-slate-900'}`}>
-            {watchName}
-          </span>
+          <span className={`font-black text-base truncate ${allDone ? 'text-emerald-800' : 'text-slate-900'}`}>{watchName}</span>
         </button>
 
-        {/* Assign button */}
-        <button
-          onClick={handleAssign}
-          disabled={assigning}
+        {/* Auto assign button */}
+        <button onClick={handleAutoAssign} disabled={assigning}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex-shrink-0 disabled:opacity-50 ${
-            assignDone
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-              : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
-          }`}
-        >
-          {assigning ? (
-            <><span className="animate-spin inline-block text-xs">⟳</span> Assigning…</>
-          ) : assignDone ? (
-            <>✓ Assigned</>
-          ) : (
-            <>👤 Auto Assign</>
-          )}
+            assignDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+          }`}>
+          {assigning ? <><span className="animate-spin inline-block">⟳</span> Assigning…</>
+            : assignDone ? <>✓ Assigned</>
+            : <>👤 Auto Assign</>}
         </button>
 
-        {/* Pending / done badge */}
-        {allDone ? (
-          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
-            ✓ Done
-          </span>
-        ) : (
-          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex-shrink-0">
-            {pending} left
-          </span>
-        )}
+        {allDone
+          ? <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">✓ Done</span>
+          : <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex-shrink-0">{pending} left</span>
+        }
 
-        <button onClick={() => setExpanded(e => !e)} className="flex-shrink-0">
+        <button onClick={() => setExpanded(e => !e)} className="flex-shrink-0 pl-1">
           <span className={`text-slate-400 text-sm transition-transform duration-200 inline-block ${expanded ? 'rotate-180' : ''}`}>▾</span>
         </button>
       </div>
@@ -421,34 +475,22 @@ function WatchAccordion({ watchId, watchName, tasks, defaultOpen, onComplete, on
             const deptDone = deptPending === 0
             const mainTasks = dt.filter(t => !ACCESSORY_TASK_TYPES.includes(t.task_type))
             const accessoryTasks = dt.filter(t => ACCESSORY_TASK_TYPES.includes(t.task_type))
-            const assignee = dt.find(t => t.assigned_to)?.assigned_to ?? null
 
             return (
               <div key={dept} className={`px-3 py-3 ${dept !== 'LOGISTICS' ? 'border-b border-slate-100' : ''}`}>
-                {/* Dept label row */}
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl mb-2.5 ${cfg.bg} border ${cfg.border}`}>
                   <span className="text-sm">{cfg.icon}</span>
                   <span className={`text-xs font-black uppercase tracking-widest ${cfg.color}`}>{cfg.label}</span>
-
-                  {/* Assignee name */}
-                  {assignee && (
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border ${cfg.border} ${cfg.color} flex items-center gap-1`}>
-                      👤 {assignee}
-                    </span>
-                  )}
-
                   <span className={`ml-auto text-[10px] font-bold ${deptDone ? 'text-emerald-600' : cfg.color}`}>
                     {deptDone ? '✓ Done' : `${deptPending} left`}
                   </span>
                 </div>
-
-                {/* Tasks */}
                 <div className="flex flex-col gap-1.5">
                   {mainTasks.map(task => (
-                    <TaskRow key={task.id} task={task} onComplete={onComplete} onUncomplete={onUncomplete} />
+                    <TaskRow key={task.id} task={task} teamMembers={teamMembers} onComplete={onComplete} onUncomplete={onUncomplete} onAssign={onAssign} />
                   ))}
                   {accessoryTasks.length > 0 && (
-                    <AccessoriesGroup tasks={accessoryTasks} onComplete={onComplete} onUncomplete={onUncomplete} />
+                    <AccessoriesGroup tasks={accessoryTasks} teamMembers={teamMembers} onComplete={onComplete} onUncomplete={onUncomplete} onAssign={onAssign} />
                   )}
                 </div>
               </div>
@@ -464,10 +506,9 @@ function WatchAccordion({ watchId, watchName, tasks, defaultOpen, onComplete, on
 
 type SortMode = 'new' | 'pending' | 'name'
 
-interface Props { className?: string }
-
-export default function WatchTaskPanel({ className }: Props) {
+export default function WatchTaskPanel({ className }: { className?: string }) {
   const [tasks, setTasks] = useState<WatchTask[]>([])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<SortMode>('new')
 
@@ -479,7 +520,14 @@ export default function WatchTaskPanel({ className }: Props) {
     finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { fetchTasks() }, [fetchTasks])
+  const fetchMembers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/team-members')
+      if (res.ok) setTeamMembers(await res.json())
+    } catch (err) { console.error(err) }
+  }, [])
+
+  useEffect(() => { fetchTasks(); fetchMembers() }, [fetchTasks, fetchMembers])
 
   useEffect(() => {
     let es: EventSource | null = null
@@ -499,8 +547,7 @@ export default function WatchTaskPanel({ className }: Props) {
 
   const completeTask = useCallback(async (taskId: number, metadata?: Record<string, unknown>) => {
     const res = await fetch(`/api/watch-tasks/${taskId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_completed: true, ...(metadata ? { metadata } : {}) }),
     })
     if (res.ok) {
@@ -521,8 +568,7 @@ export default function WatchTaskPanel({ className }: Props) {
 
   const uncompleteTask = useCallback(async (taskId: number) => {
     const res = await fetch(`/api/watch-tasks/${taskId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_completed: false }),
     })
     if (res.ok) {
@@ -531,7 +577,17 @@ export default function WatchTaskPanel({ className }: Props) {
     }
   }, [])
 
-  // Group tasks by watch
+  const assignTask = useCallback(async (taskId: number, name: string | null) => {
+    const res = await fetch(`/api/watch-tasks/${taskId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assigned_to: name }),
+    })
+    if (res.ok) {
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, assigned_to: name } : t))
+    }
+  }, [])
+
+  // Group by watch
   const byWatch = new Map<number, { watchId: number; watchName: string; tasks: WatchTask[] }>()
   for (const task of tasks) {
     if (!byWatch.has(task.watch_id)) {
@@ -542,34 +598,20 @@ export default function WatchTaskPanel({ className }: Props) {
   }
 
   let watchGroups = Array.from(byWatch.values())
-
-  // Sort
-  if (sort === 'new') {
-    watchGroups = watchGroups.sort((a, b) => b.watchId - a.watchId)
-  } else if (sort === 'pending') {
-    watchGroups = watchGroups.sort((a, b) => {
-      const ap = a.tasks.filter(t => !t.is_completed && !t.is_locked).length
-      const bp = b.tasks.filter(t => !t.is_completed && !t.is_locked).length
-      return bp - ap
-    })
-  } else {
-    watchGroups = watchGroups.sort((a, b) => a.watchName.localeCompare(b.watchName))
-  }
+  if (sort === 'new') watchGroups = watchGroups.sort((a, b) => b.watchId - a.watchId)
+  else if (sort === 'pending') watchGroups = watchGroups.sort((a, b) => b.tasks.filter(t => !t.is_completed && !t.is_locked).length - a.tasks.filter(t => !t.is_completed && !t.is_locked).length)
+  else watchGroups = watchGroups.sort((a, b) => a.watchName.localeCompare(b.watchName))
 
   const totalPending = tasks.filter(t => !t.is_completed && !t.is_locked).length
 
-  if (loading) {
-    return <div className={`flex items-center justify-center h-40 text-slate-400 text-base ${className}`}>Loading tasks…</div>
-  }
-  if (tasks.length === 0) {
-    return (
-      <div className={`flex flex-col items-center justify-center h-40 text-slate-400 gap-2 ${className}`}>
-        <span className="text-4xl">✓</span>
-        <p className="font-semibold text-lg">No active watches</p>
-        <p className="text-sm">Add a watch to generate tasks</p>
-      </div>
-    )
-  }
+  if (loading) return <div className={`flex items-center justify-center h-40 text-slate-400 ${className}`}>Loading tasks…</div>
+  if (tasks.length === 0) return (
+    <div className={`flex flex-col items-center justify-center h-40 text-slate-400 gap-2 ${className}`}>
+      <span className="text-4xl">✓</span>
+      <p className="font-semibold text-lg">No active watches</p>
+      <p className="text-sm">Add a watch to generate tasks</p>
+    </div>
+  )
 
   return (
     <div className={className}>
@@ -578,38 +620,31 @@ export default function WatchTaskPanel({ className }: Props) {
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1 px-4 py-2.5 bg-white rounded-xl border border-slate-200 shadow-sm">
             <span className="text-slate-500 text-sm font-medium">
-              {totalPending === 0
-                ? '🎉 All tasks complete!'
-                : `${totalPending} pending · ${watchGroups.length} watch${watchGroups.length !== 1 ? 'es' : ''}`}
+              {totalPending === 0 ? '🎉 All tasks complete!' : `${totalPending} pending · ${watchGroups.length} watch${watchGroups.length !== 1 ? 'es' : ''}`}
             </span>
           </div>
-          <select
-            value={sort}
-            onChange={e => setSort(e.target.value as SortMode)}
-            className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-600 font-medium shadow-sm focus:outline-none focus:border-indigo-400 cursor-pointer"
-          >
+          <select value={sort} onChange={e => setSort(e.target.value as SortMode)}
+            className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-600 font-medium shadow-sm focus:outline-none focus:border-indigo-400 cursor-pointer">
             <option value="new">🕐 New first</option>
             <option value="pending">⚡ Most pending</option>
             <option value="name">🔤 Name A–Z</option>
           </select>
         </div>
 
-        {/* Watch accordions */}
-        {watchGroups.map(({ watchId, watchName, tasks: watchTasks }) => {
-          const hasPending = watchTasks.some(t => !t.is_completed && !t.is_locked)
-          return (
-            <WatchAccordion
-              key={watchId}
-              watchId={watchId}
-              watchName={watchName}
-              tasks={watchTasks}
-              defaultOpen={hasPending}
-              onComplete={completeTask}
-              onUncomplete={uncompleteTask}
-              onRefresh={fetchTasks}
-            />
-          )
-        })}
+        {watchGroups.map(({ watchId, watchName, tasks: watchTasks }) => (
+          <WatchAccordion
+            key={watchId}
+            watchId={watchId}
+            watchName={watchName}
+            tasks={watchTasks}
+            teamMembers={teamMembers}
+            defaultOpen={watchTasks.some(t => !t.is_completed && !t.is_locked)}
+            onComplete={completeTask}
+            onUncomplete={uncompleteTask}
+            onAssign={assignTask}
+            onRefresh={fetchTasks}
+          />
+        ))}
       </div>
     </div>
   )
