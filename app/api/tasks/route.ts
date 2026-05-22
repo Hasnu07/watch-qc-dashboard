@@ -3,6 +3,25 @@ import { prisma } from '@/lib/prisma'
 import { estimateTaskMinutes } from '@/lib/claude'
 import { emitTaskEvent } from '@/lib/events'
 import { getTodayPKT } from '@/lib/utils'
+import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
+
+async function getGreenAPISettings() {
+  const [inst, tok, url] = await Promise.all([
+    prisma.setting.findUnique({ where: { key: 'greenapi_instance_id' } }),
+    prisma.setting.findUnique({ where: { key: 'greenapi_api_token' } }),
+    prisma.setting.findUnique({ where: { key: 'greenapi_api_url' } }),
+  ])
+  if (!inst?.value || !tok?.value) return null
+  return { instanceId: inst.value, token: tok.value, apiUrl: url?.value || 'https://api.green-api.com' }
+}
+
+const REMINDER_LABELS: Record<number, string> = {
+  30: 'every 30 minutes',
+  60: 'every hour',
+  120: 'every 2 hours',
+  240: 'every 4 hours',
+  1440: 'once daily',
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -46,7 +65,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { team_member_id, message_text, date } = body
+    const { team_member_id, message_text, date, reminder_interval_minutes } = body
 
     if (!team_member_id || !message_text) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -54,16 +73,26 @@ export async function POST(req: NextRequest) {
 
     const taskDate = date || getTodayPKT()
 
-    // Create task first with null estimated_minutes
     const task = await prisma.task.create({
       data: {
         team_member_id: parseInt(team_member_id, 10),
         message_text,
         date: taskDate,
         estimated_minutes: null,
+        reminder_interval_minutes: reminder_interval_minutes ? parseInt(reminder_interval_minutes, 10) : null,
       },
       include: { team_member: true },
     })
+
+    // Notify the assigned person via WhatsApp
+    getGreenAPISettings().then(async (settings) => {
+      if (!settings) return
+      const reminderNote = reminder_interval_minutes
+        ? `\n⏰ You'll be reminded ${REMINDER_LABELS[reminder_interval_minutes] ?? `every ${reminder_interval_minutes} min`}.`
+        : ''
+      const msg = `📌 New task assigned to you:\n\n"${message_text}"${reminderNote}\n\n🔗 https://qc-dashboard-q907.onrender.com`
+      await sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(task.team_member.whatsapp_number), msg, settings.apiUrl)
+    }).catch(console.error)
 
     // Estimate time asynchronously, then update and emit
     estimateTaskMinutes(message_text).then(async (minutes) => {
