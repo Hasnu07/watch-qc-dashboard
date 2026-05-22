@@ -73,9 +73,9 @@ export default function HistoryPage() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Header */}
-      <div className="px-8 py-5 border-b border-slate-200 bg-white">
-        <h1 className="text-3xl font-bold text-slate-900">Task History</h1>
-        <p className="text-slate-400 mt-1">All tasks ever received from the team</p>
+      <div className="px-8 py-5 border-b border-slate-200 bg-white shadow-sm">
+        <h1 className="text-3xl font-black text-slate-900">📋 Task History</h1>
+        <p className="text-slate-500 mt-1 font-medium">All tasks ever received from the team</p>
       </div>
 
       {/* Filters */}

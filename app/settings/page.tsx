@@ -105,13 +105,15 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-8 flex-1 overflow-y-auto">
-      <h1 className="text-3xl font-bold text-slate-900 mb-2">Settings</h1>
-      <p className="text-slate-400 mb-8">Configure integrations and team members</p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-slate-900 mb-1">⚙️ Settings</h1>
+        <p className="text-slate-500 font-medium">Configure integrations and manage your team</p>
+      </div>
 
       {/* GreenAPI */}
-      <section className="bg-white rounded-2xl border border-slate-200 p-6 mb-6 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-900 mb-1">WhatsApp Integration</h2>
-        <p className="text-slate-400 text-sm mb-5">GreenAPI credentials and auto-message schedule</p>
+      <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 mb-6 shadow-sm">
+        <h2 className="text-xl font-black text-slate-900 mb-1 flex items-center gap-2">💬 WhatsApp Integration</h2>
+        <p className="text-slate-500 text-sm mb-5">GreenAPI credentials and auto-message schedule</p>
         <div className="flex flex-col gap-4">
           <div>
             <label className="text-sm text-slate-500 block mb-1.5">GreenAPI Instance ID</label>
@@ -152,9 +154,9 @@ export default function SettingsPage() {
       </div>
 
       {/* Team Members grouped by department */}
-      <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xl font-bold text-slate-900">Team Members</h2>
+          <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">👥 Team Members</h2>
           <span className="text-slate-400 text-sm bg-slate-100 px-3 py-1 rounded-full">
             {members.length} total
           </span>
@@ -265,8 +267,8 @@ export default function SettingsPage() {
       </section>
 
       {/* Webhook info */}
-      <section className="bg-white rounded-2xl border border-slate-200 p-6 mt-6 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-900 mb-1">Webhook URL</h2>
+      <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 mt-6 shadow-sm">
+        <h2 className="text-xl font-black text-slate-900 mb-1 flex items-center gap-2">🔗 Webhook URL</h2>
         <p className="text-slate-400 text-sm mb-4">Set this in GreenAPI → Instance settings → Webhooks</p>
         <div className="bg-slate-50 rounded-xl px-4 py-3 font-mono text-sm text-blue-600 border border-slate-200 select-all">
           {typeof window !== 'undefined' ? window.location.origin : 'https://your-app.onrender.com'}/api/webhook/greenapi

@@ -17,53 +17,34 @@ body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: #EEF2FF;
+  color: #0F172A;
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar styling for light theme */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #E2E8F0; }
+::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #64748B; }
 
-/* Auto-scroll animation */
+/* Auto-scroll */
 @keyframes autoScroll {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(var(--scroll-distance, -50%));
-  }
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(var(--scroll-distance, -50%)); }
 }
-
 .auto-scroll-content {
   animation: autoScroll var(--scroll-duration, 30s) linear infinite;
 }
-
 .auto-scroll-container:hover .auto-scroll-content {
   animation-play-state: paused;
 }
 
-/* Pulse for live indicator */
+/* Live dot pulse */
 @keyframes livePulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50%       { opacity: 0.3; }
 }
-
-.live-dot {
-  animation: livePulse 2s ease-in-out infinite;
-}
+.live-dot { animation: livePulse 2s ease-in-out infinite; }

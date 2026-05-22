@@ -129,25 +129,28 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
     }
   }
 
-  const inputCls = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-colors'
-  const labelCls = 'text-xs text-slate-500 block mb-1 font-medium'
-  const sectionCls = 'border-t border-slate-100 pt-4 mt-4'
+  const inputCls = 'w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition-all'
+  const labelCls = 'text-xs text-slate-600 block mb-1.5 font-bold uppercase tracking-wide'
+  const sectionCls = 'border-t-2 border-slate-100 pt-5 mt-5'
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl shadow-xl my-4">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl border border-slate-200 w-full max-w-2xl shadow-2xl my-4">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-          <h2 className="text-xl font-bold text-slate-900">Add Watch</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-2xl leading-none transition-colors">&times;</button>
+        <div className="flex items-center justify-between px-6 py-5 border-b-2 border-slate-100 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-t-3xl">
+          <div>
+            <h2 className="text-xl font-black text-white">Add Watch</h2>
+            <p className="text-indigo-200 text-xs mt-0.5">Fill in the details below</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition-colors font-bold">&times;</button>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-0">
 
           {/* WATCH IDENTITY */}
           <div>
-            <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3">Watch Identity</p>
+            <p className="text-xs uppercase tracking-widest text-indigo-600 font-black mb-3 flex items-center gap-2"><span className="text-base">🕐</span> Watch Identity</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Brand</label>
@@ -182,7 +185,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
 
           {/* PURCHASE INFO */}
           <div className={sectionCls}>
-            <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3">Purchase</p>
+            <p className="text-xs uppercase tracking-widest text-amber-600 font-black mb-3 flex items-center gap-2"><span className="text-base">💰</span> Purchase</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className={labelCls}>Bought From</label>
@@ -239,7 +242,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
           {/* WATCH DETAILS (AI) */}
           <div className={sectionCls}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold">Watch Details</p>
+              <p className="text-xs uppercase tracking-widest text-violet-600 font-black flex items-center gap-2"><span className="text-base">⚙️</span> Watch Details</p>
               <div className="flex items-center gap-2">
                 {aiMsg && (
                   <span className={`text-xs ${aiMsg.startsWith('✓') ? 'text-green-600' : 'text-amber-600'}`}>
@@ -278,7 +281,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
 
           {/* STATUS & ORIGIN */}
           <div className={sectionCls}>
-            <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3">Status & Origin</p>
+            <p className="text-xs uppercase tracking-widest text-emerald-600 font-black mb-3 flex items-center gap-2"><span className="text-base">📍</span> Status & Origin</p>
             <div className="grid grid-cols-2 gap-3 items-start">
               <div>
                 <label className={labelCls}>Stock Status</label>
@@ -311,7 +314,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
 
           {/* LISTING */}
           <div className={sectionCls}>
-            <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3">Listing & Pricing</p>
+            <p className="text-xs uppercase tracking-widest text-blue-600 font-black mb-3 flex items-center gap-2"><span className="text-base">🏷️</span> Listing & Pricing</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className={labelCls}>Image URL</label>
@@ -337,14 +340,14 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-5 border-t border-slate-100 mt-5">
+          <div className="flex gap-3 pt-5 border-t-2 border-slate-100 mt-5">
             <button type="button" onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors font-medium">
+              className="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all font-bold">
               Cancel
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors disabled:opacity-50">
-              {loading ? 'Adding...' : 'Add Watch'}
+              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-black transition-all disabled:opacity-50 shadow-sm">
+              {loading ? 'Adding…' : '+ Add Watch'}
             </button>
           </div>
         </form>

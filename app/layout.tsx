@@ -7,14 +7,10 @@ export const metadata: Metadata = {
   description: 'Quality Control Dashboard for Watch Trading Business',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+      <body className="bg-indigo-50 text-slate-900 min-h-screen flex flex-col">
         <NavBar />
         <main className="flex-1 flex flex-col">{children}</main>
       </body>

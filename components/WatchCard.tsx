@@ -39,19 +39,37 @@ const STAGES: WatchStage[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
 
 const STAGE_CFG = {
   LOGISTICS: {
-    label: 'Logistics', color: 'text-blue-600', dot: 'bg-blue-500',
-    btnCls: 'bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border-blue-200 hover:border-blue-600',
-    nextLabel: 'Move to Accounting →', nextStage: 'ACCOUNTING' as WatchStage,
+    label: 'Logistics',
+    color: 'text-blue-700',
+    dot: 'bg-blue-500',
+    line: 'bg-blue-400',
+    badge: 'bg-blue-100 text-blue-800 border-blue-200',
+    leftBorder: 'border-l-blue-500',
+    btn: 'bg-blue-600 hover:bg-blue-700 text-white',
+    nextLabel: 'Move to Accounting →',
+    nextStage: 'ACCOUNTING' as WatchStage,
   },
   ACCOUNTING: {
-    label: 'Accounting', color: 'text-amber-600', dot: 'bg-amber-500',
-    btnCls: 'bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white border-amber-200 hover:border-amber-500',
-    nextLabel: 'Move to Sales →', nextStage: 'SALES' as WatchStage,
+    label: 'Accounting',
+    color: 'text-amber-700',
+    dot: 'bg-amber-500',
+    line: 'bg-amber-400',
+    badge: 'bg-amber-100 text-amber-800 border-amber-200',
+    leftBorder: 'border-l-amber-500',
+    btn: 'bg-amber-500 hover:bg-amber-600 text-white',
+    nextLabel: 'Move to Sales →',
+    nextStage: 'SALES' as WatchStage,
   },
   SALES: {
-    label: 'Sales', color: 'text-green-600', dot: 'bg-green-500',
-    btnCls: 'bg-red-50 hover:bg-red-500 text-red-600 hover:text-white border-red-200 hover:border-red-500',
-    nextLabel: 'Mark as Sold ✓', nextStage: 'SALES' as WatchStage,
+    label: 'Sales',
+    color: 'text-emerald-700',
+    dot: 'bg-emerald-500',
+    line: 'bg-emerald-400',
+    badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    leftBorder: 'border-l-emerald-500',
+    btn: 'bg-rose-500 hover:bg-rose-600 text-white',
+    nextLabel: '✓ Mark as Sold',
+    nextStage: 'SALES' as WatchStage,
   },
 }
 
@@ -67,75 +85,88 @@ export default function WatchCard({ watch, onAdvance, onMarkSold }: WatchCardPro
   const tags = [watch.case_material, watch.dial_colour, watch.bracelet].filter(Boolean)
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all group flex flex-col">
+    <div className={`bg-white rounded-2xl overflow-hidden border-l-4 ${cfg.leftBorder} border border-slate-200 shadow-sm hover:shadow-md transition-all group flex flex-col`}>
 
       {/* Pipeline bar */}
-      <div className="px-3 pt-3 pb-2">
-        <div className="flex items-center gap-1">
+      <div className="px-4 pt-3 pb-2 bg-slate-50 border-b border-slate-100">
+        <div className="flex items-center gap-0.5">
           {STAGES.map((s, i) => (
             <div key={s} className="flex items-center flex-1 last:flex-none">
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors ${i <= stageIdx ? STAGE_CFG[s].dot : 'bg-slate-200'}`} />
+              <div className={`w-3 h-3 rounded-full flex-shrink-0 ring-2 ring-white transition-colors ${
+                i <= stageIdx ? STAGE_CFG[s].dot : 'bg-slate-300'
+              }`} />
               {i < STAGES.length - 1 && (
-                <div className={`flex-1 h-px mx-1 transition-colors ${i < stageIdx ? STAGE_CFG[STAGES[i]].dot : 'bg-slate-200'}`} />
+                <div className={`flex-1 h-1 mx-1 rounded-full transition-colors ${
+                  i < stageIdx ? STAGE_CFG[STAGES[i]].line : 'bg-slate-200'
+                }`} />
               )}
             </div>
           ))}
         </div>
-        <div className="flex justify-between mt-0.5">
+        <div className="flex justify-between mt-1">
           {STAGES.map((s, i) => (
-            <span key={s} className={`text-[9px] font-medium ${i <= stageIdx ? STAGE_CFG[s].color : 'text-slate-300'}`}>
-              {STAGE_CFG[s].label}
+            <span key={s} className={`text-[10px] font-bold tracking-wide ${
+              i <= stageIdx ? STAGE_CFG[s].color : 'text-slate-400'
+            }`}>
+              {STAGE_CFG[s].label.toUpperCase()}
             </span>
           ))}
         </div>
       </div>
 
-      {/* Badges row */}
-      <div className="px-3 pb-1 flex items-center gap-1.5 flex-wrap">
-        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.color} bg-slate-100`}>
-          {cfg.label}
-        </span>
-        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-          watch.stock_status === 'STOCK'
-            ? 'text-green-700 bg-green-50'
-            : 'text-amber-700 bg-amber-50'
-        }`}>
-          {watch.stock_status === 'STOCK' ? '✓ In Stock' : '⏳ Incoming'}
-        </span>
-        {watch.origin && (
-          <span className="text-[10px] text-slate-500 px-2 py-0.5 rounded-full bg-slate-100">
-            {watch.origin}
-          </span>
-        )}
-      </div>
-
       {/* Image */}
-      <div className="relative w-full aspect-[4/3] bg-slate-50 overflow-hidden">
+      <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
         {watch.image_url ? (
           <Image src={watch.image_url} alt={watch.name} fill
             className="object-contain p-3 group-hover:scale-105 transition-transform duration-300" unoptimized />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <svg className="w-14 h-14 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-slate-300">
+            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
+            <span className="text-xs font-medium">No image</span>
           </div>
         )}
+        {/* Stock status pill over image */}
+        <div className="absolute top-2 right-2">
+          <span className={`text-xs font-bold px-2 py-1 rounded-full shadow-sm border ${
+            watch.stock_status === 'STOCK'
+              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+              : 'bg-amber-100 text-amber-800 border-amber-200'
+          }`}>
+            {watch.stock_status === 'STOCK' ? '✓ In Stock' : '⏳ Incoming'}
+          </span>
+        </div>
       </div>
 
       {/* Info */}
-      <div className="p-3 flex flex-col gap-2 flex-1">
+      <div className="p-4 flex flex-col gap-2.5 flex-1">
+
+        {/* Stage + origin badges */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${cfg.badge}`}>
+            {cfg.label}
+          </span>
+          {watch.origin && (
+            <span className="text-[11px] font-medium text-slate-500 px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200">
+              {watch.origin}
+            </span>
+          )}
+        </div>
+
         {/* Brand + Model */}
         <div>
           {watch.brand && (
-            <p className="text-blue-600 text-xs font-bold uppercase tracking-widest">{watch.brand}</p>
+            <p className="text-indigo-600 text-xs font-black uppercase tracking-widest mb-0.5">{watch.brand}</p>
           )}
           <h3 className="text-slate-900 font-bold text-base leading-tight">
             {watch.model || watch.name}
           </h3>
           {watch.ref_no && (
-            <p className="text-slate-400 text-xs">Ref. {watch.ref_no}{watch.watch_date ? ` · ${watch.watch_date}` : ''}</p>
+            <p className="text-slate-400 text-xs mt-0.5 font-medium">
+              Ref. {watch.ref_no}{watch.watch_date ? <span className="text-slate-300"> · {watch.watch_date}</span> : ''}
+            </p>
           )}
         </div>
 
@@ -143,33 +174,32 @@ export default function WatchCard({ watch, onAdvance, onMarkSold }: WatchCardPro
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {tags.map((tag, i) => (
-              <span key={i} className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full border border-slate-200">
+              <span key={i} className="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium border border-slate-200">
                 {tag}
               </span>
             ))}
           </div>
         )}
 
-        {/* Bought from */}
         {watch.bought_from && (
-          <p className="text-slate-400 text-xs">From: {watch.bought_from}</p>
+          <p className="text-slate-400 text-xs font-medium">📍 From: {watch.bought_from}</p>
         )}
 
         {/* Prices */}
-        <div className="grid grid-cols-2 gap-1.5">
-          <div className="bg-slate-50 rounded-lg p-2 border border-slate-100">
-            <div className="text-slate-400 text-[10px] mb-0.5">Website</div>
-            <div className="text-blue-600 font-bold text-sm">{formatCurrency(watch.website_price)}</div>
+        <div className="grid grid-cols-2 gap-2 mt-auto">
+          <div className="bg-blue-50 rounded-xl p-2.5 border border-blue-100">
+            <div className="text-blue-500 text-[10px] font-bold uppercase tracking-wide mb-0.5">Website</div>
+            <div className="text-blue-800 font-black text-base">{formatCurrency(watch.website_price)}</div>
           </div>
-          <div className="bg-slate-50 rounded-lg p-2 border border-slate-100">
-            <div className="text-slate-400 text-[10px] mb-0.5">B2B</div>
-            <div className="text-green-600 font-bold text-sm">{formatCurrency(watch.b2b_price)}</div>
+          <div className="bg-emerald-50 rounded-xl p-2.5 border border-emerald-100">
+            <div className="text-emerald-500 text-[10px] font-bold uppercase tracking-wide mb-0.5">B2B</div>
+            <div className="text-emerald-800 font-black text-base">{formatCurrency(watch.b2b_price)}</div>
           </div>
         </div>
 
         {/* Action button */}
         <button onClick={handleAction}
-          className={`w-full py-2 rounded-xl font-semibold text-xs transition-all border ${cfg.btnCls}`}>
+          className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${cfg.btn}`}>
           {cfg.nextLabel}
         </button>
       </div>
