@@ -12,9 +12,23 @@ type Department = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 interface Watch {
   id: number
   name: string
+  brand: string | null
+  model: string | null
+  ref_no: string | null
+  serial_no: string | null
+  watch_date: string | null
+  bought_from: string | null
+  currency: string
+  purchase_price: string | number | null
+  convert_rate: string | number | null
+  case_material: string | null
+  dial_colour: string | null
+  bracelet: string | null
+  stock_status: string
+  origin: string | null
   image_url: string | null
-  website_price: string
-  b2b_price: string
+  website_price: string | number
+  b2b_price: string | number
   stage: WatchStage
   is_sold: boolean
 }
