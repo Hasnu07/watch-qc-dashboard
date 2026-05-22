@@ -17,27 +17,27 @@ body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #0a0a0f;
-  color: #f1f5f9;
+  background-color: #f8fafc;
+  color: #0f172a;
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar styling for dark theme */
+/* Scrollbar styling for light theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #111118;
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2d2d3a;
+  background: #cbd5e1;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3d3d4a;
+  background: #94a3b8;
 }
 
 /* Auto-scroll animation */

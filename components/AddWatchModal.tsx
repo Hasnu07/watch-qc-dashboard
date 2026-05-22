@@ -18,25 +18,20 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 }
 
 interface FormData {
-  // Identity
   brand: string
   model: string
   ref_no: string
   serial_no: string
   watch_date: string
-  // Purchase
   bought_from: string
   currency: string
   purchase_price: string
   convert_rate: string
-  // Details
   case_material: string
   dial_colour: string
   bracelet: string
-  // Status
   stock_status: 'STOCK' | 'INCOMING'
   origin: string
-  // Listing
   image_url: string
   website_price: string
   b2b_price: string
@@ -65,7 +60,6 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
   const set = (key: keyof FormData, val: string) =>
     setForm(prev => ({ ...prev, [key]: val }))
 
-  // Purchase price in USD (computed)
   const purchasePriceUSD = (() => {
     const p = parseFloat(form.purchase_price)
     const r = parseFloat(form.convert_rate)
@@ -135,25 +129,25 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
     }
   }
 
-  const inputCls = 'w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-3 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-blue-500 transition-colors'
-  const labelCls = 'text-xs text-slate-400 block mb-1 font-medium'
-  const sectionCls = 'border-t border-white/8 pt-4 mt-4'
+  const inputCls = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-colors'
+  const labelCls = 'text-xs text-slate-500 block mb-1 font-medium'
+  const sectionCls = 'border-t border-slate-100 pt-4 mt-4'
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[#16161f] rounded-2xl border border-white/10 w-full max-w-2xl shadow-2xl my-4">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl shadow-xl my-4">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <h2 className="text-xl font-bold text-white">Add Watch</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none transition-colors">&times;</button>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+          <h2 className="text-xl font-bold text-slate-900">Add Watch</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-2xl leading-none transition-colors">&times;</button>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-0">
 
-          {/* ── WATCH IDENTITY ── */}
+          {/* WATCH IDENTITY */}
           <div>
-            <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">Watch Identity</p>
+            <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3">Watch Identity</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Brand</label>
@@ -186,9 +180,9 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
             </div>
           </div>
 
-          {/* ── PURCHASE INFO ── */}
+          {/* PURCHASE INFO */}
           <div className={sectionCls}>
-            <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">Purchase</p>
+            <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3">Purchase</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className={labelCls}>Bought From</label>
@@ -205,7 +199,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                       className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${
                         form.currency === c
                           ? 'bg-blue-600 border-blue-600 text-white'
-                          : 'border-white/10 text-slate-500 hover:text-white hover:border-white/30'
+                          : 'border-slate-200 text-slate-400 hover:text-slate-700 hover:border-slate-300 bg-white'
                       }`}>
                       {c}
                     </button>
@@ -232,7 +226,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                   </div>
                   {purchasePriceUSD !== null && (
                     <div className="flex items-end pb-1">
-                      <span className="text-green-400 text-sm font-semibold">
+                      <span className="text-green-600 text-sm font-semibold">
                         ≈ ${purchasePriceUSD.toLocaleString()} USD
                       </span>
                     </div>
@@ -242,18 +236,18 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
             </div>
           </div>
 
-          {/* ── WATCH DETAILS (AI) ── */}
+          {/* WATCH DETAILS (AI) */}
           <div className={sectionCls}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold">Watch Details</p>
+              <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold">Watch Details</p>
               <div className="flex items-center gap-2">
                 {aiMsg && (
-                  <span className={`text-xs ${aiMsg.startsWith('✓') ? 'text-green-400' : 'text-amber-400'}`}>
+                  <span className={`text-xs ${aiMsg.startsWith('✓') ? 'text-green-600' : 'text-amber-600'}`}>
                     {aiMsg}
                   </span>
                 )}
                 <button type="button" onClick={handleAIFill} disabled={aiLoading || !form.brand}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-300 text-xs font-semibold transition-all disabled:opacity-40">
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 text-xs font-semibold transition-all disabled:opacity-40">
                   {aiLoading ? (
                     <span className="animate-spin text-base leading-none">⟳</span>
                   ) : (
@@ -282,9 +276,9 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
             </div>
           </div>
 
-          {/* ── STATUS & ORIGIN ── */}
+          {/* STATUS & ORIGIN */}
           <div className={sectionCls}>
-            <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">Status & Origin</p>
+            <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3">Status & Origin</p>
             <div className="grid grid-cols-2 gap-3 items-start">
               <div>
                 <label className={labelCls}>Stock Status</label>
@@ -292,32 +286,32 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                   <button type="button" onClick={() => set('stock_status', 'STOCK')}
                     className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
                       form.stock_status === 'STOCK'
-                        ? 'bg-green-600/20 border-green-500/50 text-green-400'
-                        : 'border-white/10 text-slate-500 hover:text-slate-300'
+                        ? 'bg-green-50 border-green-300 text-green-700'
+                        : 'border-slate-200 text-slate-400 hover:text-slate-600 bg-white'
                     }`}>
                     ✓ In Stock
                   </button>
                   <button type="button" onClick={() => set('stock_status', 'INCOMING')}
                     className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
                       form.stock_status === 'INCOMING'
-                        ? 'bg-amber-600/20 border-amber-500/50 text-amber-400'
-                        : 'border-white/10 text-slate-500 hover:text-slate-300'
+                        ? 'bg-amber-50 border-amber-300 text-amber-700'
+                        : 'border-slate-200 text-slate-400 hover:text-slate-600 bg-white'
                     }`}>
                     ⏳ Incoming
                   </button>
                 </div>
               </div>
               <div>
-                <label className={labelCls}>Origin <span className="text-slate-600">(optional)</span></label>
+                <label className={labelCls}>Origin <span className="text-slate-300">(optional)</span></label>
                 <input type="text" value={form.origin} onChange={e => set('origin', e.target.value)}
                   placeholder="e.g. UK, Japan, Switzerland" className={inputCls} />
               </div>
             </div>
           </div>
 
-          {/* ── LISTING ── */}
+          {/* LISTING */}
           <div className={sectionCls}>
-            <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">Listing & Pricing</p>
+            <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3">Listing & Pricing</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className={labelCls}>Image URL</label>
@@ -339,17 +333,17 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
 
           {/* Error */}
           {error && (
-            <p className="mt-3 text-red-400 text-sm bg-red-400/10 rounded-lg px-3 py-2">{error}</p>
+            <p className="mt-3 text-red-600 text-sm bg-red-50 rounded-lg px-3 py-2 border border-red-100">{error}</p>
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-5 border-t border-white/8 mt-5">
+          <div className="flex gap-3 pt-5 border-t border-slate-100 mt-5">
             <button type="button" onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 transition-colors font-medium">
+              className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors font-medium">
               Cancel
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors disabled:opacity-50">
+              className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors disabled:opacity-50">
               {loading ? 'Adding...' : 'Add Watch'}
             </button>
           </div>
