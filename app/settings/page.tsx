@@ -14,7 +14,14 @@ interface TeamMember {
 interface Settings {
   greenapi_instance_id: string
   greenapi_api_token: string
+  greenapi_api_url: string
   reminder_interval_minutes: string
+}
+
+interface TestResult {
+  name: string
+  number: string
+  ok: boolean
 }
 
 const DEPT_CONFIG = {
@@ -29,8 +36,12 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
     greenapi_instance_id: '',
     greenapi_api_token: '',
+    greenapi_api_url: 'https://api.green-api.com',
     reminder_interval_minutes: '20',
   })
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ successCount: number; total: number; report: TestResult[] } | null>(null)
+  const [testError, setTestError] = useState('')
   const [members, setMembers] = useState<TeamMember[]>([])
   const [newMember, setNewMember] = useState({ name: '', whatsapp_number: '', department: 'LOGISTICS' as Department })
   const [saving, setSaving] = useState(false)
@@ -54,6 +65,17 @@ export default function SettingsPage() {
   }, [])
 
   useEffect(() => { fetchSettings(); fetchMembers() }, [fetchSettings, fetchMembers])
+
+  const testWhatsApp = async () => {
+    setTesting(true); setTestResult(null); setTestError('')
+    try {
+      const res = await fetch('/api/settings/test-whatsapp', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) { setTestError(data.error || 'Test failed'); return }
+      setTestResult(data)
+    } catch { setTestError('Request failed') }
+    finally { setTesting(false) }
+  }
 
   const saveSettings = async () => {
     setSaving(true); setSavedMsg('')
@@ -127,6 +149,57 @@ export default function SettingsPage() {
               onChange={e => setSettings({ ...settings, greenapi_api_token: e.target.value })}
               placeholder="Your API token..." className={inputClass} />
           </div>
+          <div>
+            <label className="text-sm text-slate-500 block mb-1.5">GreenAPI API URL</label>
+            <input type="text" value={settings.greenapi_api_url}
+              onChange={e => setSettings({ ...settings, greenapi_api_url: e.target.value })}
+              placeholder="e.g. https://7107.api.greenapi.com" className={inputClass} />
+            <p className="text-slate-400 text-xs mt-1.5">
+              Found in your GreenAPI dashboard under Instance settings (apiUrl field).
+            </p>
+          </div>
+
+          {/* Test button */}
+          <div className="pt-1">
+            <button onClick={testWhatsApp} disabled={testing}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex items-center gap-2">
+              {testing ? (
+                <><span className="animate-spin inline-block">⟳</span> Sending test…</>
+              ) : (
+                <>📤 Send Test Message</>
+              )}
+            </button>
+            <p className="text-slate-400 text-xs mt-1.5">Sends a test WhatsApp to all team members using the saved credentials.</p>
+
+            {testError && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                ✗ {testError}
+              </div>
+            )}
+            {testResult && (
+              <div className={`mt-3 p-3 rounded-xl border text-sm ${
+                testResult.successCount === testResult.total
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}>
+                <p className="font-bold mb-1.5">
+                  {testResult.successCount === testResult.total
+                    ? `✓ Sent to all ${testResult.total} member${testResult.total !== 1 ? 's' : ''}`
+                    : `⚠ Sent ${testResult.successCount} / ${testResult.total}`}
+                </p>
+                <div className="flex flex-col gap-1">
+                  {testResult.report.map((r, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span>{r.ok ? '✓' : '✗'}</span>
+                      <span className="font-medium">{r.name}</span>
+                      <span className="text-xs opacity-70">+{r.number}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="text-sm text-slate-500 block mb-1.5">Reminder Interval</label>
             <select value={settings.reminder_interval_minutes}

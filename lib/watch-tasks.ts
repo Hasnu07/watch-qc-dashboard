@@ -35,12 +35,17 @@ export const TASK_LABELS: Record<string, string> = {
 }
 
 async function getGreenAPISettings() {
-  const [inst, tok] = await Promise.all([
+  const [inst, tok, url] = await Promise.all([
     prisma.setting.findUnique({ where: { key: 'greenapi_instance_id' } }),
     prisma.setting.findUnique({ where: { key: 'greenapi_api_token' } }),
+    prisma.setting.findUnique({ where: { key: 'greenapi_api_url' } }),
   ])
   if (!inst?.value || !tok?.value) return null
-  return { instanceId: inst.value, token: tok.value }
+  return {
+    instanceId: inst.value,
+    token: tok.value,
+    apiUrl: url?.value || 'https://api.green-api.com',
+  }
 }
 
 export async function notifyDept(dept: Dept, message: string) {
@@ -49,7 +54,7 @@ export async function notifyDept(dept: Dept, message: string) {
   const members = await prisma.teamMember.findMany({ where: { department: dept } })
   await Promise.allSettled(
     members.map(m =>
-      sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(m.whatsapp_number), message)
+      sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(m.whatsapp_number), message, settings.apiUrl)
     )
   )
 }
@@ -127,7 +132,7 @@ export async function sendPendingTaskReminders() {
     const members = await prisma.teamMember.findMany({ where: { department: dept } })
     await Promise.allSettled(
       members.map(m =>
-        sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(m.whatsapp_number), message)
+        sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(m.whatsapp_number), message, settings.apiUrl)
       )
     )
   }

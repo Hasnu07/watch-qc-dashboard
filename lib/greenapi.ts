@@ -2,10 +2,12 @@ export async function sendWhatsAppMessage(
   instanceId: string,
   apiToken: string,
   chatId: string,
-  message: string
+  message: string,
+  apiUrl = 'https://api.green-api.com'
 ): Promise<boolean> {
   try {
-    const url = `https://api.green-api.com/waInstance${instanceId}/sendMessage/${apiToken}`
+    const base = apiUrl.replace(/\/$/, '')
+    const url = `${base}/waInstance${instanceId}/sendMessage/${apiToken}`
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
