@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"D:\\\\tv screen infoox\\\\prisma\" \"D:\\\\tv screen infoox\\\\lib\" \"D:\\\\tv screen infoox\\\\app\\\\api\\\\watches\\\\[id]\" \"D:\\\\tv screen infoox\\\\app\\\\api\\\\tasks\" \"D:\\\\tv screen infoox\\\\app\\\\api\\\\team-members\\\\[id]\" \"D:\\\\tv screen infoox\\\\app\\\\api\\\\settings\" \"D:\\\\tv screen infoox\\\\app\\\\api\\\\webhook\\\\greenapi\" \"D:\\\\tv screen infoox\\\\app\\\\api\\\\sse\" \"D:\\\\tv screen infoox\\\\app\\\\history\" \"D:\\\\tv screen infoox\\\\app\\\\settings\" \"D:\\\\tv screen infoox\\\\components\" \"D:\\\\tv screen infoox\\\\public\")",
+      "Bash(node -e \"const pkg = require\\('./package.json'\\); console.log\\(JSON.stringify\\(pkg.scripts, null, 2\\)\\)\")",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__computer"
+    ]
+  }
+}

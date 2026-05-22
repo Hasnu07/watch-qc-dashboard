@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Department {
+  LOGISTICS
+  ACCOUNTING
+  SALES
+}
+
+enum WatchStage {
+  LOGISTICS
+  ACCOUNTING
+  SALES
+}
+
+model Watch {
+  id             Int        @id @default(autoincrement())
+
+  // Identity
+  brand          String?
+  model          String?
+  ref_no         String?
+  serial_no      String?
+  watch_date     String?    // e.g. "2023" or "2021-06"
+
+  // Purchase
+  bought_from    String?
+  currency       String     @default("USD")
+  purchase_price Decimal?   @db.Decimal(12, 2)
+  convert_rate   Decimal?   @db.Decimal(12, 6)  // rate to USD, e.g. 1 GBP = 1.27 USD
+
+  // Watch details (AI-filled)
+  case_material  String?
+  dial_colour    String?
+  bracelet       String?
+
+  // Status
+  stock_status   String     @default("STOCK")   // "STOCK" | "INCOMING"
+  origin         String?
+
+  // Display / listing
+  name           String     // Auto-generated: "Brand Model" or custom
+  image_url      String?
+  website_price  Decimal    @db.Decimal(12, 2)
+  b2b_price      Decimal    @db.Decimal(12, 2)
+
+  // Pipeline
+  stage          WatchStage @default(LOGISTICS)
+  is_sold        Boolean    @default(false)
+  created_at     DateTime   @default(now())
+}
+
+model TeamMember {
+  id               Int        @id @default(autoincrement())
+  name             String
+  whatsapp_number  String     @unique
+  department       Department @default(LOGISTICS)
+  created_at       DateTime   @default(now())
+  tasks            Task[]
+}
+
+model Task {
+  id                Int        @id @default(autoincrement())
+  team_member_id    Int
+  team_member       TeamMember @relation(fields: [team_member_id], references: [id], onDelete: Cascade)
+  message_text      String
+  date              String
+  estimated_minutes Int?
+  created_at        DateTime   @default(now())
+}
+
+model Setting {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
