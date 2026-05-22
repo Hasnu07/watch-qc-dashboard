@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
+
+async function getGreenAPISettings() {
+  const [inst, tok, url] = await Promise.all([
+    prisma.setting.findUnique({ where: { key: 'greenapi_instance_id' } }),
+    prisma.setting.findUnique({ where: { key: 'greenapi_api_token' } }),
+    prisma.setting.findUnique({ where: { key: 'greenapi_api_url' } }),
+  ])
+  if (!inst?.value || !tok?.value) return null
+  return { instanceId: inst.value, token: tok.value, apiUrl: url?.value || 'https://api.green-api.com' }
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -14,7 +25,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (body.message_text !== undefined) data.message_text = body.message_text
     if (body.reminder_interval_minutes !== undefined) data.reminder_interval_minutes = body.reminder_interval_minutes
 
-    const task = await prisma.task.update({ where: { id }, data, include: { team_member: true } })
+    const task = await prisma.task.update({
+      where: { id },
+      data,
+      include: { team_member: true, assigned_by: true },
+    })
+
+    // When marked complete, notify the assigner
+    if (body.is_completed && task.assigned_by?.whatsapp_number) {
+      getGreenAPISettings().then(async (settings) => {
+        if (!settings) return
+        const msg = `✅ Task completed!\n\n*${task.team_member.name}* has completed the task assigned by you:\n\n"${task.message_text}"\n\n🔗 https://qc-dashboard-q907.onrender.com`
+        await sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(task.assigned_by!.whatsapp_number), msg, settings.apiUrl)
+      }).catch(console.error)
+    }
+
     return NextResponse.json(task)
   } catch (err) {
     console.error(err)
