@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 
 type Department = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 
@@ -48,6 +49,13 @@ const DEPT_CONFIG = {
 const DEPT_ORDER: Department[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
 
 export default function SettingsPage() {
+  const router = useRouter()
+
+  const logout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+  }
+
   const [settings, setSettings] = useState<Settings>({
     greenapi_instance_id: '',
     greenapi_api_token: '',
@@ -147,9 +155,18 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 flex-1 overflow-y-auto sm:px-6 sm:py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-slate-900 mb-1">⚙️ Settings</h1>
-        <p className="text-slate-500 font-medium">Configure integrations and manage your team</p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 mb-1 sm:text-3xl">⚙️ Settings</h1>
+          <p className="text-slate-500 font-medium text-sm sm:text-base">Configure integrations and manage your team</p>
+        </div>
+        <button onClick={logout}
+          className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-sm font-semibold border border-slate-200 hover:border-red-200 transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Sign out
+        </button>
       </div>
 
       {/* GreenAPI */}

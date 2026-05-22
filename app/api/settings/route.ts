@@ -8,6 +8,9 @@ const SETTING_KEYS = [
   'auto_message_time',
   'reminder_interval_minutes',
   'task_assignment_defaults',
+  'admin_username',
+  'admin_password_hash',
+  'admin_session_token',
 ]
 
 export async function GET() {
