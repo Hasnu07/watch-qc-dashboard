@@ -79,58 +79,69 @@ function resolveAssignee(taskType: string, dept: string, taskDefaults: Record<st
   return membersByDept[dept] ?? null
 }
 
+async function notifyAssignedPersons(
+  watchName: string,
+  tasks: Array<{ task_type: string; assigned_to: string | null }>,
+  intro = 'New watch added'
+) {
+  const settings = await getGreenAPISettings()
+  if (!settings) return
+
+  const allMembers = await prisma.teamMember.findMany()
+  const memberMap = new Map(allMembers.map(m => [m.name.toLowerCase(), m.whatsapp_number]))
+
+  // Group tasks by assignee name
+  const byPerson = new Map<string, string[]>()
+  for (const t of tasks) {
+    if (!t.assigned_to) continue
+    if (!byPerson.has(t.assigned_to)) byPerson.set(t.assigned_to, [])
+    byPerson.get(t.assigned_to)!.push(TASK_LABELS[t.task_type] ?? t.task_type)
+  }
+
+  await Promise.allSettled(
+    Array.from(byPerson.entries()).map(([name, labels]) => {
+      const number = memberMap.get(name.toLowerCase())
+      if (!number) return Promise.resolve()
+      const taskLines = labels.map(l => `• ${l}`).join('\n')
+      const msg = `📋 ${intro}: *${watchName}*\n\nYour assigned tasks:\n${taskLines}`
+      return sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(number), msg, settings.apiUrl)
+    })
+  )
+}
+
 export async function assignWatchTasks(watchId: number, watchName: string, silent = false) {
   const [membersByDept, taskDefaults] = await Promise.all([getMembersByDept(), getTaskDefaults()])
 
-  // Set assigned_to on every task for this watch based on per-task defaults or department
   const tasks = await prisma.watchTask.findMany({ where: { watch_id: watchId } })
-  await Promise.all(
-    tasks.map(t => {
+  const updatedTasks = await Promise.all(
+    tasks.map(async t => {
       const assignee = resolveAssignee(t.task_type, t.department as string, taskDefaults, membersByDept)
-      return prisma.watchTask.update({ where: { id: t.id }, data: { assigned_to: assignee } })
+      await prisma.watchTask.update({ where: { id: t.id }, data: { assigned_to: assignee } })
+      return { task_type: t.task_type, assigned_to: assignee }
     })
   )
 
   if (!silent) {
-    // Notify each dept member that tasks are assigned to them
-    const settings = await getGreenAPISettings()
-    if (settings) {
-      const depts: Dept[] = ['ACCOUNTING', 'SALES', 'LOGISTICS']
-      for (const dept of depts) {
-        const deptTasks = tasks.filter(t => t.department === dept)
-        if (deptTasks.length === 0) continue
-        const assignee = membersByDept[dept]
-        if (!assignee) continue
-        const members = await prisma.teamMember.findMany({ where: { department: dept } })
-        const taskLines = deptTasks.map(t => `• ${TASK_LABELS[t.task_type] ?? t.task_type}`).join('\n')
-        const msg = `📋 Tasks assigned to you for ${watchName}:\n${taskLines}`
-        await Promise.allSettled(
-          members.map(m => sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(m.whatsapp_number), msg, settings.apiUrl))
-        )
-      }
-    }
+    notifyAssignedPersons(watchName, updatedTasks, 'Tasks assigned for').catch(console.error)
   }
 }
 
 export async function createWatchTasks(watchId: number, watchName: string) {
-  // Guard: skip if tasks already exist (prevents duplicates on any retry)
   const existing = await prisma.watchTask.count({ where: { watch_id: watchId } })
   if (existing > 0) return
 
   const [membersByDept, taskDefaults] = await Promise.all([getMembersByDept(), getTaskDefaults()])
 
-  await prisma.watchTask.createMany({
-    data: WATCH_TASKS.map(t => ({
-      ...t,
-      watch_id: watchId,
-      assigned_to: resolveAssignee(t.task_type, t.department, taskDefaults, membersByDept),
-    })),
-  })
+  const taskData = WATCH_TASKS.map(t => ({
+    ...t,
+    watch_id: watchId,
+    assigned_to: resolveAssignee(t.task_type, t.department, taskDefaults, membersByDept),
+  }))
 
-  // Fire-and-forget WhatsApp notifications
-  notifyDept('ACCOUNTING', `New watch added: ${watchName}. Your task: Mark the payment status.`).catch(console.error)
-  notifyDept('SALES', `New watch added: ${watchName}. Your tasks: Set price, Upload to Drive, Upload to Stock Group, Update B2B prices.`).catch(console.error)
-  notifyDept('LOGISTICS', `New watch added: ${watchName}. Your tasks: Update logistics cost and accessories. Location update will unlock after payment confirmation.`).catch(console.error)
+  await prisma.watchTask.createMany({ data: taskData })
+
+  // Notify each person of their specific assigned tasks
+  notifyAssignedPersons(watchName, taskData, 'New watch added').catch(console.error)
 }
 
 export async function checkAndUnlockLocation(watchId: number) {
