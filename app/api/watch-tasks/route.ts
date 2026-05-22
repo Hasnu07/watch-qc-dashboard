@@ -1,0 +1,36 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const department = searchParams.get('department')
+    const watchId = searchParams.get('watch_id')
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = {
+      watch: { is_sold: false },
+    }
+    if (department) where.department = department
+    if (watchId) where.watch_id = parseInt(watchId, 10)
+
+    const tasks = await prisma.watchTask.findMany({
+      where,
+      include: {
+        watch: {
+          select: {
+            id: true, name: true, brand: true, model: true, ref_no: true,
+            payment_status: true, website_price: true, b2b_price: true,
+            logistics_cost: true, logistics_cost_currency: true,
+          },
+        },
+      },
+      orderBy: [{ watch_id: 'asc' }, { id: 'asc' }],
+    })
+
+    return NextResponse.json(tasks)
+  } catch (err) {
+    console.error(err)
+    return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 })
+  }
+}

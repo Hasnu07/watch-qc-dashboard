@@ -14,7 +14,7 @@ interface TeamMember {
 interface Settings {
   greenapi_instance_id: string
   greenapi_api_token: string
-  auto_message_time: string
+  reminder_interval_minutes: string
 }
 
 const DEPT_CONFIG = {
@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
     greenapi_instance_id: '',
     greenapi_api_token: '',
-    auto_message_time: '08:00',
+    reminder_interval_minutes: '20',
   })
   const [members, setMembers] = useState<TeamMember[]>([])
   const [newMember, setNewMember] = useState({ name: '', whatsapp_number: '', department: 'LOGISTICS' as Department })
@@ -128,14 +128,17 @@ export default function SettingsPage() {
               placeholder="Your API token..." className={inputClass} />
           </div>
           <div>
-            <label className="text-sm text-slate-500 block mb-1.5">
-              Auto-message Time <span className="text-slate-300">(Pakistan Standard Time, UTC+5)</span>
-            </label>
-            <input type="time" value={settings.auto_message_time}
-              onChange={e => setSettings({ ...settings, auto_message_time: e.target.value })}
-              className={inputClass} />
+            <label className="text-sm text-slate-500 block mb-1.5">Reminder Interval</label>
+            <select value={settings.reminder_interval_minutes}
+              onChange={e => setSettings({ ...settings, reminder_interval_minutes: e.target.value })}
+              className={inputClass}>
+              <option value="15">Every 15 minutes</option>
+              <option value="20">Every 20 minutes</option>
+              <option value="30">Every 30 minutes</option>
+              <option value="60">Every 60 minutes</option>
+            </select>
             <p className="text-slate-400 text-xs mt-1.5">
-              Sends &quot;Good morning! Please list your tasks for today.&quot; to all members daily.
+              Sends pending task reminders to each department at this interval (only when there are incomplete tasks).
             </p>
           </div>
         </div>

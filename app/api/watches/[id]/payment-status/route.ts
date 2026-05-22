@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { emitWatchEvent } from '@/lib/events'
+import { checkAndUnlockLocation } from '@/lib/watch-tasks'
 
 export async function PATCH(
   req: NextRequest,
@@ -15,6 +16,8 @@ export async function PATCH(
       data: { payment_status },
     })
     emitWatchEvent({ type: 'watch_updated', watchId: watch.id })
+    // Check if location task should unlock
+    checkAndUnlockLocation(id).catch(console.error)
     return NextResponse.json(watch)
   } catch (err) {
     console.error(err)

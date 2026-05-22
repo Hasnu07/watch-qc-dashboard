@@ -39,3 +39,16 @@ export function emitTaskEvent(payload: TaskEventPayload) {
 export function emitWatchEvent(payload: WatchEventPayload) {
   dashboardEvents.emit('dashboard', payload)
 }
+
+export type WatchTaskEventPayload = {
+  type: 'task_completed' | 'task_unlocked' | 'task_updated'
+  watch_task_id: number
+  watch_id: number
+  department?: string
+  task_type?: string
+  metadata?: Record<string, unknown>
+}
+
+export function emitWatchTaskEvent(payload: WatchTaskEventPayload) {
+  dashboardEvents.emit('dashboard', payload)
+}

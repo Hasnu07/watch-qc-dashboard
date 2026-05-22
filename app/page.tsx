@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import WatchCard from '@/components/WatchCard'
 import AddWatchModal from '@/components/AddWatchModal'
 import WatchDetailModal, { type WatchDetail } from '@/components/WatchDetailModal'
-import TaskCard from '@/components/TaskCard'
+import WatchTaskPanel from '@/components/WatchTaskPanel'
 import AutoScrollList from '@/components/AutoScrollList'
 
 type WatchStage = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 type Department = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
 type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
+
 
 interface Watch {
   id: number
@@ -43,23 +44,6 @@ interface Watch {
   transit_carrier: string | null
   transit_tracking_number: string | null
   received_date: string | null
-}
-
-interface TeamMember {
-  id: number
-  name: string
-  whatsapp_number: string
-  department: Department
-}
-
-interface Task {
-  id: number
-  team_member_id: number
-  message_text: string
-  date: string
-  estimated_minutes: number | null
-  created_at: string
-  team_member: TeamMember
 }
 
 const DEPT_CONFIG = {
@@ -96,11 +80,8 @@ const DEPT_ORDER: Department[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
 
 export default function DashboardPage() {
   const [watches, setWatches] = useState<Watch[]>([])
-  const [members, setMembers] = useState<TeamMember[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
   const [showAddWatch, setShowAddWatch] = useState(false)
   const [selectedWatch, setSelectedWatch] = useState<Watch | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [sseConnected, setSseConnected] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -108,23 +89,6 @@ export default function DashboardPage() {
     try {
       const res = await fetch('/api/watches')
       if (res.ok) setWatches(await res.json())
-    } catch (err) { console.error(err) }
-  }, [])
-
-  const fetchMembers = useCallback(async () => {
-    try {
-      const res = await fetch('/api/team-members')
-      if (res.ok) setMembers(await res.json())
-    } catch (err) { console.error(err) }
-  }, [])
-
-  const fetchTodayTasks = useCallback(async () => {
-    try {
-      const res = await fetch('/api/tasks?today=true')
-      if (res.ok) {
-        setTasks(await res.json())
-        setLastUpdated(new Date())
-      }
     } catch (err) { console.error(err) }
   }, [])
 
@@ -165,13 +129,6 @@ export default function DashboardPage() {
       es.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
-          if (data.type === 'new_task') {
-            setTasks(prev => prev.find(t => t.id === data.task.id) ? prev : [data.task, ...prev])
-            setLastUpdated(new Date())
-          }
-          if (data.type === 'task_updated') {
-            setTasks(prev => prev.map(t => t.id === data.task.id ? { ...t, estimated_minutes: data.task.estimated_minutes } : t))
-          }
           if (data.type === 'watch_sold') {
             setWatches(prev => prev.filter(w => w.id !== data.watchId))
           }
@@ -185,7 +142,7 @@ export default function DashboardPage() {
         setSseConnected(false)
         es?.close()
         if (!pollRef.current) {
-          pollRef.current = setInterval(() => { fetchTodayTasks(); fetchWatches() }, 10000)
+          pollRef.current = setInterval(() => { fetchWatches() }, 10000)
         }
         setTimeout(connectSSE, 5000)
       }
@@ -193,23 +150,11 @@ export default function DashboardPage() {
 
     connectSSE()
     return () => { es?.close(); if (pollRef.current) clearInterval(pollRef.current) }
-  }, [fetchTodayTasks, fetchWatches])
+  }, [fetchWatches])
 
   useEffect(() => {
-    fetchWatches(); fetchMembers(); fetchTodayTasks()
-  }, [fetchWatches, fetchMembers, fetchTodayTasks])
-
-  const getTasksForMember = (memberId: number) =>
-    tasks.filter(t => t.team_member_id === memberId)
-
-  const getMembersByDept = (dept: Department) =>
-    members.filter(m => m.department === dept)
-
-  const [secsAgo, setSecsAgo] = useState(0)
-  useEffect(() => {
-    const i = setInterval(() => setSecsAgo(Math.floor((Date.now() - lastUpdated.getTime()) / 1000)), 1000)
-    return () => clearInterval(i)
-  }, [lastUpdated])
+    fetchWatches()
+  }, [fetchWatches])
 
   // Watch counts per stage
   const stageCounts = {
@@ -288,7 +233,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL — Team Tasks by Department */}
+      {/* RIGHT PANEL — Watch Tasks by Department */}
       <div className="flex flex-col w-[40%] overflow-hidden">
 
         {/* Header */}
@@ -299,61 +244,19 @@ export default function DashboardPage() {
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${
-              sseConnected
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-amber-50 text-amber-700 border-amber-200'
-            }`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-emerald-500 live-dot' : 'bg-amber-400'}`} />
-              {sseConnected ? 'Live' : 'Polling'} · {secsAgo}s
-            </div>
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${
+            sseConnected
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-amber-50 text-amber-700 border-amber-200'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-emerald-500 live-dot' : 'bg-amber-400'}`} />
+            {sseConnected ? 'Live' : 'Polling'}
           </div>
         </div>
 
-        {/* Auto-scrolling task list grouped by department */}
+        {/* Auto-scrolling task panel */}
         <AutoScrollList className="flex-1 bg-indigo-50/50" speedPxPerSec={40}>
-          <div className="p-4">
-            {members.length === 0 ? (
-              <div className="text-center text-slate-400 py-12">
-                <p className="text-lg font-semibold">No team members yet.</p>
-                <a href="/settings" className="text-indigo-600 hover:underline text-sm mt-2 inline-block font-medium">
-                  Add team members in Settings →
-                </a>
-              </div>
-            ) : (
-              DEPT_ORDER.map(dept => {
-                const cfg = DEPT_CONFIG[dept]
-                const deptMembers = getMembersByDept(dept)
-                if (deptMembers.length === 0) return null
-                return (
-                  <div key={dept} className="mb-5">
-                    {/* Department header */}
-                    <div className={`flex items-center gap-2 mb-2.5 px-4 py-2.5 rounded-xl border-2 ${cfg.bg} ${cfg.border} shadow-sm`}>
-                      <span className="text-lg">{cfg.icon}</span>
-                      <span className={`font-black text-sm uppercase tracking-widest ${cfg.color}`}>
-                        {cfg.label}
-                      </span>
-                      <div className="flex-1" />
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
-                        {deptMembers.length}
-                      </span>
-                    </div>
-
-                    {/* Members in this department */}
-                    {deptMembers.map(member => (
-                      <TaskCard
-                        key={member.id}
-                        member={member}
-                        tasks={getTasksForMember(member.id)}
-                        onTaskAdded={fetchTodayTasks}
-                      />
-                    ))}
-                  </div>
-                )
-              })
-            )}
-          </div>
+          <WatchTaskPanel />
         </AutoScrollList>
       </div>
 

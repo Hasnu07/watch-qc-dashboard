@@ -1,0 +1,94 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { emitWatchTaskEvent } from '@/lib/events'
+import { sendTaskCompletedNotification, TASK_LABELS, checkAndUnlockLocation } from '@/lib/watch-tasks'
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const id = parseInt(params.id, 10)
+    const body = await req.json()
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = {}
+    if (body.is_completed !== undefined) {
+      data.is_completed = body.is_completed
+      data.completed_at = body.is_completed ? new Date() : null
+      data.completed_by = body.is_completed ? (body.completed_by || null) : null
+    }
+    if (body.is_locked !== undefined) data.is_locked = body.is_locked
+    if (body.metadata !== undefined) data.metadata = body.metadata
+
+    const task = await prisma.watchTask.update({
+      where: { id },
+      data,
+      include: {
+        watch: { select: { id: true, name: true, brand: true, model: true, payment_status: true } },
+      },
+    })
+
+    // Handle metadata side effects
+    if (body.metadata) {
+      // Logistics cost → save to watch
+      if (body.metadata.logistics_cost !== undefined) {
+        await prisma.watch.update({
+          where: { id: task.watch_id },
+          data: {
+            logistics_cost: body.metadata.logistics_cost ? parseFloat(String(body.metadata.logistics_cost)) : null,
+            logistics_cost_currency: body.metadata.logistics_cost_currency || 'USD',
+          },
+        })
+      }
+      // Price update → save to watch
+      if (body.metadata.website_price !== undefined || body.metadata.b2b_price !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const priceData: any = {}
+        if (body.metadata.website_price) priceData.website_price = parseFloat(String(body.metadata.website_price))
+        if (body.metadata.b2b_price) priceData.b2b_price = parseFloat(String(body.metadata.b2b_price))
+        if (Object.keys(priceData).length > 0) {
+          await prisma.watch.update({ where: { id: task.watch_id }, data: priceData })
+        }
+      }
+      // Payment status from ACCOUNTING task → update watch + unlock location
+      if (task.task_type === 'ACCOUNTING_MARK_PAYMENT' && body.metadata.payment_status) {
+        await prisma.watch.update({
+          where: { id: task.watch_id },
+          data: { payment_status: body.metadata.payment_status },
+        })
+        checkAndUnlockLocation(task.watch_id).catch(console.error)
+      }
+    }
+
+    // Emit SSE + notify on completion
+    if (body.is_completed) {
+      emitWatchTaskEvent({
+        type: 'task_completed',
+        watch_task_id: task.id,
+        watch_id: task.watch_id,
+        department: task.department,
+        task_type: task.task_type,
+      })
+      const watchName = [task.watch.brand, task.watch.model].filter(Boolean).join(' ') || task.watch.name
+      const taskLabel = TASK_LABELS[task.task_type] ?? task.task_type
+      sendTaskCompletedNotification(
+        task.department as 'ACCOUNTING' | 'SALES' | 'LOGISTICS',
+        watchName,
+        taskLabel
+      ).catch(console.error)
+    } else if (body.metadata) {
+      emitWatchTaskEvent({
+        type: 'task_updated',
+        watch_task_id: task.id,
+        watch_id: task.watch_id,
+        metadata: body.metadata,
+      })
+    }
+
+    return NextResponse.json(task)
+  } catch (err) {
+    console.error(err)
+    return NextResponse.json({ error: 'Failed to update task' }, { status: 500 })
+  }
+}

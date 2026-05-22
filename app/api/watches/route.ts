@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { emitWatchEvent } from '@/lib/events'
+import { createWatchTasks } from '@/lib/watch-tasks'
 
 export async function GET() {
   try {
@@ -84,6 +85,8 @@ export async function POST(req: NextRequest) {
     })
 
     emitWatchEvent({ type: 'new_watch', watchId: watch.id })
+    // Create auto-tasks and notify departments (fire and forget)
+    createWatchTasks(watch.id, watch.name).catch(console.error)
     return NextResponse.json(watch, { status: 201 })
   } catch (err) {
     console.error(err)
