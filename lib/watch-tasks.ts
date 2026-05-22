@@ -55,6 +55,10 @@ export async function notifyDept(dept: Dept, message: string) {
 }
 
 export async function createWatchTasks(watchId: number, watchName: string) {
+  // Guard: skip if tasks already exist (prevents duplicates on any retry)
+  const existing = await prisma.watchTask.count({ where: { watch_id: watchId } })
+  if (existing > 0) return
+
   await prisma.watchTask.createMany({
     data: WATCH_TASKS.map(t => ({ ...t, watch_id: watchId })),
   })

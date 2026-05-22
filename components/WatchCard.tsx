@@ -42,7 +42,6 @@ interface Watch {
 
 interface WatchCardProps {
   watch: Watch
-  onAdvance: (id: number, stage: WatchStage) => void
   onMarkSold: (id: number) => void
   onCardClick: (watch: Watch) => void
 }
@@ -57,9 +56,6 @@ const STAGE_CFG = {
     line: 'bg-blue-400',
     badge: 'bg-blue-100 text-blue-800 border-blue-200',
     leftBorder: 'border-l-blue-500',
-    btn: 'bg-blue-600 hover:bg-blue-700 text-white',
-    nextLabel: 'Move to Accounting →',
-    nextStage: 'ACCOUNTING' as WatchStage,
   },
   ACCOUNTING: {
     label: 'Accounting',
@@ -68,9 +64,6 @@ const STAGE_CFG = {
     line: 'bg-amber-400',
     badge: 'bg-amber-100 text-amber-800 border-amber-200',
     leftBorder: 'border-l-amber-500',
-    btn: 'bg-amber-500 hover:bg-amber-600 text-white',
-    nextLabel: 'Move to Sales →',
-    nextStage: 'SALES' as WatchStage,
   },
   SALES: {
     label: 'Sales',
@@ -79,21 +72,12 @@ const STAGE_CFG = {
     line: 'bg-emerald-400',
     badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     leftBorder: 'border-l-emerald-500',
-    btn: 'bg-rose-500 hover:bg-rose-600 text-white',
-    nextLabel: '✓ Mark as Sold',
-    nextStage: 'SALES' as WatchStage,
   },
 }
 
-export default function WatchCard({ watch, onAdvance, onMarkSold, onCardClick }: WatchCardProps) {
+export default function WatchCard({ watch, onMarkSold, onCardClick }: WatchCardProps) {
   const cfg = STAGE_CFG[watch.stage]
   const stageIdx = STAGES.indexOf(watch.stage)
-
-  const handleAction = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (watch.stage === 'SALES') onMarkSold(watch.id)
-    else onAdvance(watch.id, cfg.nextStage)
-  }
 
   const tags = [watch.case_material, watch.dial_colour, watch.bracelet].filter(Boolean)
 
@@ -241,10 +225,11 @@ export default function WatchCard({ watch, onAdvance, onMarkSold, onCardClick }:
           </div>
         </div>
 
-        {/* Action button */}
-        <button onClick={handleAction}
-          className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${cfg.btn}`}>
-          {cfg.nextLabel}
+        {/* Mark as Sold */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onMarkSold(watch.id) }}
+          className="w-full py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm bg-rose-500 hover:bg-rose-600 text-white">
+          ✓ Mark as Sold
         </button>
       </div>
     </div>

@@ -55,6 +55,18 @@ const TASK_LABELS: Record<string, string> = {
   SALES_UPDATE_B2B: 'Update B2B Prices',
   LOGISTICS_SET_LOCATION: 'Set Location',
   LOGISTICS_UPDATE_COST: 'Update Logistics Cost',
+}
+
+// Accessory task types — rendered as a grouped dropdown, not individual rows
+const ACCESSORY_TASK_TYPES = [
+  'LOGISTICS_ACCESSORIES_BOX',
+  'LOGISTICS_ACCESSORIES_PAPERS',
+  'LOGISTICS_ACCESSORIES_EXTRA_LINKS',
+  'LOGISTICS_ACCESSORIES_WARRANTY_CARD',
+  'LOGISTICS_ACCESSORIES_HANG_TAG',
+]
+
+const ACCESSORY_LABELS: Record<string, string> = {
   LOGISTICS_ACCESSORIES_BOX: 'Box',
   LOGISTICS_ACCESSORIES_PAPERS: 'Papers',
   LOGISTICS_ACCESSORIES_EXTRA_LINKS: 'Extra Links',
@@ -74,13 +86,7 @@ const PAY_LABELS: Record<PaymentStatus, string> = {
   NOT_PAID: 'Not Paid', PARTIAL: 'Partial', PAID: 'Paid',
 }
 
-// Simple checkbox tasks that need no inline form
-const SIMPLE_TASKS = [
-  'SALES_UPLOAD_DRIVE', 'SALES_UPLOAD_STOCK_GROUP', 'SALES_UPDATE_B2B',
-  'LOGISTICS_ACCESSORIES_BOX', 'LOGISTICS_ACCESSORIES_PAPERS',
-  'LOGISTICS_ACCESSORIES_EXTRA_LINKS', 'LOGISTICS_ACCESSORIES_WARRANTY_CARD',
-  'LOGISTICS_ACCESSORIES_HANG_TAG',
-]
+const SIMPLE_TASKS = ['SALES_UPLOAD_DRIVE', 'SALES_UPLOAD_STOCK_GROUP', 'SALES_UPDATE_B2B']
 
 interface TaskRowProps {
   task: WatchTask
@@ -97,13 +103,11 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
   const [cost, setCost] = useState(String(task.watch.logistics_cost || ''))
   const [costCurrency, setCostCurrency] = useState(task.watch.logistics_cost_currency || 'USD')
 
-  // Sync external changes
   useEffect(() => { setPayStatus(task.watch.payment_status) }, [task.watch.payment_status])
   useEffect(() => { setWebsitePrice(String(task.watch.website_price || '')) }, [task.watch.website_price])
   useEffect(() => { setB2bPrice(String(task.watch.b2b_price || '')) }, [task.watch.b2b_price])
   useEffect(() => { setCost(String(task.watch.logistics_cost || '')) }, [task.watch.logistics_cost])
 
-  // Locked task
   if (task.is_locked) {
     return (
       <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-50/70 border border-slate-100">
@@ -132,8 +136,7 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
   }
 
   const handleSavePayment = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setSaving(true)
+    e.stopPropagation(); setSaving(true)
     try { await onComplete(task.id, { payment_status: payStatus }); setOpen(false) }
     finally { setSaving(false) }
   }
@@ -156,49 +159,33 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
 
   return (
     <div className={`rounded-xl border transition-all ${task.is_completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
-      <div
-        className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer select-none"
-        onClick={handleClick}
-      >
-        {/* Checkbox */}
+      <div className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer select-none" onClick={handleClick}>
         <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-          task.is_completed
-            ? 'bg-emerald-500 border-emerald-500'
-            : 'border-slate-300 hover:border-indigo-400 bg-white'
+          task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-indigo-400 bg-white'
         }`}>
           {task.is_completed && <span className="text-white text-[10px] font-black leading-none">✓</span>}
           {saving && !task.is_completed && <span className="text-slate-400 text-[10px] animate-spin inline-block">⟳</span>}
         </div>
-
-        <span className={`text-sm flex-1 leading-snug ${
-          task.is_completed ? 'line-through text-slate-400' : 'text-slate-700 font-medium'
-        }`}>
+        <span className={`text-sm flex-1 leading-snug ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-700 font-medium'}`}>
           {TASK_LABELS[task.task_type] ?? task.task_type}
         </span>
-
-        {/* Payment status badge */}
         {task.task_type === 'ACCOUNTING_MARK_PAYMENT' && (
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${PAY_COLORS[task.watch.payment_status]}`}>
             {PAY_LABELS[task.watch.payment_status]}
           </span>
         )}
-
-        {/* Expand arrow */}
         {hasInlineForm && !task.is_completed && (
           <span className={`text-slate-400 text-xs transition-transform duration-150 ${open ? 'rotate-180' : ''}`}>▾</span>
         )}
       </div>
 
-      {/* Inline forms */}
       {open && !task.is_completed && (
         <div className="px-3 pb-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
-
           {task.task_type === 'ACCOUNTING_MARK_PAYMENT' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-1.5">
                 {(['NOT_PAID', 'PARTIAL', 'PAID'] as PaymentStatus[]).map(s => (
-                  <button key={s} type="button"
-                    onClick={() => setPayStatus(s)}
+                  <button key={s} type="button" onClick={() => setPayStatus(s)}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${
                       payStatus === s ? PAY_COLORS[s] : 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'
                     }`}>
@@ -212,7 +199,6 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
               </button>
             </div>
           )}
-
           {task.task_type === 'SALES_SET_PRICE' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-2">
@@ -235,7 +221,6 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
               </button>
             </div>
           )}
-
           {task.task_type === 'LOGISTICS_UPDATE_COST' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-2">
@@ -259,6 +244,95 @@ function TaskRow({ task, onComplete, onUncomplete }: TaskRowProps) {
   )
 }
 
+// ── Accessories grouped row ────────────────────────────────────────────────
+
+interface AccessoriesGroupProps {
+  tasks: WatchTask[]
+  onComplete: (taskId: number, metadata?: Record<string, unknown>) => Promise<void>
+  onUncomplete: (taskId: number) => Promise<void>
+}
+
+function AccessoriesGroup({ tasks, onComplete, onUncomplete }: AccessoriesGroupProps) {
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState<number | null>(null)
+
+  const completedCount = tasks.filter(t => t.is_completed).length
+  const allDone = completedCount === tasks.length
+
+  const handleToggle = async (task: WatchTask) => {
+    if (saving !== null) return
+    setSaving(task.id)
+    try {
+      if (task.is_completed) await onUncomplete(task.id)
+      else await onComplete(task.id)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  return (
+    <div className={`rounded-xl border transition-all ${allDone ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
+      {/* Header row — click to expand */}
+      <div
+        className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer select-none"
+        onClick={() => setOpen(o => !o)}
+      >
+        {/* Aggregate check */}
+        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${
+          allDone ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 bg-white'
+        }`}>
+          {allDone && <span className="text-white text-[10px] font-black leading-none">✓</span>}
+        </div>
+
+        <span className={`text-sm flex-1 font-medium ${allDone ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+          Accessories
+        </span>
+
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mr-1 ${
+          allDone
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            : completedCount > 0
+              ? 'bg-indigo-50 text-indigo-600 border-indigo-200'
+              : 'bg-slate-50 text-slate-500 border-slate-200'
+        }`}>
+          {completedCount}/{tasks.length}
+        </span>
+
+        <span className={`text-slate-400 text-xs transition-transform duration-150 ${open ? 'rotate-180' : ''}`}>▾</span>
+      </div>
+
+      {/* Expanded checklist */}
+      {open && (
+        <div className="px-3 pb-3 pt-1 border-t border-slate-100 flex flex-col gap-1">
+          {tasks.map(task => (
+            <div
+              key={task.id}
+              className="flex items-center gap-2.5 py-1.5 px-1 cursor-pointer rounded-lg hover:bg-slate-50 transition-colors"
+              onClick={() => handleToggle(task)}
+            >
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                task.is_completed
+                  ? 'bg-emerald-500 border-emerald-500'
+                  : 'border-slate-300 hover:border-indigo-400 bg-white'
+              }`}>
+                {task.is_completed && <span className="text-white text-[8px] font-black leading-none">✓</span>}
+                {saving === task.id && !task.is_completed && (
+                  <span className="text-slate-400 text-[8px] inline-block animate-spin">⟳</span>
+                )}
+              </div>
+              <span className={`text-sm ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-600'}`}>
+                {ACCESSORY_LABELS[task.task_type] ?? task.task_type}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Watch task card ────────────────────────────────────────────────────────
+
 interface WatchTaskCardProps {
   watchId: number
   watchName: string
@@ -270,6 +344,10 @@ interface WatchTaskCardProps {
 
 function WatchTaskCard({ watchId: _watchId, watchName, tasks, dept, onComplete, onUncomplete }: WatchTaskCardProps) {
   const cfg = DEPT_CONFIG[dept]
+
+  const mainTasks = tasks.filter(t => !ACCESSORY_TASK_TYPES.includes(t.task_type))
+  const accessoryTasks = tasks.filter(t => ACCESSORY_TASK_TYPES.includes(t.task_type))
+
   const allDone = tasks.every(t => t.is_completed || t.is_locked)
   const pendingCount = tasks.filter(t => !t.is_completed && !t.is_locked).length
 
@@ -295,18 +373,18 @@ function WatchTaskCard({ watchId: _watchId, watchName, tasks, dept, onComplete, 
         </span>
       </div>
       <div className="px-3 py-2.5 flex flex-col gap-1.5">
-        {tasks.map(task => (
-          <TaskRow
-            key={task.id}
-            task={task}
-            onComplete={onComplete}
-            onUncomplete={onUncomplete}
-          />
+        {mainTasks.map(task => (
+          <TaskRow key={task.id} task={task} onComplete={onComplete} onUncomplete={onUncomplete} />
         ))}
+        {accessoryTasks.length > 0 && (
+          <AccessoriesGroup tasks={accessoryTasks} onComplete={onComplete} onUncomplete={onUncomplete} />
+        )}
       </div>
     </div>
   )
 }
+
+// ── Main panel ─────────────────────────────────────────────────────────────
 
 interface Props {
   className?: string
@@ -326,7 +404,6 @@ export default function WatchTaskPanel({ className }: Props) {
 
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
-  // SSE updates
   useEffect(() => {
     let es: EventSource | null = null
     const connect = () => {
@@ -356,7 +433,6 @@ export default function WatchTaskPanel({ className }: Props) {
       const updated = await res.json()
       setTasks(prev => prev.map(t => {
         if (t.id !== taskId) return t
-        // Merge watch updates from metadata
         const watchUpdates: Partial<WatchInfo> = {}
         if (metadata?.payment_status) watchUpdates.payment_status = metadata.payment_status as PaymentStatus
         if (metadata?.website_price) watchUpdates.website_price = metadata.website_price as number
@@ -365,7 +441,6 @@ export default function WatchTaskPanel({ className }: Props) {
         if (metadata?.logistics_cost_currency) watchUpdates.logistics_cost_currency = metadata.logistics_cost_currency as string
         return { ...t, ...updated, watch: { ...t.watch, ...watchUpdates } }
       }))
-      // If location task was unlocked, refresh to get updated locked state
       if (updated.task_type === 'ACCOUNTING_MARK_PAYMENT') fetchTasks()
     }
   }, [fetchTasks])
@@ -382,7 +457,7 @@ export default function WatchTaskPanel({ className }: Props) {
     }
   }, [])
 
-  // Group tasks: dept → watch_id → { watchName, tasks[] }
+  // Group: dept → watch_id → { watchName, tasks[] }
   const grouped = DEPT_ORDER.reduce((acc, dept) => {
     const deptTasks = tasks.filter(t => t.department === dept)
     const byWatch = new Map<number, { watchName: string; tasks: WatchTask[] }>()

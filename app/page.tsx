@@ -7,7 +7,7 @@ import WatchDetailModal, { type WatchDetail } from '@/components/WatchDetailModa
 import WatchTaskPanel from '@/components/WatchTaskPanel'
 import AutoScrollList from '@/components/AutoScrollList'
 
-type WatchStage = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
+type WatchStage = 'LOGISTICS' | 'ACCOUNTING' | 'SALES' // used in Watch interface + stageCounts
 type Department = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
 type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
@@ -99,17 +99,6 @@ export default function DashboardPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_sold: true }),
-      })
-    } catch { fetchWatches() }
-  }
-
-  const advanceStage = async (id: number, stage: WatchStage) => {
-    setWatches(prev => prev.map(w => w.id === id ? { ...w, stage } : w))
-    try {
-      await fetch(`/api/watches/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stage }),
       })
     } catch { fetchWatches() }
   }
@@ -223,7 +212,6 @@ export default function DashboardPage() {
                 <WatchCard
                   key={watch.id}
                   watch={watch}
-                  onAdvance={advanceStage}
                   onMarkSold={markSold}
                   onCardClick={(w) => setSelectedWatch(w)}
                 />
