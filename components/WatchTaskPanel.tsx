@@ -27,6 +27,7 @@ interface WatchTask {
   is_completed: boolean
   completed_at: string | null
   is_locked: boolean
+  assigned_to: string | null
   metadata: Record<string, unknown> | null
   watch: WatchInfo
 }
@@ -329,10 +330,13 @@ interface WatchAccordionProps {
   defaultOpen: boolean
   onComplete: (taskId: number, metadata?: Record<string, unknown>) => Promise<void>
   onUncomplete: (taskId: number) => Promise<void>
+  onRefresh: () => void
 }
 
-function WatchAccordion({ watchName, tasks, defaultOpen, onComplete, onUncomplete }: WatchAccordionProps) {
+function WatchAccordion({ watchId, watchName, tasks, defaultOpen, onComplete, onUncomplete, onRefresh }: WatchAccordionProps) {
   const [expanded, setExpanded] = useState(defaultOpen)
+  const [assigning, setAssigning] = useState(false)
+  const [assignDone, setAssignDone] = useState(false)
 
   const pending = tasks.filter(t => !t.is_completed && !t.is_locked).length
   const allDone = pending === 0
@@ -343,28 +347,68 @@ function WatchAccordion({ watchName, tasks, defaultOpen, onComplete, onUncomplet
     LOGISTICS:  tasks.filter(t => t.department === 'LOGISTICS'),
   }
 
+  const handleAssign = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (assigning) return
+    setAssigning(true)
+    try {
+      await fetch(`/api/watches/${watchId}/assign-tasks`, { method: 'POST' })
+      setAssignDone(true)
+      onRefresh()
+      setTimeout(() => setAssignDone(false), 3000)
+    } finally {
+      setAssigning(false)
+    }
+  }
+
   return (
     <div className={`rounded-2xl border overflow-hidden mb-3 shadow-sm transition-all ${allDone ? 'border-emerald-200' : 'border-slate-200'}`}>
       {/* Watch header */}
-      <button
-        onClick={() => setExpanded(e => !e)}
-        className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors ${allDone ? 'bg-emerald-50 hover:bg-emerald-100/70' : 'bg-white hover:bg-slate-50'}`}
-      >
-        <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${allDone ? 'bg-emerald-500' : 'bg-indigo-500'}`} />
-        <span className={`font-black text-base flex-1 truncate ${allDone ? 'text-emerald-800' : 'text-slate-900'}`}>
-          {watchName}
-        </span>
+      <div className={`flex items-center gap-2 px-4 py-3.5 transition-colors ${allDone ? 'bg-emerald-50' : 'bg-white'}`}>
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
+        >
+          <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${allDone ? 'bg-emerald-500' : 'bg-indigo-500'}`} />
+          <span className={`font-black text-base truncate ${allDone ? 'text-emerald-800' : 'text-slate-900'}`}>
+            {watchName}
+          </span>
+        </button>
+
+        {/* Assign button */}
+        <button
+          onClick={handleAssign}
+          disabled={assigning}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex-shrink-0 disabled:opacity-50 ${
+            assignDone
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+          }`}
+        >
+          {assigning ? (
+            <><span className="animate-spin inline-block text-xs">⟳</span> Assigning…</>
+          ) : assignDone ? (
+            <>✓ Assigned</>
+          ) : (
+            <>👤 Auto Assign</>
+          )}
+        </button>
+
+        {/* Pending / done badge */}
         {allDone ? (
           <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
-            ✓ All done
+            ✓ Done
           </span>
         ) : (
           <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex-shrink-0">
-            {pending} pending
+            {pending} left
           </span>
         )}
-        <span className={`text-slate-400 text-sm transition-transform duration-200 flex-shrink-0 ${expanded ? 'rotate-180' : ''}`}>▾</span>
-      </button>
+
+        <button onClick={() => setExpanded(e => !e)} className="flex-shrink-0">
+          <span className={`text-slate-400 text-sm transition-transform duration-200 inline-block ${expanded ? 'rotate-180' : ''}`}>▾</span>
+        </button>
+      </div>
 
       {/* Department sections */}
       {expanded && (
@@ -377,13 +421,22 @@ function WatchAccordion({ watchName, tasks, defaultOpen, onComplete, onUncomplet
             const deptDone = deptPending === 0
             const mainTasks = dt.filter(t => !ACCESSORY_TASK_TYPES.includes(t.task_type))
             const accessoryTasks = dt.filter(t => ACCESSORY_TASK_TYPES.includes(t.task_type))
+            const assignee = dt.find(t => t.assigned_to)?.assigned_to ?? null
 
             return (
               <div key={dept} className={`px-3 py-3 ${dept !== 'LOGISTICS' ? 'border-b border-slate-100' : ''}`}>
-                {/* Dept label */}
+                {/* Dept label row */}
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl mb-2.5 ${cfg.bg} border ${cfg.border}`}>
                   <span className="text-sm">{cfg.icon}</span>
                   <span className={`text-xs font-black uppercase tracking-widest ${cfg.color}`}>{cfg.label}</span>
+
+                  {/* Assignee name */}
+                  {assignee && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border ${cfg.border} ${cfg.color} flex items-center gap-1`}>
+                      👤 {assignee}
+                    </span>
+                  )}
+
                   <span className={`ml-auto text-[10px] font-bold ${deptDone ? 'text-emerald-600' : cfg.color}`}>
                     {deptDone ? '✓ Done' : `${deptPending} left`}
                   </span>
@@ -553,6 +606,7 @@ export default function WatchTaskPanel({ className }: Props) {
               defaultOpen={hasPending}
               onComplete={completeTask}
               onUncomplete={uncompleteTask}
+              onRefresh={fetchTasks}
             />
           )
         })}

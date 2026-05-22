@@ -118,6 +118,7 @@ model WatchTask {
   is_completed Boolean        @default(false)
   completed_at DateTime?
   completed_by String?
+  assigned_to  String?
   is_locked    Boolean        @default(false)
   metadata     Json?
   created_at   DateTime       @default(now())

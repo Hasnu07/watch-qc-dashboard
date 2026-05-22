@@ -59,13 +59,61 @@ export async function notifyDept(dept: Dept, message: string) {
   )
 }
 
+async function getMembersByDept() {
+  const members = await prisma.teamMember.findMany()
+  const map: Record<string, string> = {}
+  for (const m of members) map[m.department] = m.name
+  return map
+}
+
+export async function assignWatchTasks(watchId: number, watchName: string, silent = false) {
+  const membersByDept = await getMembersByDept()
+
+  // Set assigned_to on every task for this watch based on department
+  const tasks = await prisma.watchTask.findMany({ where: { watch_id: watchId } })
+  await Promise.all(
+    tasks.map(t => {
+      const dept = t.department as string
+      const assignee = membersByDept[dept] ?? null
+      return prisma.watchTask.update({ where: { id: t.id }, data: { assigned_to: assignee } })
+    })
+  )
+
+  if (!silent) {
+    // Notify each dept member that tasks are assigned to them
+    const settings = await getGreenAPISettings()
+    if (settings) {
+      const depts: Dept[] = ['ACCOUNTING', 'SALES', 'LOGISTICS']
+      for (const dept of depts) {
+        const deptTasks = tasks.filter(t => t.department === dept)
+        if (deptTasks.length === 0) continue
+        const assignee = membersByDept[dept]
+        if (!assignee) continue
+        const members = await prisma.teamMember.findMany({ where: { department: dept } })
+        const taskLines = deptTasks.map(t => `• ${TASK_LABELS[t.task_type] ?? t.task_type}`).join('\n')
+        const msg = `📋 Tasks assigned to you for ${watchName}:\n${taskLines}`
+        await Promise.allSettled(
+          members.map(m => sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(m.whatsapp_number), msg, settings.apiUrl))
+        )
+      }
+    }
+  }
+}
+
 export async function createWatchTasks(watchId: number, watchName: string) {
   // Guard: skip if tasks already exist (prevents duplicates on any retry)
   const existing = await prisma.watchTask.count({ where: { watch_id: watchId } })
   if (existing > 0) return
 
+  // Look up dept members for auto-assignment
+  const membersByDept = await getMembersByDept()
+
   await prisma.watchTask.createMany({
-    data: WATCH_TASKS.map(t => ({ ...t, watch_id: watchId })),
+    data: WATCH_TASKS.map(t => ({
+      ...t,
+      watch_id: watchId,
+      assigned_to: membersByDept[t.department] ?? null,
+    })),
   })
 
   // Fire-and-forget WhatsApp notifications
