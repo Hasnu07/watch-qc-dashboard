@@ -27,12 +27,10 @@ interface Task {
 }
 
 const REMINDER_OPTIONS = [
-  { value: '', label: 'No reminder' },
-  { value: '30', label: 'Every 30 min' },
-  { value: '60', label: 'Every 1 hour' },
-  { value: '120', label: 'Every 2 hours' },
-  { value: '240', label: 'Every 4 hours' },
-  { value: '1440', label: 'Once daily' },
+  { value: '60', label: '60 minutes' },
+  { value: '180', label: '3 hours' },
+  { value: '1440', label: '24 hours' },
+  { value: '', label: 'On completion only' },
 ]
 
 const DEPT_COLORS: Record<Department, string> = {
@@ -86,7 +84,7 @@ function PersonGrid({ members, selected, onSelect, label }: {
 
 function ReminderBadge({ minutes }: { minutes: number | null }) {
   if (!minutes) return null
-  const label = minutes === 30 ? '30 min' : minutes === 60 ? '1 hr' : minutes === 120 ? '2 hrs' : minutes === 240 ? '4 hrs' : minutes === 1440 ? 'Daily' : `${minutes}m`
+  const label = minutes === 60 ? '60 min' : minutes === 180 ? '3 hrs' : minutes === 1440 ? '24 hrs' : `${minutes}m`
   return (
     <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200 font-semibold">
       ⏰ {label}
@@ -100,7 +98,6 @@ export default function AdminTasksPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
 
   const [form, setForm] = useState({
@@ -163,12 +160,6 @@ export default function AdminTasksPage() {
       body: JSON.stringify({ is_completed: nowDone }),
     })
     fetchTasks()
-  }
-
-  const deleteTask = async (id: number) => {
-    setTasks(prev => prev.filter(t => t.id !== id))
-    setDeleteConfirm(null)
-    await fetch(`/api/tasks/${id}`, { method: 'DELETE' })
   }
 
   const filtered = tasks.filter(t =>
@@ -357,23 +348,22 @@ export default function AdminTasksPage() {
                             </svg>
                             <span className="font-semibold">Completed by {task.team_member.name}</span>
                             <span className="text-emerald-500">· {formatTime(task.completed_at)}</span>
+                            {task.estimated_minutes && (
+                              <span className="ml-1 text-emerald-400">· ~{task.estimated_minutes} min</span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Estimated execution time (pending tasks) */}
+                        {!task.is_completed && task.estimated_minutes && (
+                          <div className="flex items-center gap-1 text-xs text-slate-500 mt-1.5">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Est. {task.estimated_minutes} min</span>
                           </div>
                         )}
                       </div>
-
-                      {/* Delete */}
-                      {deleteConfirm === task.id ? (
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <button onClick={() => deleteTask(task.id)} className="px-2.5 py-1 bg-red-500 text-white text-xs font-bold rounded-lg hover:bg-red-600 transition-colors">Delete</button>
-                          <button onClick={() => setDeleteConfirm(null)} className="px-2.5 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors">Cancel</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setDeleteConfirm(task.id)} className="text-slate-300 hover:text-red-400 transition-colors flex-shrink-0 p-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>

@@ -16,11 +16,9 @@ async function getGreenAPISettings() {
 }
 
 const REMINDER_LABELS: Record<number, string> = {
-  30: 'every 30 minutes',
-  60: 'every hour',
-  120: 'every 2 hours',
-  240: 'every 4 hours',
-  1440: 'once daily',
+  60: 'every 60 minutes',
+  180: 'every 3 hours',
+  1440: 'every 24 hours',
 }
 
 const INCLUDE_FULL = { team_member: true, assigned_by: true }
