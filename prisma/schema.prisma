@@ -54,6 +54,7 @@ model Watch {
   stock_no       String?
   watch_date     String?
   bought_from    String?
+  sold_to        String?
   currency       String     @default("USD")
   purchase_price Decimal?   @db.Decimal(12, 2)
   convert_rate   Decimal?   @db.Decimal(12, 6)

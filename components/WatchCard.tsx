@@ -43,6 +43,7 @@ interface Watch {
   transit_tracking_number: string | null
   received_date: string | null
   watch_type?: 'BUY' | 'SELL'
+  sold_to?: string | null
   task_summary?: TaskSummary
 }
 
@@ -247,7 +248,10 @@ export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardP
           </div>
         )}
 
-        {watch.bought_from && (
+        {isSell && watch.sold_to && (
+          <p className="text-slate-400 text-xs font-medium">👤 Sold to: {watch.sold_to}</p>
+        )}
+        {!isSell && watch.bought_from && (
           <p className="text-slate-400 text-xs font-medium">📍 From: {watch.bought_from}</p>
         )}
 

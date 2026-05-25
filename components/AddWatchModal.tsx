@@ -12,7 +12,8 @@ type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'CHEQUE' | 'CRYPTO'
 
 interface WatchForm {
   brand: string; model: string; ref_no: string; serial_no: string; stock_no: string; watch_date: string
-  bought_from: string; currency: string; purchase_price: string; convert_rate: string
+  bought_from: string; sold_to: string
+  currency: string; purchase_price: string; convert_rate: string
   case_material: string; dial_colour: string; bracelet: string
   stock_status: 'STOCK' | 'INCOMING'; origin: string; image_url: string
   website_price: string; b2b_price: string
@@ -34,7 +35,8 @@ interface LocationForm {
 
 const emptyWatch: WatchForm = {
   brand: '', model: '', ref_no: '', serial_no: '', stock_no: '', watch_date: '',
-  bought_from: '', currency: 'USD', purchase_price: '', convert_rate: '',
+  bought_from: '', sold_to: '',
+  currency: 'USD', purchase_price: '', convert_rate: '',
   case_material: '', dial_colour: '', bracelet: '',
   stock_status: 'STOCK', origin: '', image_url: '',
   website_price: '', b2b_price: '',
@@ -164,6 +166,8 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
           // Sell watches don't track stock_status — force STOCK as a no-op default
           stock_status: isSell ? 'STOCK' : watch.stock_status,
           stock_no: watch.stock_no || null,
+          sold_to: isSell ? (watch.sold_to || null) : null,
+          bought_from: isSell ? null : (watch.bought_from || null),
           purchase_price: watch.purchase_price ? parseFloat(watch.purchase_price) : null,
           convert_rate: watch.convert_rate ? parseFloat(watch.convert_rate) : null,
           website_price: watch.website_price ? parseFloat(watch.website_price) : 0,
@@ -310,6 +314,20 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                   </div>
                 </div>
               </div>
+
+              {isSell && (
+                <div className={sectionCls}>
+                  <p className="text-xs uppercase tracking-widest text-orange-600 font-black mb-3 flex items-center gap-2">
+                    <span className="text-base">👤</span> Customer
+                  </p>
+                  <div>
+                    <label className={labelCls}>Sold To</label>
+                    <input type="text" value={watch.sold_to} onChange={e => setW('sold_to', e.target.value)}
+                      placeholder="Customer name / company" className={inputCls} />
+                    <p className="text-xs text-slate-400 mt-1.5">Who you sold this watch to.</p>
+                  </div>
+                </div>
+              )}
 
               {!isSell && (
               <div className={sectionCls}>

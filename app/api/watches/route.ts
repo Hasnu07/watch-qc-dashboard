@@ -58,8 +58,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const {
-      brand, model, ref_no, serial_no, watch_date,
-      bought_from, currency, purchase_price, convert_rate,
+      brand, model, ref_no, serial_no, stock_no, watch_date,
+      bought_from, sold_to, currency, purchase_price, convert_rate,
       case_material, dial_colour, bracelet,
       stock_status, origin,
       image_url, website_price, b2b_price,
@@ -97,8 +97,10 @@ export async function POST(req: NextRequest) {
         model: model || null,
         ref_no: ref_no || null,
         serial_no: serial_no || null,
+        stock_no: stock_no || null,
         watch_date: watch_date || null,
         bought_from: bought_from || null,
+        sold_to: sold_to || null,
         currency: currency || 'USD',
         purchase_price: pp,
         convert_rate: cr,
