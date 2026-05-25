@@ -11,7 +11,7 @@ type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
 type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'CHEQUE' | 'CRYPTO'
 
 interface WatchForm {
-  brand: string; model: string; ref_no: string; serial_no: string; watch_date: string
+  brand: string; model: string; ref_no: string; serial_no: string; stock_no: string; watch_date: string
   bought_from: string; currency: string; purchase_price: string; convert_rate: string
   case_material: string; dial_colour: string; bracelet: string
   stock_status: 'STOCK' | 'INCOMING'; origin: string; image_url: string
@@ -32,7 +32,7 @@ interface LocationForm {
 }
 
 const emptyWatch: WatchForm = {
-  brand: '', model: '', ref_no: '', serial_no: '', watch_date: '',
+  brand: '', model: '', ref_no: '', serial_no: '', stock_no: '', watch_date: '',
   bought_from: '', currency: 'USD', purchase_price: '', convert_rate: '',
   case_material: '', dial_colour: '', bracelet: '',
   stock_status: 'STOCK', origin: '', image_url: '',
@@ -138,6 +138,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...watch,
+          stock_no: watch.stock_no || null,
           purchase_price: watch.purchase_price ? parseFloat(watch.purchase_price) : null,
           convert_rate: watch.convert_rate ? parseFloat(watch.convert_rate) : null,
           website_price: parseFloat(watch.website_price),
@@ -250,6 +251,10 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                   <div>
                     <label className={labelCls}>Serial No.</label>
                     <input type="text" value={watch.serial_no} onChange={e => setW('serial_no', e.target.value)} placeholder="e.g. 5X123456" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Stock No.</label>
+                    <input type="text" value={watch.stock_no} onChange={e => setW('stock_no', e.target.value)} placeholder="e.g. STK-001" className={inputCls} />
                   </div>
                   <div>
                     <label className={labelCls}>Watch Date / Year</label>

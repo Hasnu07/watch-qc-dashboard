@@ -65,6 +65,7 @@ model Watch {
   model          String?
   ref_no         String?
   serial_no      String?
+  stock_no       String?
   watch_date     String?
   bought_from    String?
   currency       String     @default("USD")
