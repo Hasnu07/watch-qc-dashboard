@@ -14,18 +14,21 @@ export function getRecentGroups(): RecentGroup[] {
 }
 
 interface ParsedWatch {
-  type?: 'BUY' | 'SELL'
+  should_import?: boolean
+  type?: 'BUY' | 'SELL' | null
   brand?: string | null
   model?: string | null
   ref_no?: string | null
   stock_no?: string | null
   bought_from?: string | null
   sold_to?: string | null
-  website_price?: number | null
-  b2b_price?: number | null
+  price?: number | null
+  currency?: 'USD' | 'GBP' | 'EUR' | 'AED' | 'HKD' | null
+  payment_status?: 'PAID' | 'PARTIAL' | 'NOT_PAID' | null
   case_material?: string | null
   dial_colour?: string | null
   bracelet?: string | null
+  notes?: string | null
 }
 
 async function parseCaption(caption: string, origin: string): Promise<ParsedWatch> {
@@ -95,7 +98,18 @@ export async function POST(req: NextRequest) {
     // Use AI to parse the caption/text into structured fields
     const origin = new URL(req.url).origin
     const parsed = caption.trim() ? await parseCaption(caption, origin) : {}
+
+    // Skip pure chatter / status updates that the AI flagged as non-transactions.
+    // Allow imports for image-only messages even if there's no caption.
+    if (caption.trim() && parsed.should_import === false) {
+      console.log(`[Webhook] AI flagged as non-transaction — skipping: "${caption.slice(0, 60)}"`)
+      return NextResponse.json({ ok: true, skipped: 'not_a_transaction' })
+    }
+
     const watchType: 'BUY' | 'SELL' = parsed.type === 'SELL' ? 'SELL' : 'BUY'
+    const price = parsed.price ?? 0
+    const currency = parsed.currency || 'USD'
+    const paymentStatus = parsed.payment_status || 'NOT_PAID'
 
     const nameParts = [parsed.brand, parsed.model].filter(Boolean) as string[]
     const name = nameParts.length > 0
@@ -113,14 +127,17 @@ export async function POST(req: NextRequest) {
         case_material: parsed.case_material || null,
         dial_colour: parsed.dial_colour || null,
         bracelet: parsed.bracelet || null,
-        currency: 'USD',
+        currency,
+        // For BUY: stash the purchase price in purchase_price (native currency).
+        // For SELL: the price is the sale value — put it in website_price.
+        purchase_price: watchType === 'BUY' && price > 0 ? price : null,
         stock_status: 'STOCK',
         watch_type: watchType,
         name,
         image_url: imageUrl || null,
-        website_price: parsed.website_price ?? 0,
-        b2b_price: parsed.b2b_price ?? 0,
-        payment_status: 'NOT_PAID',
+        website_price: watchType === 'SELL' ? price : 0,
+        b2b_price: 0,
+        payment_status: paymentStatus,
         location_status: 'IN_STOCK',
       },
     })
