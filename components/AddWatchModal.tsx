@@ -106,10 +106,6 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
   }
 
   const validateStep1 = () => {
-    if (!watch.website_price || !watch.b2b_price) {
-      setError('Website price and B2B price are required.')
-      return false
-    }
     if (watch.currency !== 'USD' && !watch.convert_rate) {
       setError(`Enter the ${watch.currency} to USD conversion rate.`)
       return false
@@ -141,8 +137,8 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
           stock_no: watch.stock_no || null,
           purchase_price: watch.purchase_price ? parseFloat(watch.purchase_price) : null,
           convert_rate: watch.convert_rate ? parseFloat(watch.convert_rate) : null,
-          website_price: parseFloat(watch.website_price),
-          b2b_price: parseFloat(watch.b2b_price),
+          website_price: watch.website_price ? parseFloat(watch.website_price) : 0,
+          b2b_price: watch.b2b_price ? parseFloat(watch.b2b_price) : 0,
           payment_status: payment.payment_status,
           location_status: location.location_status,
           location_from: location.location_from || null,
