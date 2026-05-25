@@ -24,7 +24,7 @@ const TASK_DEFAULT_ROWS = [
   { dept: 'SALES' as Department, items: [
     { key: 'SALES_SET_PRICE', label: 'Set Price' },
     { key: 'SALES_UPLOAD_DRIVE', label: 'Upload to Drive' },
-    { key: 'SALES_UPLOAD_STOCK_GROUP', label: 'Upload to Stock Group' },
+    { key: 'SALES_UPLOAD_STOCK_GROUP', label: 'Upload Photos To Whatsapp Stock Photos' },
     { key: 'SALES_UPDATE_B2B', label: 'Research B2B Price' },
     { key: 'SALES_GET_B2C_PRICES', label: 'Get B2C Prices from Josh' },
   ]},
