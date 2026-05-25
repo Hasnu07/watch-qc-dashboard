@@ -63,15 +63,22 @@ export async function POST(req: NextRequest) {
       recentGroups.set(chatId, { chatId, chatName, lastSeenAt: Date.now() })
     }
 
-    // Look up the configured stock-photos group name
-    const groupSetting = await prisma.setting.findUnique({
-      where: { key: 'whatsapp_stock_group_name' },
-    })
-    const targetGroup = (groupSetting?.value || '').trim()
+    // Look up the configured stock-photos group — ID takes precedence over name.
+    const [idSetting, nameSetting] = await Promise.all([
+      prisma.setting.findUnique({ where: { key: 'whatsapp_stock_group_id' } }),
+      prisma.setting.findUnique({ where: { key: 'whatsapp_stock_group_name' } }),
+    ])
+    // Accept either bare numeric form ("120363...") or full form ("120363...@g.us").
+    const rawId = (idSetting?.value || '').trim()
+    const targetId = rawId ? (rawId.includes('@') ? rawId : `${rawId}@g.us`) : ''
+    const targetName = (nameSetting?.value || '').trim()
 
-    // Only proceed if this message is from the configured group
-    if (!isGroup || !targetGroup || chatName.trim() !== targetGroup) {
-      console.log(`[Webhook] Ignored — chat="${chatName}" target="${targetGroup}"`)
+    // Match by ID if set; otherwise fall back to name match.
+    const matchesById = !!targetId && chatId === targetId
+    const matchesByName = !targetId && !!targetName && chatName.trim() === targetName
+
+    if (!isGroup || (!matchesById && !matchesByName)) {
+      console.log(`[Webhook] Ignored — chatId="${chatId}" chat="${chatName}" target_id="${targetId}" target_name="${targetName}"`)
       return NextResponse.json({ ok: true })
     }
 

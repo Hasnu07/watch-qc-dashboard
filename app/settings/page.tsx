@@ -18,6 +18,7 @@ interface Settings {
   greenapi_api_url: string
   reminder_interval_minutes: string
   whatsapp_stock_group_name: string
+  whatsapp_stock_group_id: string
 }
 
 interface RecentGroup {
@@ -80,6 +81,7 @@ export default function SettingsPage() {
     greenapi_api_url: 'https://api.green-api.com',
     reminder_interval_minutes: '180',
     whatsapp_stock_group_name: 'Purosangue team BUY AND SELL',
+    whatsapp_stock_group_id: '120363420701421193@g.us',
   })
   const [recentGroups, setRecentGroups] = useState<RecentGroup[]>([])
   const [loadingGroups, setLoadingGroups] = useState(false)
@@ -336,12 +338,21 @@ export default function SettingsPage() {
         </p>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="text-sm text-slate-500 block mb-1.5">Group Name (exact match)</label>
+            <label className="text-sm text-slate-500 block mb-1.5">Group ID <span className="text-emerald-600 font-semibold">(preferred)</span></label>
+            <input type="text" value={settings.whatsapp_stock_group_id}
+              onChange={e => setSettings({ ...settings, whatsapp_stock_group_id: e.target.value })}
+              placeholder="120363420701421193@g.us" className={inputClass} />
+            <p className="text-slate-400 text-xs mt-1.5">
+              Stable identifier — survives group renames and name collisions. Accept either bare ID (<code className="font-mono">120363…</code>) or full form (<code className="font-mono">120363…@g.us</code>). If set, this is used instead of the name.
+            </p>
+          </div>
+          <div>
+            <label className="text-sm text-slate-500 block mb-1.5">Group Name <span className="text-slate-400">(fallback if ID empty)</span></label>
             <input type="text" value={settings.whatsapp_stock_group_name}
               onChange={e => setSettings({ ...settings, whatsapp_stock_group_name: e.target.value })}
               placeholder="e.g. Purosangue team BUY AND SELL" className={inputClass} />
             <p className="text-slate-400 text-xs mt-1.5">
-              Must match the WhatsApp group display name exactly. Only this group will trigger auto-import — other groups are ignored.
+              Used only when no Group ID is set. Must match the display name exactly.
             </p>
           </div>
           <div>
@@ -358,18 +369,21 @@ export default function SettingsPage() {
               </p>
             ) : (
               <div className="flex flex-col gap-1.5">
-                {recentGroups.map(g => (
-                  <button key={g.chatId} type="button"
-                    onClick={() => setSettings({ ...settings, whatsapp_stock_group_name: g.chatName })}
-                    className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
-                      settings.whatsapp_stock_group_name === g.chatName
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        : 'bg-slate-50 border-slate-100 hover:bg-slate-100 text-slate-700'
-                    }`}>
-                    <div className="font-medium">{g.chatName}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">{g.chatId}</div>
-                  </button>
-                ))}
+                {recentGroups.map(g => {
+                  const isSelected = settings.whatsapp_stock_group_id === g.chatId
+                  return (
+                    <button key={g.chatId} type="button"
+                      onClick={() => setSettings({ ...settings, whatsapp_stock_group_id: g.chatId, whatsapp_stock_group_name: g.chatName })}
+                      className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
+                        isSelected
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          : 'bg-slate-50 border-slate-100 hover:bg-slate-100 text-slate-700'
+                      }`}>
+                      <div className="font-medium">{g.chatName} {isSelected && <span className="text-[10px] ml-1">✓ active</span>}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">{g.chatId}</div>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>

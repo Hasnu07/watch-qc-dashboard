@@ -9,6 +9,7 @@ const SETTING_KEYS = [
   'reminder_interval_minutes',
   'task_assignment_defaults',
   'whatsapp_stock_group_name',
+  'whatsapp_stock_group_id',
   'admin_username',
   'admin_password_hash',
   'admin_session_token',
@@ -28,6 +29,7 @@ export async function GET() {
       reminder_interval_minutes: '20',
       task_assignment_defaults: '{}',
       whatsapp_stock_group_name: 'Purosangue team BUY AND SELL',
+      whatsapp_stock_group_id: '120363420701421193@g.us',
     }
 
     for (const s of settings) {
