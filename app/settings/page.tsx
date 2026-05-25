@@ -17,6 +17,13 @@ interface Settings {
   greenapi_api_token: string
   greenapi_api_url: string
   reminder_interval_minutes: string
+  whatsapp_stock_group_name: string
+}
+
+interface RecentGroup {
+  chatId: string
+  chatName: string
+  lastSeenAt: number
 }
 
 const TASK_DEFAULT_ROWS = [
@@ -72,7 +79,10 @@ export default function SettingsPage() {
     greenapi_api_token: '',
     greenapi_api_url: 'https://api.green-api.com',
     reminder_interval_minutes: '180',
+    whatsapp_stock_group_name: 'Purosangue team BUY AND SELL',
   })
+  const [recentGroups, setRecentGroups] = useState<RecentGroup[]>([])
+  const [loadingGroups, setLoadingGroups] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ successCount: number; total: number; report: TestResult[] } | null>(null)
   const [testError, setTestError] = useState('')
@@ -106,6 +116,14 @@ export default function SettingsPage() {
       if (res.ok) setMembers(await res.json())
     } catch (err) { console.error(err) }
   }, [])
+
+  const fetchRecentGroups = async () => {
+    setLoadingGroups(true)
+    try {
+      const res = await fetch('/api/whatsapp/recent-groups')
+      if (res.ok) setRecentGroups(await res.json())
+    } finally { setLoadingGroups(false) }
+  }
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -304,6 +322,55 @@ export default function SettingsPage() {
             <p className="text-slate-400 text-xs mt-1.5">
               Sends pending task reminders to each department at this interval (only when there are incomplete tasks).
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* WhatsApp Auto-Import */}
+      <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 mb-6 shadow-sm">
+        <h2 className="text-xl font-black text-slate-900 mb-1 flex items-center gap-2">📲 WhatsApp Auto-Import</h2>
+        <p className="text-slate-500 text-sm mb-5">
+          Any image posted in this group is automatically added to the dashboard. The AI reads the caption to detect
+          brand/model/ref/stock no., and figures out from the caption whether it&apos;s a buy (&ldquo;Seller: …&rdquo;) or sale (&ldquo;Sold to: …&rdquo;).
+        </p>
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-sm text-slate-500 block mb-1.5">Group Name (exact match)</label>
+            <input type="text" value={settings.whatsapp_stock_group_name}
+              onChange={e => setSettings({ ...settings, whatsapp_stock_group_name: e.target.value })}
+              placeholder="e.g. Purosangue team BUY AND SELL" className={inputClass} />
+            <p className="text-slate-400 text-xs mt-1.5">
+              Must match the WhatsApp group display name exactly. Only this group will trigger auto-import — other groups are ignored.
+            </p>
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-slate-500 font-bold uppercase tracking-wide">Recently seen groups</span>
+              <button type="button" onClick={fetchRecentGroups} disabled={loadingGroups}
+                className="text-xs px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors disabled:opacity-50">
+                {loadingGroups ? '...' : '↻ Refresh'}
+              </button>
+            </div>
+            {recentGroups.length === 0 ? (
+              <p className="text-xs text-slate-400 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
+                No groups seen yet. Post any message in the target group and refresh — it&apos;ll show here so you can copy the exact name.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                {recentGroups.map(g => (
+                  <button key={g.chatId} type="button"
+                    onClick={() => setSettings({ ...settings, whatsapp_stock_group_name: g.chatName })}
+                    className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
+                      settings.whatsapp_stock_group_name === g.chatName
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                        : 'bg-slate-50 border-slate-100 hover:bg-slate-100 text-slate-700'
+                    }`}>
+                    <div className="font-medium">{g.chatName}</div>
+                    <div className="text-[10px] text-slate-400 font-mono">{g.chatId}</div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>
