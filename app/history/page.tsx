@@ -30,6 +30,7 @@ const TASK_LABELS: Record<string, string> = {
   SALES_UPLOAD_DRIVE: 'Upload to Drive',
   SALES_UPLOAD_STOCK_GROUP: 'Upload to Stock Group',
   SALES_UPDATE_B2B: 'Research B2B Price',
+  SALES_GET_B2C_PRICES: 'Get B2C Prices from Josh',
   LOGISTICS_SET_LOCATION: 'Set Location',
   LOGISTICS_UPDATE_COST: 'Update Logistics Cost',
   LOGISTICS_ACCESSORIES_BOX: 'Box',

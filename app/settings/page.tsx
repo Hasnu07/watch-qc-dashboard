@@ -26,6 +26,7 @@ const TASK_DEFAULT_ROWS = [
     { key: 'SALES_UPLOAD_DRIVE', label: 'Upload to Drive' },
     { key: 'SALES_UPLOAD_STOCK_GROUP', label: 'Upload to Stock Group' },
     { key: 'SALES_UPDATE_B2B', label: 'Research B2B Price' },
+    { key: 'SALES_GET_B2C_PRICES', label: 'Get B2C Prices from Josh' },
   ]},
   { dept: 'LOGISTICS' as Department, items: [
     { key: 'LOGISTICS_SET_LOCATION', label: 'Set Location' },
