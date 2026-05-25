@@ -20,7 +20,7 @@ export const DEFAULT_BUY_TEMPLATES = [
 ]
 
 export const DEFAULT_SELL_TEMPLATES = [
-  { label: 'Logistics Handled',                              department: 'LOGISTICS',  task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'M Haris', order: 0 },
+  { label: 'Logistics Handled',                              department: 'LOGISTICS',  task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Haris', order: 0 },
   { label: 'Delete from Drive & Stock List',                 department: 'SALES',      task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Aleena',  order: 1 },
   { label: 'Share Shipment Address to Haris',                department: 'SALES',      task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Aleena',  order: 2 },
   { label: 'Share Payment Status and Amount to Accounts Team', department: 'SALES',    task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Aleena',  order: 3 },
@@ -28,7 +28,8 @@ export const DEFAULT_SELL_TEMPLATES = [
   { label: 'Make Invoice to Client',                         department: 'ACCOUNTING', task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Hassan',  order: 5 },
 ]
 
-// Upserts all builtin templates so assignees + labels stay in sync
+// Ensures builtin templates exist. Only fills in default_assignee on creation
+// or when the existing row has none — never overwrites a user-set assignee.
 export async function ensureDefaultTemplates() {
   const allDefaults = [
     ...DEFAULT_BUY_TEMPLATES.map(t => ({ ...t, phase: 'BUY' })),
@@ -40,14 +41,15 @@ export async function ensureDefaultTemplates() {
       where: { phase: tpl.phase, is_builtin: true, label: tpl.label },
     })
     if (existing) {
-      await prisma.taskTemplate.update({
-        where: { id: existing.id },
-        data: {
-          department: tpl.department,
-          default_assignee: tpl.default_assignee,
-          order: tpl.order,
-        },
-      })
+      // Keep structure in sync but never overwrite an assignee a user already set.
+      const data: { department: string; order: number; default_assignee?: string | null } = {
+        department: tpl.department,
+        order: tpl.order,
+      }
+      if (existing.default_assignee == null && tpl.default_assignee) {
+        data.default_assignee = tpl.default_assignee
+      }
+      await prisma.taskTemplate.update({ where: { id: existing.id }, data })
     } else {
       await prisma.taskTemplate.create({ data: tpl })
     }
