@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // Routes that require a logged-in admin. Mirrors the matcher below so the
-// intent is clear in one place.
-const PROTECTED = ['/', '/dashboard', '/history', '/settings']
+// intent is clear in one place. The root '/' (Admin Tasks) is intentionally
+// public so the team can read assigned tasks without signing in.
+const PROTECTED = ['/dashboard', '/history', '/settings']
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
@@ -17,9 +18,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  const isProtected = PROTECTED.some(p =>
-    p === '/' ? pathname === '/' : pathname === p || pathname.startsWith(p + '/')
-  )
+  const isProtected = PROTECTED.some(p => pathname === p || pathname.startsWith(p + '/'))
 
   if (isProtected) {
     const token = req.cookies.get('qc_admin_session')?.value
