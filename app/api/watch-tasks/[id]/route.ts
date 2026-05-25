@@ -74,8 +74,10 @@ export async function PATCH(
       }
     }
 
-    // Emit SSE + notify on completion
-    if (body.is_completed) {
+    // Emit SSE so the dashboard refreshes checkmarks. Any toggle of
+    // is_completed needs to fire — true → task_completed (also notifies
+    // WhatsApp), false → task_updated (silent refresh).
+    if (body.is_completed === true) {
       emitWatchTaskEvent({
         type: 'task_completed',
         watch_task_id: task.id,
@@ -90,7 +92,7 @@ export async function PATCH(
         watchName,
         taskLabel
       ).catch(console.error)
-    } else if (body.metadata) {
+    } else if (body.is_completed === false || body.metadata) {
       emitWatchTaskEvent({
         type: 'task_updated',
         watch_task_id: task.id,
