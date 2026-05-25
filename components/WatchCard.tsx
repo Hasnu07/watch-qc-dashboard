@@ -41,6 +41,7 @@ interface Watch {
   transit_carrier: string | null
   transit_tracking_number: string | null
   received_date: string | null
+  watch_type?: 'BUY' | 'SELL'
   task_summary?: TaskSummary
 }
 
@@ -81,6 +82,7 @@ const STAGE_CFG = {
 
 export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardProps) {
   const cfg = STAGE_CFG[watch.stage]
+  const isSell = watch.watch_type === 'SELL'
 
   // Department completion derived from task summary
   const summary: TaskSummary = watch.task_summary ?? {
@@ -156,10 +158,14 @@ export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardP
         </div>
       </div>
 
-      {/* Payment + Location badges */}
+      {/* Payment + Location/Sell badges */}
       <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 bg-slate-50 border-b border-slate-100">
         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${payCls}`}>{payLabel}</span>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ml-auto ${locCls}`}>{locLabel}</span>
+        {isSell ? (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border ml-auto bg-orange-50 text-orange-700 border-orange-200">🏷️ Sell</span>
+        ) : (
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ml-auto ${locCls}`}>{locLabel}</span>
+        )}
       </div>
 
       {/* Image */}
@@ -176,16 +182,18 @@ export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardP
             <span className="text-xs font-medium">No image</span>
           </div>
         )}
-        {/* Stock status pill */}
-        <div className="absolute top-2 right-2">
-          <span className={`text-xs font-bold px-2 py-1 rounded-full shadow-sm border ${
-            watch.stock_status === 'STOCK'
-              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-              : 'bg-amber-100 text-amber-800 border-amber-200'
-          }`}>
-            {watch.stock_status === 'STOCK' ? '✓ In Stock' : '⏳ Incoming'}
-          </span>
-        </div>
+        {/* Stock status pill — only for Buy watches (irrelevant for Sell) */}
+        {!isSell && (
+          <div className="absolute top-2 right-2">
+            <span className={`text-xs font-bold px-2 py-1 rounded-full shadow-sm border ${
+              watch.stock_status === 'STOCK'
+                ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                : 'bg-amber-100 text-amber-800 border-amber-200'
+            }`}>
+              {watch.stock_status === 'STOCK' ? '✓ In Stock' : '⏳ Incoming'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Info */}

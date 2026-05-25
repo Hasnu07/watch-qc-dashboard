@@ -56,7 +56,8 @@ const emptyLocation: LocationForm = {
 
 interface Props { onClose: () => void; onAdded: () => void }
 
-const STEPS = ['Watch Details', 'Payment', 'Location']
+const BUY_STEPS = ['Watch Details', 'Payment', 'Location']
+const SELL_STEPS = ['Watch Details', 'Payment']
 
 export default function AddWatchModal({ onClose, onAdded }: Props) {
   const [step, setStep] = useState(1)
@@ -71,6 +72,10 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
   const setW = (key: keyof WatchForm, val: string) => setWatch(prev => ({ ...prev, [key]: val }))
   const setP = (key: keyof PaymentForm, val: string | boolean) => setPayment(prev => ({ ...prev, [key]: val }))
   const setL = (key: keyof LocationForm, val: string) => setLocation(prev => ({ ...prev, [key]: val }))
+
+  const isSell = watch.watch_type === 'SELL'
+  const STEPS = isSell ? SELL_STEPS : BUY_STEPS
+  const totalSteps = STEPS.length
 
   const purchasePriceUSD = (() => {
     const p = parseFloat(watch.purchase_price)
@@ -131,24 +136,39 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
     setError('')
     setLoading(true)
     try {
+      // For Sell watches, location/stock are irrelevant — submit them as nulls/in-stock placeholder
+      const locationPayload = isSell
+        ? {
+            location_status: 'IN_STOCK',
+            location_from: null,
+            location_to: null,
+            transit_pickup_date: null,
+            transit_carrier: null,
+            transit_tracking_number: null,
+          }
+        : {
+            location_status: location.location_status,
+            location_from: location.location_from || null,
+            location_to: location.location_to || null,
+            transit_pickup_date: location.transit_pickup_date || null,
+            transit_carrier: location.transit_carrier || null,
+            transit_tracking_number: location.transit_tracking_number || null,
+          }
       const res = await fetch('/api/watches', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...watch,
           watch_type: watch.watch_type,
+          // Sell watches don't track stock_status — force STOCK as a no-op default
+          stock_status: isSell ? 'STOCK' : watch.stock_status,
           stock_no: watch.stock_no || null,
           purchase_price: watch.purchase_price ? parseFloat(watch.purchase_price) : null,
           convert_rate: watch.convert_rate ? parseFloat(watch.convert_rate) : null,
           website_price: watch.website_price ? parseFloat(watch.website_price) : 0,
           b2b_price: watch.b2b_price ? parseFloat(watch.b2b_price) : 0,
           payment_status: payment.payment_status,
-          location_status: location.location_status,
-          location_from: location.location_from || null,
-          location_to: location.location_to || null,
-          transit_pickup_date: location.transit_pickup_date || null,
-          transit_carrier: location.transit_carrier || null,
-          transit_tracking_number: location.transit_tracking_number || null,
+          ...locationPayload,
         }),
       })
       if (!res.ok) throw new Error(await res.text())
@@ -189,7 +209,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
         <div className="flex items-center justify-between px-6 py-5 border-b-2 border-slate-100 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-t-3xl">
           <div>
             <h2 className="text-xl font-black text-white">Add Watch</h2>
-            <p className="text-indigo-200 text-xs mt-0.5">Step {step} of 3 — {STEPS[step - 1]}</p>
+            <p className="text-indigo-200 text-xs mt-0.5">Step {step} of {totalSteps} — {STEPS[step - 1]}</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition-colors font-bold">&times;</button>
         </div>
@@ -231,7 +251,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
               <div className="mb-5">
                 <p className="text-xs uppercase tracking-widest text-slate-500 font-black mb-2">Watch Type</p>
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setW('watch_type', 'BUY')}
+                  <button type="button" onClick={() => { setW('watch_type', 'BUY') }}
                     className={`flex-1 py-3 rounded-2xl text-sm font-black border-2 transition-all ${
                       watch.watch_type === 'BUY'
                         ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
@@ -239,7 +259,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                     }`}>
                     🛒 Buy
                   </button>
-                  <button type="button" onClick={() => setW('watch_type', 'SELL')}
+                  <button type="button" onClick={() => { setW('watch_type', 'SELL'); if (step > SELL_STEPS.length) setStep(SELL_STEPS.length) }}
                     className={`flex-1 py-3 rounded-2xl text-sm font-black border-2 transition-all ${
                       watch.watch_type === 'SELL'
                         ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
@@ -248,6 +268,11 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                     🏷️ Sell
                   </button>
                 </div>
+                {isSell && (
+                  <p className="text-xs text-orange-600 mt-2 font-medium">
+                    🏷️ For Sell watches, stock & location fields are skipped — you already own the watch.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -362,26 +387,28 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
 
               <div className={sectionCls}>
                 <p className="text-xs uppercase tracking-widest text-emerald-600 font-black mb-3 flex items-center gap-2">
-                  <span className="text-base">📍</span> Status & Origin
+                  <span className="text-base">📍</span> {isSell ? 'Origin' : 'Status & Origin'}
                 </p>
-                <div className="grid grid-cols-2 gap-3 items-start">
-                  <div>
-                    <label className={labelCls}>Stock Status</label>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setW('stock_status', 'STOCK')}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                          watch.stock_status === 'STOCK' ? 'bg-green-50 border-green-300 text-green-700' : 'border-slate-200 text-slate-400 hover:text-slate-600 bg-white'
-                        }`}>
-                        ✓ In Stock
-                      </button>
-                      <button type="button" onClick={() => setW('stock_status', 'INCOMING')}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                          watch.stock_status === 'INCOMING' ? 'bg-amber-50 border-amber-300 text-amber-700' : 'border-slate-200 text-slate-400 hover:text-slate-600 bg-white'
-                        }`}>
-                        ⏳ Incoming
-                      </button>
+                <div className={`grid gap-3 items-start ${isSell ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                  {!isSell && (
+                    <div>
+                      <label className={labelCls}>Stock Status</label>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setW('stock_status', 'STOCK')}
+                          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                            watch.stock_status === 'STOCK' ? 'bg-green-50 border-green-300 text-green-700' : 'border-slate-200 text-slate-400 hover:text-slate-600 bg-white'
+                          }`}>
+                          ✓ In Stock
+                        </button>
+                        <button type="button" onClick={() => setW('stock_status', 'INCOMING')}
+                          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                            watch.stock_status === 'INCOMING' ? 'bg-amber-50 border-amber-300 text-amber-700' : 'border-slate-200 text-slate-400 hover:text-slate-600 bg-white'
+                          }`}>
+                          ⏳ Incoming
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div>
                     <label className={labelCls}>Origin <span className="text-slate-300">(optional)</span></label>
                     <input type="text" value={watch.origin} onChange={e => setW('origin', e.target.value)} placeholder="e.g. UK, Japan" className={inputCls} />
@@ -573,7 +600,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
             className="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all font-bold">
             {step === 1 ? 'Cancel' : '← Back'}
           </button>
-          {step < 3 ? (
+          {step < totalSteps ? (
             <button type="button" onClick={handleNext}
               className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-black transition-all shadow-sm">
               Next →

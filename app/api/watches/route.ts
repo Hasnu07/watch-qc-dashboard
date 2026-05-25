@@ -11,14 +11,25 @@ export async function GET() {
       orderBy: { created_at: 'desc' },
     })
 
-    // Per-watch task completion summary so the card can show dept checkmarks
-    const ids = watches.map(w => w.id)
-    const tasks = ids.length
-      ? await prisma.watchTask.findMany({
-          where: { watch_id: { in: ids }, phase: { not: 'SELL' } },
-          select: { watch_id: true, department: true, is_completed: true },
-        })
-      : []
+    // Per-watch task completion summary so the card can show dept checkmarks.
+    // BUY-type watches use BUY-phase tasks; SELL-type watches use SELL-phase tasks.
+    const buyIds = watches.filter(w => w.watch_type !== 'SELL').map(w => w.id)
+    const sellIds = watches.filter(w => w.watch_type === 'SELL').map(w => w.id)
+    const [buyTasks, sellTasks] = await Promise.all([
+      buyIds.length
+        ? prisma.watchTask.findMany({
+            where: { watch_id: { in: buyIds }, phase: { not: 'SELL' } },
+            select: { watch_id: true, department: true, is_completed: true },
+          })
+        : Promise.resolve([]),
+      sellIds.length
+        ? prisma.watchTask.findMany({
+            where: { watch_id: { in: sellIds }, phase: 'SELL' },
+            select: { watch_id: true, department: true, is_completed: true },
+          })
+        : Promise.resolve([]),
+    ])
+    const tasks = [...buyTasks, ...sellTasks]
 
     type Summary = Record<'LOGISTICS' | 'ACCOUNTING' | 'SALES', { total: number; completed: number }>
     const blank = (): Summary => ({
