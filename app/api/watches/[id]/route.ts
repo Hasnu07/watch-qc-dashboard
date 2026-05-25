@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { emitWatchEvent } from '@/lib/events'
 import { checkAndUnlockLocation } from '@/lib/watch-tasks'
+import { createWatchSellTasks } from '@/lib/sell-tasks'
 
 export async function PATCH(
   req: NextRequest,
@@ -60,6 +61,9 @@ export async function PATCH(
 
     if (watch.is_sold) {
       emitWatchEvent({ type: 'watch_sold', watchId: watch.id })
+      if (data.is_sold === true) {
+        createWatchSellTasks(watch.id, watch.name).catch(console.error)
+      }
     } else {
       emitWatchEvent({ type: 'watch_updated', watchId: watch.id })
     }

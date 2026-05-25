@@ -19,21 +19,6 @@ enum TaskDepartment {
   LOGISTICS
 }
 
-enum TaskType {
-  ACCOUNTING_MARK_PAYMENT
-  SALES_SET_PRICE
-  SALES_UPLOAD_DRIVE
-  SALES_UPLOAD_STOCK_GROUP
-  SALES_UPDATE_B2B
-  SALES_GET_B2C_PRICES
-  LOGISTICS_SET_LOCATION
-  LOGISTICS_UPDATE_COST
-  LOGISTICS_ACCESSORIES_BOX
-  LOGISTICS_ACCESSORIES_PAPERS
-  LOGISTICS_ACCESSORIES_EXTRA_LINKS
-  LOGISTICS_ACCESSORIES_WARRANTY_CARD
-  LOGISTICS_ACCESSORIES_HANG_TAG
-}
 
 enum WatchStage {
   LOGISTICS
@@ -116,7 +101,8 @@ model WatchTask {
   watch_id     Int
   watch        Watch          @relation(fields: [watch_id], references: [id], onDelete: Cascade)
   department   TaskDepartment
-  task_type    TaskType
+  task_type    String
+  phase        String         @default("BUY")
   is_completed Boolean        @default(false)
   completed_at DateTime?
   completed_by String?
@@ -155,4 +141,16 @@ model Setting {
   id    Int    @id @default(autoincrement())
   key   String @unique
   value String
+}
+
+model TaskTemplate {
+  id            Int      @id @default(autoincrement())
+  label         String
+  department    String
+  phase         String   @default("BUY")
+  task_type_key String?
+  is_locked     Boolean  @default(false)
+  is_builtin    Boolean  @default(false)
+  order         Int      @default(0)
+  created_at    DateTime @default(now())
 }

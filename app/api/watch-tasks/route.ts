@@ -10,11 +10,24 @@ export async function GET(req: NextRequest) {
     const watchId = searchParams.get('watch_id')
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {
-      watch: { is_sold: false },
-    }
+    const where: any = {}
     if (department) where.department = department
     if (watchId) where.watch_id = parseInt(watchId, 10)
+
+    const phase = searchParams.get('phase')
+    if (phase) {
+      where.phase = phase
+      // For sell tasks, show sold watches; for buy tasks, show unsold
+      if (phase === 'SELL') {
+        where.watch = { is_sold: true }
+      } else {
+        where.watch = { is_sold: false }
+      }
+    } else {
+      // Default: buy tasks only (exclude SELL phase, show unsold watches)
+      where.watch = { is_sold: false }
+      where.phase = { not: 'SELL' }
+    }
 
     const tasks = await prisma.watchTask.findMany({
       where,

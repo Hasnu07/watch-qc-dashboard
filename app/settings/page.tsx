@@ -35,6 +35,15 @@ const TASK_DEFAULT_ROWS = [
   ]},
 ]
 
+interface TaskTemplate {
+  id: number
+  label: string
+  department: string
+  phase: string
+  is_builtin: boolean
+  task_type_key: string | null
+}
+
 interface TestResult {
   name: string
   number: string
@@ -74,6 +83,10 @@ export default function SettingsPage() {
   const [addingMember, setAddingMember] = useState(false)
   const [memberError, setMemberError] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [templates, setTemplates] = useState<TaskTemplate[]>([])
+  const [newBuyTask, setNewBuyTask] = useState({ label: '', department: 'SALES' })
+  const [newSellTask, setNewSellTask] = useState({ label: '', department: 'SALES' })
+  const [addingTemplate, setAddingTemplate] = useState(false)
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -93,7 +106,14 @@ export default function SettingsPage() {
     } catch (err) { console.error(err) }
   }, [])
 
-  useEffect(() => { fetchSettings(); fetchMembers() }, [fetchSettings, fetchMembers])
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/task-templates')
+      if (res.ok) setTemplates(await res.json())
+    } catch (err) { console.error(err) }
+  }, [])
+
+  useEffect(() => { fetchSettings(); fetchMembers(); fetchTemplates() }, [fetchSettings, fetchMembers, fetchTemplates])
 
   const testWhatsApp = async () => {
     setTesting(true); setTestResult(null); setTestError('')
@@ -119,6 +139,29 @@ export default function SettingsPage() {
       setTimeout(() => setSavedMsg(''), 3000)
     } catch { setSavedMsg('Error saving.') }
     finally { setSaving(false) }
+  }
+
+  const addTemplate = async (phase: 'BUY' | 'SELL') => {
+    const task = phase === 'BUY' ? newBuyTask : newSellTask
+    if (!task.label.trim()) return
+    setAddingTemplate(true)
+    try {
+      const res = await fetch('/api/task-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: task.label.trim(), department: task.department, phase }),
+      })
+      if (res.ok) {
+        if (phase === 'BUY') setNewBuyTask({ label: '', department: 'SALES' })
+        else setNewSellTask({ label: '', department: 'SALES' })
+        fetchTemplates()
+      }
+    } finally { setAddingTemplate(false) }
+  }
+
+  const deleteTemplate = async (id: number) => {
+    await fetch(`/api/task-templates/${id}`, { method: 'DELETE' })
+    fetchTemplates()
   }
 
   const addMember = async (e: React.FormEvent) => {
@@ -302,6 +345,84 @@ export default function SettingsPage() {
           </span>
         )}
       </div>
+
+      {/* Task Management */}
+      <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 mb-6 shadow-sm">
+        <h2 className="text-xl font-black text-slate-900 mb-1 flex items-center gap-2">📝 Task Management</h2>
+        <p className="text-slate-500 text-sm mb-5">Configure tasks created when a watch is added (Buy) or sold (Sell).</p>
+
+        {/* Buy Tasks */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg mb-3 border bg-indigo-50 border-indigo-200">
+            <span>🛒</span>
+            <span className="text-sm font-bold uppercase tracking-wide text-indigo-700">Buy Tasks</span>
+            <span className="ml-auto text-xs text-indigo-500">{templates.filter(t => t.phase === 'BUY').length} tasks</span>
+          </div>
+          <div className="flex flex-col gap-2 mb-3">
+            {templates.filter(t => t.phase === 'BUY').map(t => (
+              <div key={t.id} className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="text-slate-500 text-xs w-20 flex-shrink-0">{
+                  t.department === 'ACCOUNTING' ? '💰' : t.department === 'SALES' ? '🤝' : '📦'
+                } {t.department}</span>
+                <span className="text-slate-800 text-sm flex-1">{t.label}</span>
+                {t.is_builtin
+                  ? <span className="text-[10px] text-slate-400 border border-slate-200 rounded-full px-2 py-0.5">Built-in</span>
+                  : <button onClick={() => deleteTemplate(t.id)} className="text-slate-300 hover:text-red-500 text-sm transition-colors">✕</button>
+                }
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <select value={newBuyTask.department} onChange={e => setNewBuyTask(p => ({ ...p, department: e.target.value }))}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-400">
+              <option value="ACCOUNTING">💰 Accounting</option>
+              <option value="SALES">🤝 Sales</option>
+              <option value="LOGISTICS">📦 Logistics</option>
+            </select>
+            <input type="text" value={newBuyTask.label} onChange={e => setNewBuyTask(p => ({ ...p, label: e.target.value }))}
+              placeholder="Task name..." onKeyDown={e => e.key === 'Enter' && addTemplate('BUY')}
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-400" />
+            <button onClick={() => addTemplate('BUY')} disabled={!newBuyTask.label.trim() || addingTemplate}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Add</button>
+          </div>
+        </div>
+
+        {/* Sell Tasks */}
+        <div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg mb-3 border bg-orange-50 border-orange-200">
+            <span>🏷️</span>
+            <span className="text-sm font-bold uppercase tracking-wide text-orange-700">Sell Tasks</span>
+            <span className="ml-auto text-xs text-orange-500">{templates.filter(t => t.phase === 'SELL').length} tasks</span>
+          </div>
+          <div className="flex flex-col gap-2 mb-3">
+            {templates.filter(t => t.phase === 'SELL').map(t => (
+              <div key={t.id} className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="text-slate-500 text-xs w-20 flex-shrink-0">{
+                  t.department === 'ACCOUNTING' ? '💰' : t.department === 'SALES' ? '🤝' : '📦'
+                } {t.department}</span>
+                <span className="text-slate-800 text-sm flex-1">{t.label}</span>
+                {t.is_builtin
+                  ? <span className="text-[10px] text-slate-400 border border-slate-200 rounded-full px-2 py-0.5">Built-in</span>
+                  : <button onClick={() => deleteTemplate(t.id)} className="text-slate-300 hover:text-red-500 text-sm transition-colors">✕</button>
+                }
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <select value={newSellTask.department} onChange={e => setNewSellTask(p => ({ ...p, department: e.target.value }))}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-400">
+              <option value="ACCOUNTING">💰 Accounting</option>
+              <option value="SALES">🤝 Sales</option>
+              <option value="LOGISTICS">📦 Logistics</option>
+            </select>
+            <input type="text" value={newSellTask.label} onChange={e => setNewSellTask(p => ({ ...p, label: e.target.value }))}
+              placeholder="Task name..." onKeyDown={e => e.key === 'Enter' && addTemplate('SELL')}
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-400" />
+            <button onClick={() => addTemplate('SELL')} disabled={!newSellTask.label.trim() || addingTemplate}
+              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Add</button>
+          </div>
+        </div>
+      </section>
 
       {/* Team Members grouped by department */}
       <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">

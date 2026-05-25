@@ -5,6 +5,7 @@ import WatchCard from '@/components/WatchCard'
 import AddWatchModal from '@/components/AddWatchModal'
 import WatchDetailModal, { type WatchDetail } from '@/components/WatchDetailModal'
 import WatchTaskPanel from '@/components/WatchTaskPanel'
+import WatchSellTaskPanel from '@/components/WatchSellTaskPanel'
 import AutoScrollList from '@/components/AutoScrollList'
 
 type WatchStage = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
@@ -58,7 +59,7 @@ export default function DashboardPage() {
   const [showAddWatch, setShowAddWatch] = useState(false)
   const [selectedWatch, setSelectedWatch] = useState<Watch | null>(null)
   const [sseConnected, setSseConnected] = useState(false)
-  const [activeTab, setActiveTab] = useState<'inventory' | 'tasks'>('inventory')
+  const [activeTab, setActiveTab] = useState<'inventory' | 'tasks' | 'sell'>('inventory')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchWatches = useCallback(async () => {
@@ -141,6 +142,16 @@ export default function DashboardPage() {
         >
           ✅ Tasks
         </button>
+        <button
+          onClick={() => setActiveTab('sell')}
+          className={`flex-1 py-3 text-sm font-bold transition-colors flex items-center justify-center gap-1.5 ${
+            activeTab === 'sell'
+              ? 'text-orange-600 border-b-2 border-orange-600 bg-orange-50/50'
+              : 'text-slate-500'
+          }`}
+        >
+          🏷️ Sold
+        </button>
       </div>
 
       {/* Main content — side-by-side on desktop, tabbed on mobile */}
@@ -213,8 +224,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* RIGHT PANEL — Team Tasks */}
-        <div className={`flex-col w-full md:w-[40%] overflow-hidden ${activeTab === 'tasks' ? 'flex' : 'hidden'} md:flex`}>
+        {/* RIGHT PANEL — Team Tasks (Buy + Sell) */}
+        <div className={`flex-col w-full md:w-[40%] overflow-hidden ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
 
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-4 border-b border-slate-200 bg-white shadow-sm sm:px-6 sm:py-5">
@@ -234,10 +245,32 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Task panel */}
-          <AutoScrollList className="flex-1 bg-indigo-50/50" speedPxPerSec={40}>
-            <WatchTaskPanel />
-          </AutoScrollList>
+          {/* Desktop sub-tab toggle */}
+          <div className="hidden md:flex border-b border-slate-200 bg-white px-4 gap-1 pt-2">
+            <button
+              onClick={() => setActiveTab('tasks')}
+              className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-colors border-b-2 ${activeTab !== 'sell' ? 'border-indigo-500 text-indigo-700 bg-indigo-50/60' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+            >
+              ✅ Buy Tasks
+            </button>
+            <button
+              onClick={() => setActiveTab('sell')}
+              className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-colors border-b-2 ${activeTab === 'sell' ? 'border-orange-500 text-orange-700 bg-orange-50/60' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+            >
+              🏷️ Sold
+            </button>
+          </div>
+
+          {/* Task panels */}
+          {activeTab !== 'sell' ? (
+            <AutoScrollList className="flex-1 bg-indigo-50/50" speedPxPerSec={40}>
+              <WatchTaskPanel />
+            </AutoScrollList>
+          ) : (
+            <AutoScrollList className="flex-1 bg-orange-50/30" speedPxPerSec={40}>
+              <WatchSellTaskPanel />
+            </AutoScrollList>
+          )}
         </div>
       </div>
 
