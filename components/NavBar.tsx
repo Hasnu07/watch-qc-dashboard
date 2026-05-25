@@ -35,9 +35,8 @@ export default function NavBar() {
       </div>
 
       <div className="flex items-center gap-0.5 sm:gap-1">
-        {navLink('/', 'Dashboard')}
-        {navLink('/tasks', 'Watch Tasks')}
-        {navLink('/admin-tasks', 'Admin Tasks')}
+        {navLink('/', 'Admin Tasks')}
+        {navLink('/dashboard', 'Dashboard')}
         {navLink('/history', 'History')}
         {navLink('/settings', 'Settings')}
       </div>

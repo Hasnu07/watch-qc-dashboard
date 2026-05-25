@@ -1,263 +1,365 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import WatchCard from '@/components/WatchCard'
-import AddWatchModal from '@/components/AddWatchModal'
-import WatchDetailModal, { type WatchDetail } from '@/components/WatchDetailModal'
-import WatchTaskPanel from '@/components/WatchTaskPanel'
-import WatchSellTaskPanel from '@/components/WatchSellTaskPanel'
-import AutoScrollList from '@/components/AutoScrollList'
+import { useState, useEffect, useCallback } from 'react'
 
-type WatchStage = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
-type Department = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
-type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
-type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
+type Department = 'ACCOUNTING' | 'SALES' | 'LOGISTICS'
 
-type DeptCount = { total: number; completed: number }
-type TaskSummary = Record<'LOGISTICS' | 'ACCOUNTING' | 'SALES', DeptCount>
-
-interface Watch {
+interface TeamMember {
   id: number
   name: string
-  brand: string | null
-  model: string | null
-  ref_no: string | null
-  serial_no: string | null
-  stock_no: string | null
-  watch_date: string | null
-  bought_from: string | null
-  currency: string
-  purchase_price: string | number | null
-  convert_rate: string | number | null
-  case_material: string | null
-  dial_colour: string | null
-  bracelet: string | null
-  stock_status: string
-  origin: string | null
-  image_url: string | null
-  website_price: string | number
-  b2b_price: string | number
-  stage: WatchStage
-  is_sold: boolean
-  payment_status: PaymentStatus
-  total_amount: number | null
-  location_status: LocationStatus
-  location_from: string | null
-  location_to: string | null
-  transit_pickup_date: string | null
-  transit_carrier: string | null
-  transit_tracking_number: string | null
-  received_date: string | null
-  task_summary?: TaskSummary
+  whatsapp_number: string
+  department: Department
 }
 
-const DEPT_CONFIG = {
-  LOGISTICS: { label: 'Logistics', icon: '📦', color: 'text-blue-700', border: 'border-blue-200', bg: 'bg-blue-50', countColor: 'text-blue-900', solid: 'bg-blue-600' },
-  ACCOUNTING: { label: 'Accounting', icon: '💰', color: 'text-amber-700', border: 'border-amber-200', bg: 'bg-amber-50', countColor: 'text-amber-900', solid: 'bg-amber-500' },
-  SALES: { label: 'Sales', icon: '🤝', color: 'text-emerald-700', border: 'border-emerald-200', bg: 'bg-emerald-50', countColor: 'text-emerald-900', solid: 'bg-emerald-600' },
-} as const
+interface Task {
+  id: number
+  team_member_id: number
+  assigned_by_id: number | null
+  message_text: string
+  date: string
+  estimated_minutes: number | null
+  is_completed: boolean
+  completed_at: string | null
+  reminder_interval_minutes: number | null
+  created_at: string
+  team_member: TeamMember
+  assigned_by: TeamMember | null
+}
 
-const DEPT_ORDER: Department[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
+const REMINDER_OPTIONS = [
+  { value: '60', label: '60 minutes' },
+  { value: '180', label: '3 hours' },
+  { value: '1440', label: '24 hours' },
+  { value: '', label: 'On completion only' },
+]
 
-export default function DashboardPage() {
-  const [watches, setWatches] = useState<Watch[]>([])
-  const [showAddWatch, setShowAddWatch] = useState(false)
-  const [selectedWatch, setSelectedWatch] = useState<Watch | null>(null)
-  const [sseConnected, setSseConnected] = useState(false)
-  const [activeTab, setActiveTab] = useState<'inventory' | 'tasks' | 'sell'>('inventory')
-  const [taskTab, setTaskTab] = useState<'buy' | 'sell'>('buy')
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+const DEPT_COLORS: Record<Department, string> = {
+  ACCOUNTING: 'bg-amber-500',
+  SALES: 'bg-emerald-500',
+  LOGISTICS: 'bg-blue-500',
+}
 
-  const fetchWatches = useCallback(async () => {
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+function Avatar({ member, size = 'md', selected = false }: { member: TeamMember; size?: 'sm' | 'md'; selected?: boolean }) {
+  const s = size === 'sm' ? 'w-5 h-5 text-[10px]' : 'w-7 h-7 text-xs'
+  return (
+    <div className={`${s} rounded-full flex items-center justify-center text-white font-black flex-shrink-0 ${selected ? 'bg-white/30' : DEPT_COLORS[member.department]}`}>
+      {member.name.charAt(0).toUpperCase()}
+    </div>
+  )
+}
+
+function PersonGrid({ members, selected, onSelect, label }: {
+  members: TeamMember[]
+  selected: string
+  onSelect: (id: string) => void
+  label: string
+}) {
+  return (
+    <div>
+      <label className="text-xs text-slate-500 block mb-2 font-semibold uppercase tracking-wide">{label}</label>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {members.map(m => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => onSelect(String(m.id))}
+            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all text-left ${
+              selected === String(m.id)
+                ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50'
+            }`}
+          >
+            <Avatar member={m} selected={selected === String(m.id)} />
+            <span className="truncate">{m.name}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ReminderBadge({ minutes }: { minutes: number | null }) {
+  if (!minutes) return null
+  const label = minutes === 60 ? '60 min' : minutes === 180 ? '3 hrs' : minutes === 1440 ? '24 hrs' : `${minutes}m`
+  return (
+    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200 font-semibold">
+      ⏰ {label}
+    </span>
+  )
+}
+
+export default function AdminTasksPage() {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [members, setMembers] = useState<TeamMember[]>([])
+  const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all')
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+
+  const [form, setForm] = useState({
+    assigned_by_id: '',
+    team_member_id: '',
+    message_text: '',
+    reminder_interval_minutes: '',
+  })
+
+  const fetchTasks = useCallback(async () => {
     try {
-      const res = await fetch('/api/watches')
-      if (res.ok) setWatches(await res.json())
+      const res = await fetch('/api/tasks')
+      if (res.ok) setTasks(await res.json())
+    } catch (err) { console.error(err) }
+    finally { setLoading(false) }
+  }, [])
+
+  const fetchMembers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/team-members')
+      if (res.ok) setMembers(await res.json())
     } catch (err) { console.error(err) }
   }, [])
 
-  const handleTaskDone = async (id: number) => {
-    // Optimistically remove from the dashboard, then PATCH watch as sold (hides from inventory)
-    setWatches(prev => prev.filter(w => w.id !== id))
+  useEffect(() => { fetchTasks(); fetchMembers() }, [fetchTasks, fetchMembers])
+
+  const assignTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.assigned_by_id || !form.team_member_id || !form.message_text.trim()) return
+    setSubmitting(true)
     try {
-      await fetch(`/api/watches/${id}`, {
-        method: 'PATCH',
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_sold: true }),
+        body: JSON.stringify({
+          assigned_by_id: form.assigned_by_id,
+          team_member_id: form.team_member_id,
+          message_text: form.message_text.trim(),
+          reminder_interval_minutes: form.reminder_interval_minutes || null,
+        }),
       })
-    } catch { fetchWatches() }
+      if (res.ok) {
+        setForm({ assigned_by_id: '', team_member_id: '', message_text: '', reminder_interval_minutes: '' })
+        setShowForm(false)
+        fetchTasks()
+      }
+    } catch (err) { console.error(err) }
+    finally { setSubmitting(false) }
   }
 
-  useEffect(() => {
-    let es: EventSource | null = null
-    const connectSSE = () => {
-      es = new EventSource('/api/sse')
-      es.onopen = () => {
-        setSseConnected(true)
-        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
-      }
-      es.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (['new_watch', 'watch_updated', 'watch_sold', 'task_completed', 'task_updated'].includes(data.type)) fetchWatches()
-        } catch { /* ignore pings */ }
-      }
-      es.onerror = () => {
-        setSseConnected(false)
-        es?.close()
-        if (!pollRef.current) pollRef.current = setInterval(() => { fetchWatches() }, 10000)
-        setTimeout(connectSSE, 5000)
-      }
-    }
-    connectSSE()
-    return () => { es?.close(); if (pollRef.current) clearInterval(pollRef.current) }
-  }, [fetchWatches])
-
-  useEffect(() => { fetchWatches() }, [fetchWatches])
-
-  const stageCounts = {
-    LOGISTICS: watches.filter(w => w.stage === 'LOGISTICS').length,
-    ACCOUNTING: watches.filter(w => w.stage === 'ACCOUNTING').length,
-    SALES: watches.filter(w => w.stage === 'SALES').length,
+  const toggleComplete = async (task: Task) => {
+    const nowDone = !task.is_completed
+    setTasks(prev => prev.map(t => t.id === task.id
+      ? { ...t, is_completed: nowDone, completed_at: nowDone ? new Date().toISOString() : null }
+      : t
+    ))
+    await fetch(`/api/tasks/${task.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_completed: nowDone }),
+    })
+    fetchTasks()
   }
+
+  const filtered = tasks.filter(t =>
+    filter === 'all' ? true : filter === 'pending' ? !t.is_completed : t.is_completed
+  )
+
+  const pendingCount = tasks.filter(t => !t.is_completed).length
+  const doneCount = tasks.filter(t => t.is_completed).length
+
+  const canSubmit = form.assigned_by_id && form.team_member_id && form.message_text.trim() && !submitting
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto bg-indigo-50/50">
+        <div className="max-w-3xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
 
-      {/* Mobile tab bar */}
-      <div className="flex md:hidden border-b border-slate-200 bg-white sticky top-0 z-40 shadow-sm">
-        <button onClick={() => setActiveTab('inventory')}
-          className={`flex-1 py-3 text-sm font-bold transition-colors flex items-center justify-center gap-1.5 ${activeTab === 'inventory' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/50' : 'text-slate-500'}`}>
-          ⌚ Inventory
-          <span className={`text-xs px-1.5 py-0.5 rounded-full font-black ${activeTab === 'inventory' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}>{watches.length}</span>
-        </button>
-        <button onClick={() => setActiveTab('tasks')}
-          className={`flex-1 py-3 text-sm font-bold transition-colors flex items-center justify-center gap-1.5 ${activeTab === 'tasks' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/50' : 'text-slate-500'}`}>
-          ✅ Buy Tasks
-        </button>
-        <button onClick={() => setActiveTab('sell')}
-          className={`flex-1 py-3 text-sm font-bold transition-colors flex items-center justify-center gap-1.5 ${activeTab === 'sell' ? 'text-orange-600 border-b-2 border-orange-600 bg-orange-50/50' : 'text-slate-500'}`}>
-          🏷️ Sold
-        </button>
-      </div>
-
-      {/* Main layout — side by side on desktop */}
-      <div className="flex flex-1 overflow-hidden">
-
-        {/* LEFT — Watch Inventory */}
-        <div className={`flex-col w-full md:w-[58%] border-r border-slate-200 overflow-hidden ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
-
-          <div className="px-4 py-4 border-b border-slate-200 bg-white shadow-sm sm:px-6 sm:py-5">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <div>
-                <h2 className="text-xl font-black text-slate-900 sm:text-2xl">Watch Inventory</h2>
-                <p className="text-slate-500 text-xs mt-0.5 font-medium sm:text-sm">{watches.length} active watches in pipeline</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${sseConnected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-emerald-500 live-dot' : 'bg-amber-400'}`} />
-                  {sseConnected ? 'Live' : 'Polling'}
-                </div>
-                <button onClick={() => setShowAddWatch(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all text-sm shadow-sm sm:gap-2 sm:px-5 sm:py-2.5 sm:text-base">
-                  <span className="text-lg leading-none font-black">+</span>
-                  <span className="hidden sm:inline">Add Watch</span>
-                  <span className="sm:hidden">Add</span>
-                </button>
-              </div>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">📌 Admin Tasks</h1>
+              <p className="text-slate-500 text-sm mt-1">Assign custom tasks between team members with optional WhatsApp reminders.</p>
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              {DEPT_ORDER.map(dept => {
-                const cfg = DEPT_CONFIG[dept]
-                return (
-                  <div key={dept} className={`rounded-xl px-2.5 py-2 border-2 ${cfg.bg} ${cfg.border} flex items-center gap-2 shadow-sm sm:rounded-2xl sm:px-4 sm:py-3 sm:gap-3`}>
-                    <span className="text-lg sm:text-2xl">{cfg.icon}</span>
-                    <div>
-                      <div className={`text-[9px] font-bold uppercase tracking-wider ${cfg.color} sm:text-xs`}>{cfg.label}</div>
-                      <div className={`font-black text-xl leading-none ${cfg.countColor} sm:text-2xl`}>{stageCounts[dept]}</div>
+            <button
+              onClick={() => setShowForm(v => !v)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-sm transition-all"
+            >
+              <span className="text-lg leading-none">{showForm ? '×' : '+'}</span>
+              {showForm ? 'Cancel' : 'Assign Task'}
+            </button>
+          </div>
+
+          {showForm && (
+          <section className="bg-white rounded-2xl border-2 border-slate-200 p-5 mb-6 shadow-sm">
+            <h2 className="text-base font-black text-slate-900 mb-5">Assign New Task</h2>
+            <form onSubmit={assignTask} className="flex flex-col gap-5">
+
+              <PersonGrid
+                members={members}
+                selected={form.assigned_by_id}
+                onSelect={id => setForm(f => ({ ...f, assigned_by_id: id }))}
+                label="Assigned By (Who is giving the task)"
+              />
+
+              <div className="flex items-center gap-3 text-slate-400">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-lg">↓</span>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+
+              <PersonGrid
+                members={members}
+                selected={form.team_member_id}
+                onSelect={id => setForm(f => ({ ...f, team_member_id: id }))}
+                label="Assigned To (Who will do the task)"
+              />
+
+              <div>
+                <label className="text-xs text-slate-500 block mb-2 font-semibold uppercase tracking-wide">Task Description</label>
+                <textarea
+                  value={form.message_text}
+                  onChange={e => setForm(f => ({ ...f, message_text: e.target.value }))}
+                  placeholder="Describe the task..."
+                  rows={3}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition-colors resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-500 block mb-2 font-semibold uppercase tracking-wide">Reminder Interval</label>
+                <div className="flex flex-wrap gap-2">
+                  {REMINDER_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, reminder_interval_minutes: opt.value }))}
+                      className={`px-3 py-1.5 rounded-xl border text-sm font-semibold transition-all ${
+                        form.reminder_interval_minutes === opt.value
+                          ? 'bg-violet-600 border-violet-600 text-white shadow-sm'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-violet-300 hover:bg-violet-50'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={!canSubmit}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-colors disabled:opacity-40 shadow-sm"
+              >
+                {submitting ? 'Assigning…' : '+ Assign Task'}
+              </button>
+            </form>
+          </section>
+          )}
+
+          <div className="flex gap-2 mb-4">
+            {([['all', 'All', tasks.length], ['pending', 'Pending', pendingCount], ['done', 'Done', doneCount]] as const).map(([val, label, count]) => (
+              <button
+                key={val}
+                onClick={() => setFilter(val)}
+                className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all flex items-center gap-1.5 ${
+                  filter === val
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'
+                }`}
+              >
+                {label}
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-black ${filter === val ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                  {count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {loading ? (
+            <div className="text-center py-12 text-slate-400 font-medium">Loading tasks…</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12 text-slate-400">
+              <div className="text-4xl mb-3">📋</div>
+              <p className="font-semibold text-slate-500">No {filter !== 'all' ? filter : ''} tasks yet</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {filtered.map(task => (
+                <div key={task.id} className={`bg-white rounded-2xl border-2 shadow-sm transition-all ${task.is_completed ? 'border-emerald-200' : 'border-slate-200'}`}>
+                  <div className="p-4">
+                    <div className="flex items-start gap-3">
+
+                      <button
+                        onClick={() => toggleComplete(task)}
+                        className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                          task.is_completed
+                            ? 'bg-emerald-500 border-emerald-500 text-white'
+                            : 'border-slate-300 hover:border-emerald-400 bg-white'
+                        }`}
+                      >
+                        {task.is_completed && (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </button>
+
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-semibold leading-snug mb-2 ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+                          {task.message_text}
+                        </p>
+
+                        <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                          {task.assigned_by && (
+                            <>
+                              <div className="flex items-center gap-1.5">
+                                <Avatar member={task.assigned_by} size="sm" />
+                                <span className="text-xs font-semibold text-slate-600">{task.assigned_by.name}</span>
+                              </div>
+                              <span className="text-slate-300 text-xs">→</span>
+                            </>
+                          )}
+                          <div className="flex items-center gap-1.5">
+                            <Avatar member={task.team_member} size="sm" />
+                            <span className="text-xs font-semibold text-slate-700">{task.team_member.name}</span>
+                          </div>
+                          <ReminderBadge minutes={task.reminder_interval_minutes} />
+                          <span className="text-xs text-slate-400 ml-auto">{formatTime(task.created_at)}</span>
+                        </div>
+
+                        {task.is_completed && task.completed_at && (
+                          <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5 border border-emerald-200">
+                            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span className="font-semibold">Completed by {task.team_member.name}</span>
+                            <span className="text-emerald-500">· {formatTime(task.completed_at)}</span>
+                            {task.estimated_minutes && (
+                              <span className="ml-1 text-emerald-400">· ~{task.estimated_minutes} min</span>
+                            )}
+                          </div>
+                        )}
+
+                        {!task.is_completed && task.estimated_minutes && (
+                          <div className="flex items-center gap-1 text-xs text-slate-500 mt-1.5">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Est. {task.estimated_minutes} min</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-3 bg-indigo-50/50 sm:p-5">
-            {watches.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-4">
-                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-sm border border-slate-200">
-                  <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
                 </div>
-                <p className="text-base font-semibold text-slate-500">No watches in inventory</p>
-                <button onClick={() => setShowAddWatch(true)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-colors shadow-sm">
-                  + Add your first watch
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
-                {watches.map(watch => (
-                  <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} onTaskDone={handleTaskDone} />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* RIGHT — Watch Tasks */}
-        <div className={`flex-col w-full md:w-[42%] overflow-hidden ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
-
-          <div className="flex items-center justify-between px-4 py-4 border-b border-slate-200 bg-white shadow-sm sm:px-6 sm:py-5">
-            <div>
-              <h2 className="text-xl font-black text-slate-900 sm:text-2xl">Watch Tasks</h2>
-              <p className="text-slate-500 text-xs mt-0.5 font-medium sm:text-sm">
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-              </p>
+              ))}
             </div>
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${sseConnected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-emerald-500 live-dot' : 'bg-amber-400'}`} />
-              {sseConnected ? 'Live' : 'Polling'}
-            </div>
-          </div>
-
-          {/* Buy / Sell tab toggle */}
-          <div className="flex border-b border-slate-200 bg-white px-4 gap-1 pt-2">
-            <button
-              onClick={() => { setTaskTab('buy'); setActiveTab('tasks') }}
-              className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-colors border-b-2 ${taskTab === 'buy' ? 'border-indigo-500 text-indigo-700 bg-indigo-50/60' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
-              🛒 Buy Tasks
-            </button>
-            <button
-              onClick={() => { setTaskTab('sell'); setActiveTab('sell') }}
-              className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-colors border-b-2 ${taskTab === 'sell' ? 'border-orange-500 text-orange-700 bg-orange-50/60' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
-              🏷️ Sold Tasks
-            </button>
-          </div>
-
-          {taskTab === 'buy' ? (
-            <AutoScrollList className="flex-1 bg-indigo-50/30" speedPxPerSec={40}>
-              <WatchTaskPanel />
-            </AutoScrollList>
-          ) : (
-            <AutoScrollList className="flex-1 bg-orange-50/20" speedPxPerSec={40}>
-              <WatchSellTaskPanel />
-            </AutoScrollList>
           )}
+
+          <div className="h-8" />
         </div>
       </div>
-
-      {showAddWatch && (
-        <AddWatchModal onClose={() => setShowAddWatch(false)} onAdded={fetchWatches} />
-      )}
-
-      {selectedWatch && (
-        <WatchDetailModal
-          watch={selectedWatch as WatchDetail}
-          onClose={() => setSelectedWatch(null)}
-          onUpdated={() => { fetchWatches(); setSelectedWatch(null) }}
-        />
-      )}
     </div>
   )
 }
