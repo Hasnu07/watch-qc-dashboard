@@ -3,9 +3,10 @@ import { prisma } from '@/lib/prisma'
 import { emitWatchEvent } from '@/lib/events'
 import { createWatchTasks } from '@/lib/watch-tasks'
 import { createWatchSellTasks } from '@/lib/sell-tasks'
+import { parseWhatsAppWatch, type ParsedWatch } from '@/lib/parse-whatsapp-watch'
 
-// Ring buffer of recently-seen group chats so the user can find their group's
-// chat ID from the Settings UI. Keyed by chatId, stores the most recent name.
+// In-memory ring buffer of recently-seen group chats so the user can find
+// their group's name/ID from the Settings UI.
 type RecentGroup = { chatId: string; chatName: string; lastSeenAt: number }
 const recentGroups = new Map<string, RecentGroup>()
 
@@ -13,104 +14,116 @@ export function getRecentGroups(): RecentGroup[] {
   return Array.from(recentGroups.values()).sort((a, b) => b.lastSeenAt - a.lastSeenAt).slice(0, 20)
 }
 
-interface ParsedWatch {
-  should_import?: boolean
-  type?: 'BUY' | 'SELL' | null
-  brand?: string | null
-  model?: string | null
-  ref_no?: string | null
-  stock_no?: string | null
-  bought_from?: string | null
-  sold_to?: string | null
-  price?: number | null
-  currency?: 'USD' | 'GBP' | 'EUR' | 'AED' | 'HKD' | null
-  payment_status?: 'PAID' | 'PARTIAL' | 'NOT_PAID' | null
-  case_material?: string | null
-  dial_colour?: string | null
-  bracelet?: string | null
-  notes?: string | null
+// In-memory log of webhook hits for diagnostic purposes. Helps the user see
+// "is the bot even forwarding anything to me?" — visible in Settings.
+type WebhookHit = {
+  ts: number
+  type: string
+  chatId: string
+  chatName: string
+  msgType: string
+  hasImage: boolean
+  caption: string
+  outcome: string
+  watchId?: number
+}
+const recentHits: WebhookHit[] = []
+const MAX_HITS = 25
+
+function logHit(hit: WebhookHit) {
+  recentHits.unshift(hit)
+  if (recentHits.length > MAX_HITS) recentHits.length = MAX_HITS
+  console.log(`[Webhook] ${hit.outcome}: chatId=${hit.chatId} chat="${hit.chatName}" msgType=${hit.msgType} image=${hit.hasImage} caption="${hit.caption.slice(0, 80)}"`)
 }
 
-async function parseCaption(caption: string, origin: string): Promise<ParsedWatch> {
-  try {
-    const res = await fetch(`${origin}/api/ai/parse-whatsapp-watch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: caption }),
-    })
-    if (!res.ok) return {}
-    return await res.json()
-  } catch (err) {
-    console.error('[Webhook] AI parse failed:', err)
-    return {}
-  }
+export function getRecentHits(): WebhookHit[] {
+  return recentHits.slice()
 }
 
 export async function POST(req: NextRequest) {
+  let body: Record<string, unknown> = {}
   try {
-    const body = await req.json()
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ ok: true })
+  }
 
-    if (body.typeWebhook !== 'incomingMessageReceived') {
+  try {
+    // Bare-minimum acknowledgement log so we can confirm hits are arriving
+    const typeWebhook = String(body.typeWebhook || 'unknown')
+
+    if (typeWebhook !== 'incomingMessageReceived') {
+      // Status callbacks (delivery receipts, etc.) — silently ack
       return NextResponse.json({ ok: true })
     }
 
-    const chatId: string = body.senderData?.chatId || ''
-    const chatName: string = body.senderData?.chatName || ''
+    type SenderData = { chatId?: string; chatName?: string; sender?: string; senderName?: string }
+    type FileMessageData = { downloadUrl?: string; caption?: string; fileName?: string }
+    type MessageData = {
+      typeMessage?: string
+      fileMessageData?: FileMessageData
+      textMessageData?: { textMessage?: string }
+      extendedTextMessageData?: { text?: string }
+    }
+    const senderData = (body.senderData as SenderData | undefined) || {}
+    const msg = (body.messageData as MessageData | undefined) || {}
+    const chatId: string = senderData.chatId || ''
+    const chatName: string = senderData.chatName || ''
     const isGroup = chatId.endsWith('@g.us')
+    const msgType: string = msg.typeMessage || ''
+    const file = msg.fileMessageData || {}
+    const imageUrl: string = msgType === 'imageMessage' ? (file.downloadUrl || '') : ''
+    const caption: string =
+      (file.caption as string) ||
+      (msg.textMessageData?.textMessage as string) ||
+      (msg.extendedTextMessageData?.text as string) ||
+      ''
 
-    // Track recent group chats so the user can find their group's name
+    // Track every group we see, even if it's not the configured one
     if (isGroup && chatName) {
       recentGroups.set(chatId, { chatId, chatName, lastSeenAt: Date.now() })
     }
 
-    // Look up the configured stock-photos group — ID takes precedence over name.
+    const baseHit: WebhookHit = {
+      ts: Date.now(), type: typeWebhook, chatId, chatName,
+      msgType, hasImage: !!imageUrl, caption, outcome: '',
+    }
+
+    if (!isGroup) {
+      logHit({ ...baseHit, outcome: 'IGNORED: not a group chat' })
+      return NextResponse.json({ ok: true })
+    }
+
+    // Configured target — ID takes precedence over name
     const [idSetting, nameSetting] = await Promise.all([
       prisma.setting.findUnique({ where: { key: 'whatsapp_stock_group_id' } }),
       prisma.setting.findUnique({ where: { key: 'whatsapp_stock_group_name' } }),
     ])
-    // Accept either bare numeric form ("120363...") or full form ("120363...@g.us").
     const rawId = (idSetting?.value || '').trim()
     const targetId = rawId ? (rawId.includes('@') ? rawId : `${rawId}@g.us`) : ''
     const targetName = (nameSetting?.value || '').trim()
 
-    // Match by ID if set; otherwise fall back to name match.
     const matchesById = !!targetId && chatId === targetId
     const matchesByName = !targetId && !!targetName && chatName.trim() === targetName
 
-    if (!isGroup || (!matchesById && !matchesByName)) {
-      console.log(`[Webhook] Ignored — chatId="${chatId}" chat="${chatName}" target_id="${targetId}" target_name="${targetName}"`)
+    if (!matchesById && !matchesByName) {
+      logHit({ ...baseHit, outcome: `IGNORED: wrong group (target_id="${targetId}", target_name="${targetName}")` })
       return NextResponse.json({ ok: true })
     }
 
-    const msg = body.messageData
-    const typeMessage: string = msg?.typeMessage || ''
-
-    // Pull whatever text and image are present — both, either, or just one is fine.
-    // Image-bearing types come through with fileMessageData; plain text comes through
-    // textMessageData or extendedTextMessageData.
-    const file = msg?.fileMessageData || {}
-    const imageUrl: string = typeMessage === 'imageMessage' ? (file.downloadUrl || '') : ''
-    const caption: string =
-      (file.caption as string) ||
-      (msg?.textMessageData?.textMessage as string) ||
-      (msg?.extendedTextMessageData?.text as string) ||
-      ''
-
-    // Need *something* — either an image to store, or text we can parse.
     if (!imageUrl && !caption.trim()) {
-      console.log(`[Webhook] Group msg type=${typeMessage} had no image and no text — skipping`)
+      logHit({ ...baseHit, outcome: 'SKIPPED: no image and no text' })
       return NextResponse.json({ ok: true })
     }
 
-    // Use AI to parse the caption/text into structured fields
-    const origin = new URL(req.url).origin
-    const parsed = caption.trim() ? await parseCaption(caption, origin) : {}
-
-    // Skip pure chatter / status updates that the AI flagged as non-transactions.
-    // Allow imports for image-only messages even if there's no caption.
-    if (caption.trim() && parsed.should_import === false) {
-      console.log(`[Webhook] AI flagged as non-transaction — skipping: "${caption.slice(0, 60)}"`)
-      return NextResponse.json({ ok: true, skipped: 'not_a_transaction' })
+    // Parse caption directly via the AI lib (no self-fetch — that fails on Render)
+    let parsed: ParsedWatch = {}
+    if (caption.trim()) {
+      parsed = await parseWhatsAppWatch(caption)
+      if (parsed.should_import === false) {
+        logHit({ ...baseHit, outcome: 'SKIPPED: AI flagged as non-transaction' })
+        return NextResponse.json({ ok: true, skipped: 'not_a_transaction' })
+      }
     }
 
     const watchType: 'BUY' | 'SELL' = parsed.type === 'SELL' ? 'SELL' : 'BUY'
@@ -135,8 +148,6 @@ export async function POST(req: NextRequest) {
         dial_colour: parsed.dial_colour || null,
         bracelet: parsed.bracelet || null,
         currency,
-        // For BUY: stash the purchase price in purchase_price (native currency).
-        // For SELL: the price is the sale value — put it in website_price.
         purchase_price: watchType === 'BUY' && price > 0 ? price : null,
         stock_status: 'STOCK',
         watch_type: watchType,
@@ -149,19 +160,22 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Create the right phase tasks based on detected type
     if (watchType === 'SELL') {
       createWatchSellTasks(watch.id, watch.name).catch(console.error)
     } else {
       createWatchTasks(watch.id, watch.name).catch(console.error)
     }
-
     emitWatchEvent({ type: 'new_watch', watchId: watch.id })
-    console.log(`[Webhook] ✓ Auto-imported ${watchType} watch #${watch.id} "${name}" from group "${chatName}" ${imageUrl ? '[with image]' : '[text-only]'}`)
 
+    logHit({ ...baseHit, outcome: `✓ IMPORTED as ${watchType} watch #${watch.id} "${name}"`, watchId: watch.id })
     return NextResponse.json({ ok: true, imported: watch.id })
   } catch (err) {
     console.error('[Webhook] handler error:', err)
+    logHit({
+      ts: Date.now(), type: 'error', chatId: '', chatName: '',
+      msgType: '', hasImage: false, caption: '',
+      outcome: `ERROR: ${err instanceof Error ? err.message : String(err)}`,
+    })
     return NextResponse.json({ ok: true })
   }
 }

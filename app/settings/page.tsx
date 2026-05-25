@@ -27,6 +27,18 @@ interface RecentGroup {
   lastSeenAt: number
 }
 
+interface WebhookHit {
+  ts: number
+  type: string
+  chatId: string
+  chatName: string
+  msgType: string
+  hasImage: boolean
+  caption: string
+  outcome: string
+  watchId?: number
+}
+
 const TASK_DEFAULT_ROWS = [
   { dept: 'ACCOUNTING' as Department, items: [{ key: 'ACCOUNTING_MARK_PAYMENT', label: 'Mark Payment Status' }] },
   { dept: 'SALES' as Department, items: [
@@ -85,6 +97,8 @@ export default function SettingsPage() {
   })
   const [recentGroups, setRecentGroups] = useState<RecentGroup[]>([])
   const [loadingGroups, setLoadingGroups] = useState(false)
+  const [recentHits, setRecentHits] = useState<WebhookHit[]>([])
+  const [loadingHits, setLoadingHits] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ successCount: number; total: number; report: TestResult[] } | null>(null)
   const [testError, setTestError] = useState('')
@@ -125,6 +139,14 @@ export default function SettingsPage() {
       const res = await fetch('/api/whatsapp/recent-groups')
       if (res.ok) setRecentGroups(await res.json())
     } finally { setLoadingGroups(false) }
+  }
+
+  const fetchRecentHits = async () => {
+    setLoadingHits(true)
+    try {
+      const res = await fetch('/api/whatsapp/recent-activity')
+      if (res.ok) setRecentHits(await res.json())
+    } finally { setLoadingHits(false) }
   }
 
   const fetchTemplates = useCallback(async () => {
@@ -382,6 +404,47 @@ export default function SettingsPage() {
                       <div className="font-medium">{g.chatName} {isSelected && <span className="text-[10px] ml-1">✓ active</span>}</div>
                       <div className="text-[10px] text-slate-400 font-mono">{g.chatId}</div>
                     </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Recent webhook activity — diagnostic panel */}
+          <div className="border-t border-slate-100 pt-4 mt-2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-slate-500 font-bold uppercase tracking-wide">Recent webhook activity</span>
+              <button type="button" onClick={fetchRecentHits} disabled={loadingHits}
+                className="text-xs px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors disabled:opacity-50">
+                {loadingHits ? '...' : '↻ Refresh'}
+              </button>
+            </div>
+            {recentHits.length === 0 ? (
+              <p className="text-xs text-slate-400 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
+                Nothing logged yet. If you just sent a message in the group and see nothing here after Refresh, the webhook URL probably isn&apos;t configured in your GreenAPI dashboard. Set it to <code className="font-mono text-[10px]">/api/webhook/greenapi</code> on this domain.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto">
+                {recentHits.map((h, i) => {
+                  const isOk = h.outcome.startsWith('✓')
+                  const isErr = h.outcome.startsWith('ERROR')
+                  return (
+                    <div key={i} className={`px-3 py-2 rounded-lg border text-xs ${
+                      isOk ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : isErr ? 'bg-red-50 border-red-200 text-red-800'
+                      : 'bg-slate-50 border-slate-100 text-slate-700'
+                    }`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold truncate">{h.outcome}</span>
+                        <span className="text-[10px] text-slate-400 flex-shrink-0 font-mono">{new Date(h.ts).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                        {h.chatName || '(no name)'} · {h.msgType || 'no type'}{h.hasImage ? ' · 📷' : ''}
+                      </div>
+                      {h.caption && (
+                        <div className="text-[10px] text-slate-500 mt-0.5 truncate italic">&ldquo;{h.caption.slice(0, 100)}&rdquo;</div>
+                      )}
+                    </div>
                   )
                 })}
               </div>
