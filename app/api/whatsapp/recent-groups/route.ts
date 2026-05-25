@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getRecentGroups } from '@/app/api/webhook/greenapi/route'
+import { getRecentGroups } from '@/lib/webhook-activity'
 
 export const dynamic = 'force-dynamic'
 

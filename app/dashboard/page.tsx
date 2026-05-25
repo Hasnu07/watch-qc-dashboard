@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import WatchCard from '@/components/WatchCard'
 import AddWatchModal from '@/components/AddWatchModal'
+import PasteMessageModal from '@/components/PasteMessageModal'
 import WatchDetailModal, { type WatchDetail } from '@/components/WatchDetailModal'
 import WatchTaskPanel from '@/components/WatchTaskPanel'
 import WatchSellTaskPanel from '@/components/WatchSellTaskPanel'
@@ -62,6 +63,7 @@ const DEPT_ORDER: Department[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
 export default function DashboardPage() {
   const [watches, setWatches] = useState<Watch[]>([])
   const [showAddWatch, setShowAddWatch] = useState(false)
+  const [showPasteMessage, setShowPasteMessage] = useState(false)
   const [selectedWatch, setSelectedWatch] = useState<Watch | null>(null)
   const [sseConnected, setSseConnected] = useState(false)
   const [activeTab, setActiveTab] = useState<'inventory' | 'tasks' | 'sell'>('inventory')
@@ -155,6 +157,12 @@ export default function DashboardPage() {
                   <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-emerald-500 live-dot' : 'bg-amber-400'}`} />
                   {sseConnected ? 'Live' : 'Polling'}
                 </div>
+                <button onClick={() => setShowPasteMessage(true)}
+                  title="Paste a WhatsApp message — AI will parse and import it"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all text-sm shadow-sm sm:px-4 sm:py-2.5">
+                  <span className="text-base">📋</span>
+                  <span className="hidden sm:inline">Paste</span>
+                </button>
                 <button onClick={() => setShowAddWatch(true)}
                   className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all text-sm shadow-sm sm:gap-2 sm:px-5 sm:py-2.5 sm:text-base">
                   <span className="text-lg leading-none font-black">+</span>
@@ -246,6 +254,10 @@ export default function DashboardPage() {
 
       {showAddWatch && (
         <AddWatchModal onClose={() => setShowAddWatch(false)} onAdded={fetchWatches} />
+      )}
+
+      {showPasteMessage && (
+        <PasteMessageModal onClose={() => setShowPasteMessage(false)} onImported={fetchWatches} />
       )}
 
       {selectedWatch && (
