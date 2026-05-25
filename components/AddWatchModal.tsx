@@ -16,6 +16,7 @@ interface WatchForm {
   case_material: string; dial_colour: string; bracelet: string
   stock_status: 'STOCK' | 'INCOMING'; origin: string; image_url: string
   website_price: string; b2b_price: string
+  watch_type: 'BUY_SELL' | 'BUY_ONLY'
 }
 
 interface PaymentForm {
@@ -37,6 +38,7 @@ const emptyWatch: WatchForm = {
   case_material: '', dial_colour: '', bracelet: '',
   stock_status: 'STOCK', origin: '', image_url: '',
   website_price: '', b2b_price: '',
+  watch_type: 'BUY_SELL',
 }
 
 const emptyPayment: PaymentForm = {
@@ -134,6 +136,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...watch,
+          watch_type: watch.watch_type,
           stock_no: watch.stock_no || null,
           purchase_price: watch.purchase_price ? parseFloat(watch.purchase_price) : null,
           convert_rate: watch.convert_rate ? parseFloat(watch.convert_rate) : null,
@@ -224,6 +227,37 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
           {/* ─── STEP 1: WATCH DETAILS ─── */}
           {step === 1 && (
             <>
+              {/* Watch Type */}
+              <div className="mb-5">
+                <p className="text-xs uppercase tracking-widest text-violet-600 font-black mb-3 flex items-center gap-2">
+                  <span className="text-base">🏷️</span> Watch Type
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button type="button"
+                    onClick={() => setW('watch_type', 'BUY_SELL')}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                      watch.watch_type === 'BUY_SELL'
+                        ? 'bg-indigo-50 border-indigo-400 shadow-sm'
+                        : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                    }`}>
+                    <div className={`text-2xl mb-2 ${watch.watch_type === 'BUY_SELL' ? '' : 'opacity-30'}`}>🔄</div>
+                    <div className={`text-sm font-black ${watch.watch_type === 'BUY_SELL' ? 'text-indigo-700' : 'text-slate-500'}`}>Buy &amp; Sell</div>
+                    <div className="text-xs text-slate-400 mt-0.5">Bought to resell — sell tasks created when sold</div>
+                  </button>
+                  <button type="button"
+                    onClick={() => setW('watch_type', 'BUY_ONLY')}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                      watch.watch_type === 'BUY_ONLY'
+                        ? 'bg-slate-100 border-slate-400 shadow-sm'
+                        : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                    }`}>
+                    <div className={`text-2xl mb-2 ${watch.watch_type === 'BUY_ONLY' ? '' : 'opacity-30'}`}>📦</div>
+                    <div className={`text-sm font-black ${watch.watch_type === 'BUY_ONLY' ? 'text-slate-700' : 'text-slate-500'}`}>Buy Only</div>
+                    <div className="text-xs text-slate-400 mt-0.5">No sell tasks — consignment or hold</div>
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <p className="text-xs uppercase tracking-widest text-indigo-600 font-black mb-3 flex items-center gap-2">
                   <span className="text-base">🕐</span> Watch Identity

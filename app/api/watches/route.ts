@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
       location_status,
       location_from, location_to,
       transit_pickup_date, transit_carrier, transit_tracking_number,
+      watch_type,
     } = body
 
     if (website_price == null || b2b_price == null) {
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
         bracelet: bracelet || null,
         stock_status: stock_status || 'STOCK',
         origin: origin || null,
+        watch_type: watch_type || 'BUY_SELL',
         name,
         image_url: image_url || null,
         website_price: parseFloat(website_price),

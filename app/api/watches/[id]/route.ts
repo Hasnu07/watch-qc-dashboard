@@ -61,7 +61,7 @@ export async function PATCH(
 
     if (watch.is_sold) {
       emitWatchEvent({ type: 'watch_sold', watchId: watch.id })
-      if (data.is_sold === true) {
+      if (data.is_sold === true && watch.watch_type === 'BUY_SELL') {
         createWatchSellTasks(watch.id, watch.name).catch(console.error)
       }
     } else {
