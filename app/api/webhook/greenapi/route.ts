@@ -75,22 +75,24 @@ export async function POST(req: NextRequest) {
     const msg = body.messageData
     const typeMessage: string = msg?.typeMessage || ''
 
-    // We only auto-import image messages — the picture is the whole point.
-    if (typeMessage !== 'imageMessage') {
-      console.log(`[Webhook] Group msg type=${typeMessage} — skipping (need image)`)
+    // Pull whatever text and image are present — both, either, or just one is fine.
+    // Image-bearing types come through with fileMessageData; plain text comes through
+    // textMessageData or extendedTextMessageData.
+    const file = msg?.fileMessageData || {}
+    const imageUrl: string = typeMessage === 'imageMessage' ? (file.downloadUrl || '') : ''
+    const caption: string =
+      (file.caption as string) ||
+      (msg?.textMessageData?.textMessage as string) ||
+      (msg?.extendedTextMessageData?.text as string) ||
+      ''
+
+    // Need *something* — either an image to store, or text we can parse.
+    if (!imageUrl && !caption.trim()) {
+      console.log(`[Webhook] Group msg type=${typeMessage} had no image and no text — skipping`)
       return NextResponse.json({ ok: true })
     }
 
-    const file = msg.fileMessageData || {}
-    const imageUrl: string = file.downloadUrl || ''
-    const caption: string = file.caption || ''
-
-    if (!imageUrl) {
-      console.log('[Webhook] Image message had no downloadUrl — skipping')
-      return NextResponse.json({ ok: true })
-    }
-
-    // Use AI to parse the caption into structured fields
+    // Use AI to parse the caption/text into structured fields
     const origin = new URL(req.url).origin
     const parsed = caption.trim() ? await parseCaption(caption, origin) : {}
     const watchType: 'BUY' | 'SELL' = parsed.type === 'SELL' ? 'SELL' : 'BUY'
@@ -115,7 +117,7 @@ export async function POST(req: NextRequest) {
         stock_status: 'STOCK',
         watch_type: watchType,
         name,
-        image_url: imageUrl,
+        image_url: imageUrl || null,
         website_price: parsed.website_price ?? 0,
         b2b_price: parsed.b2b_price ?? 0,
         payment_status: 'NOT_PAID',
@@ -131,7 +133,7 @@ export async function POST(req: NextRequest) {
     }
 
     emitWatchEvent({ type: 'new_watch', watchId: watch.id })
-    console.log(`[Webhook] ✓ Auto-imported ${watchType} watch #${watch.id} "${name}" from group "${chatName}"`)
+    console.log(`[Webhook] ✓ Auto-imported ${watchType} watch #${watch.id} "${name}" from group "${chatName}" ${imageUrl ? '[with image]' : '[text-only]'}`)
 
     return NextResponse.json({ ok: true, imported: watch.id })
   } catch (err) {

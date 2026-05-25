@@ -330,8 +330,9 @@ export default function SettingsPage() {
       <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 mb-6 shadow-sm">
         <h2 className="text-xl font-black text-slate-900 mb-1 flex items-center gap-2">📲 WhatsApp Auto-Import</h2>
         <p className="text-slate-500 text-sm mb-5">
-          Any image posted in this group is automatically added to the dashboard. The AI reads the caption to detect
-          brand/model/ref/stock no., and figures out from the caption whether it&apos;s a buy (&ldquo;Seller: …&rdquo;) or sale (&ldquo;Sold to: …&rdquo;).
+          Every message posted in this group — image or text-only — is automatically added to the dashboard. The AI reads
+          the text to detect brand/model/ref/stock no., and figures out whether it&apos;s a buy (&ldquo;Seller: …&rdquo;) or sale
+          (&ldquo;Sold to: …&rdquo;). If a picture is attached it&apos;s saved on the watch; otherwise the watch is created without one.
         </p>
         <div className="flex flex-col gap-3">
           <div>
