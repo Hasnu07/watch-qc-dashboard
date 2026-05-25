@@ -25,6 +25,7 @@ export interface WatchDetail {
   model: string | null
   ref_no: string | null
   serial_no: string | null
+  stock_no: string | null
   watch_date: string | null
   bought_from: string | null
   currency: string
@@ -113,7 +114,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brand: watch.brand, model: watch.model, ref_no: watch.ref_no,
-          serial_no: watch.serial_no, watch_date: watch.watch_date,
+          serial_no: watch.serial_no, stock_no: watch.stock_no, watch_date: watch.watch_date,
           bought_from: watch.bought_from, currency: watch.currency,
           purchase_price: watch.purchase_price, convert_rate: watch.convert_rate,
           case_material: watch.case_material, dial_colour: watch.dial_colour,
@@ -201,7 +202,13 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
             <h2 className="text-xl font-black text-white">
               {watch.brand ? `${watch.brand} ` : ''}{watch.model || watch.name}
             </h2>
-            {watch.ref_no && <p className="text-slate-400 text-xs mt-0.5">Ref. {watch.ref_no}</p>}
+            {(watch.ref_no || watch.stock_no) && (
+              <p className="text-slate-400 text-xs mt-0.5">
+                {watch.ref_no && <>Ref. {watch.ref_no}</>}
+                {watch.ref_no && watch.stock_no && <span className="text-slate-300"> · </span>}
+                {watch.stock_no && <span className="text-slate-700 font-bold">#{watch.stock_no}</span>}
+              </p>
+            )}
           </div>
           <button onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 text-white text-xl leading-none flex items-center justify-center transition-colors font-bold">
@@ -244,6 +251,10 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
               <div>
                 <label className={labelCls}>Serial No.</label>
                 <input type="text" value={watch.serial_no || ''} onChange={e => setW('serial_no', e.target.value || null)} placeholder="e.g. 5X123456" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Stock No.</label>
+                <input type="text" value={watch.stock_no || ''} onChange={e => setW('stock_no', e.target.value || null)} placeholder="e.g. STK-001" className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Watch Date / Year</label>

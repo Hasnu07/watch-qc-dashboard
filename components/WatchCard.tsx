@@ -17,6 +17,7 @@ interface Watch {
   model: string | null
   ref_no: string | null
   serial_no: string | null
+  stock_no: string | null
   watch_date: string | null
   bought_from: string | null
   currency: string
@@ -182,6 +183,14 @@ export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardP
             <span className="text-xs font-medium">No image</span>
           </div>
         )}
+        {/* Stock No badge — top-left, prominent identifier */}
+        {watch.stock_no && (
+          <div className="absolute top-2 left-2">
+            <span className="text-xs font-black px-2.5 py-1 rounded-md shadow-sm border bg-slate-900 text-white border-slate-900 tracking-wide">
+              # {watch.stock_no}
+            </span>
+          </div>
+        )}
         {/* Stock status pill — only for Buy watches (irrelevant for Sell) */}
         {!isSell && (
           <div className="absolute top-2 right-2">
@@ -216,9 +225,13 @@ export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardP
           <h3 className="text-slate-900 font-bold text-base leading-tight">
             {watch.model || watch.name}
           </h3>
-          {watch.ref_no && (
+          {(watch.ref_no || watch.stock_no || watch.watch_date) && (
             <p className="text-slate-400 text-xs mt-0.5 font-medium">
-              Ref. {watch.ref_no}{watch.watch_date ? <span className="text-slate-300"> · {watch.watch_date}</span> : ''}
+              {watch.ref_no && <>Ref. {watch.ref_no}</>}
+              {watch.ref_no && watch.stock_no && <span className="text-slate-300"> · </span>}
+              {watch.stock_no && <span className="text-slate-700 font-bold">#{watch.stock_no}</span>}
+              {(watch.ref_no || watch.stock_no) && watch.watch_date && <span className="text-slate-300"> · </span>}
+              {watch.watch_date && <>{watch.watch_date}</>}
             </p>
           )}
         </div>

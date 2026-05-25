@@ -23,6 +23,7 @@ interface Watch {
   model: string | null
   ref_no: string | null
   serial_no: string | null
+  stock_no: string | null
   watch_date: string | null
   bought_from: string | null
   currency: string

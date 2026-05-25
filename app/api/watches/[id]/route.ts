@@ -18,7 +18,7 @@ export async function PATCH(
 
     // Identity / purchase / details
     const editableStrings = [
-      'brand','model','ref_no','serial_no','watch_date',
+      'brand','model','ref_no','serial_no','stock_no','watch_date',
       'bought_from','currency','case_material','dial_colour',
       'bracelet','stock_status','origin','image_url',
     ]
