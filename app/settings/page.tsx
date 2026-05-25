@@ -42,6 +42,7 @@ interface TaskTemplate {
   phase: string
   is_builtin: boolean
   task_type_key: string | null
+  default_assignee: string | null
 }
 
 interface TestResult {
@@ -84,8 +85,8 @@ export default function SettingsPage() {
   const [memberError, setMemberError] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
   const [templates, setTemplates] = useState<TaskTemplate[]>([])
-  const [newBuyTask, setNewBuyTask] = useState({ label: '', department: 'SALES' })
-  const [newSellTask, setNewSellTask] = useState({ label: '', department: 'SALES' })
+  const [newBuyTask, setNewBuyTask] = useState({ label: '', department: 'SALES', default_assignee: '' })
+  const [newSellTask, setNewSellTask] = useState({ label: '', department: 'SALES', default_assignee: '' })
   const [addingTemplate, setAddingTemplate] = useState(false)
 
   const fetchSettings = useCallback(async () => {
@@ -149,11 +150,11 @@ export default function SettingsPage() {
       const res = await fetch('/api/task-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: task.label.trim(), department: task.department, phase }),
+        body: JSON.stringify({ label: task.label.trim(), department: task.department, phase, default_assignee: task.default_assignee || null }),
       })
       if (res.ok) {
-        if (phase === 'BUY') setNewBuyTask({ label: '', department: 'SALES' })
-        else setNewSellTask({ label: '', department: 'SALES' })
+        if (phase === 'BUY') setNewBuyTask({ label: '', department: 'SALES', default_assignee: '' })
+        else setNewSellTask({ label: '', department: 'SALES', default_assignee: '' })
         fetchTemplates()
       }
     } finally { setAddingTemplate(false) }
@@ -161,6 +162,15 @@ export default function SettingsPage() {
 
   const deleteTemplate = async (id: number) => {
     await fetch(`/api/task-templates/${id}`, { method: 'DELETE' })
+    fetchTemplates()
+  }
+
+  const updateTemplateAssignee = async (id: number, assignee: string) => {
+    await fetch(`/api/task-templates/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ default_assignee: assignee || null }),
+    })
     fetchTemplates()
   }
 
@@ -349,7 +359,7 @@ export default function SettingsPage() {
       {/* Task Management */}
       <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 mb-6 shadow-sm">
         <h2 className="text-xl font-black text-slate-900 mb-1 flex items-center gap-2">📝 Task Management</h2>
-        <p className="text-slate-500 text-sm mb-5">Configure tasks created when a watch is added (Buy) or sold (Sell).</p>
+        <p className="text-slate-500 text-sm mb-5">Configure tasks created when a watch is added (Buy) or sold (Sell). Set who each task is assigned to by default.</p>
 
         {/* Buy Tasks */}
         <div className="mb-6">
@@ -364,15 +374,25 @@ export default function SettingsPage() {
                 <span className="text-slate-500 text-xs w-20 flex-shrink-0">{
                   t.department === 'ACCOUNTING' ? '💰' : t.department === 'SALES' ? '🤝' : '📦'
                 } {t.department}</span>
-                <span className="text-slate-800 text-sm flex-1">{t.label}</span>
+                <span className="text-slate-800 text-sm flex-1 min-w-0">{t.label}</span>
+                <select
+                  value={t.default_assignee || ''}
+                  onChange={e => updateTemplateAssignee(t.id, e.target.value)}
+                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-700 focus:outline-none focus:border-blue-400 w-28 flex-shrink-0"
+                >
+                  <option value="">No assignee</option>
+                  {members.map(m => (
+                    <option key={m.id} value={m.name}>{m.name}</option>
+                  ))}
+                </select>
                 {t.is_builtin
-                  ? <span className="text-[10px] text-slate-400 border border-slate-200 rounded-full px-2 py-0.5">Built-in</span>
-                  : <button onClick={() => deleteTemplate(t.id)} className="text-slate-300 hover:text-red-500 text-sm transition-colors">✕</button>
+                  ? <span className="text-[10px] text-slate-400 border border-slate-200 rounded-full px-2 py-0.5 flex-shrink-0">Built-in</span>
+                  : <button onClick={() => deleteTemplate(t.id)} className="text-slate-300 hover:text-red-500 text-sm transition-colors flex-shrink-0">✕</button>
                 }
               </div>
             ))}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap sm:flex-nowrap">
             <select value={newBuyTask.department} onChange={e => setNewBuyTask(p => ({ ...p, department: e.target.value }))}
               className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-400">
               <option value="ACCOUNTING">💰 Accounting</option>
@@ -381,7 +401,14 @@ export default function SettingsPage() {
             </select>
             <input type="text" value={newBuyTask.label} onChange={e => setNewBuyTask(p => ({ ...p, label: e.target.value }))}
               placeholder="Task name..." onKeyDown={e => e.key === 'Enter' && addTemplate('BUY')}
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-400" />
+              className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-400" />
+            <select value={newBuyTask.default_assignee} onChange={e => setNewBuyTask(p => ({ ...p, default_assignee: e.target.value }))}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-400">
+              <option value="">No assignee</option>
+              {members.map(m => (
+                <option key={m.id} value={m.name}>{m.name}</option>
+              ))}
+            </select>
             <button onClick={() => addTemplate('BUY')} disabled={!newBuyTask.label.trim() || addingTemplate}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Add</button>
           </div>
@@ -400,15 +427,25 @@ export default function SettingsPage() {
                 <span className="text-slate-500 text-xs w-20 flex-shrink-0">{
                   t.department === 'ACCOUNTING' ? '💰' : t.department === 'SALES' ? '🤝' : '📦'
                 } {t.department}</span>
-                <span className="text-slate-800 text-sm flex-1">{t.label}</span>
+                <span className="text-slate-800 text-sm flex-1 min-w-0">{t.label}</span>
+                <select
+                  value={t.default_assignee || ''}
+                  onChange={e => updateTemplateAssignee(t.id, e.target.value)}
+                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-700 focus:outline-none focus:border-orange-400 w-28 flex-shrink-0"
+                >
+                  <option value="">No assignee</option>
+                  {members.map(m => (
+                    <option key={m.id} value={m.name}>{m.name}</option>
+                  ))}
+                </select>
                 {t.is_builtin
-                  ? <span className="text-[10px] text-slate-400 border border-slate-200 rounded-full px-2 py-0.5">Built-in</span>
-                  : <button onClick={() => deleteTemplate(t.id)} className="text-slate-300 hover:text-red-500 text-sm transition-colors">✕</button>
+                  ? <span className="text-[10px] text-slate-400 border border-slate-200 rounded-full px-2 py-0.5 flex-shrink-0">Built-in</span>
+                  : <button onClick={() => deleteTemplate(t.id)} className="text-slate-300 hover:text-red-500 text-sm transition-colors flex-shrink-0">✕</button>
                 }
               </div>
             ))}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap sm:flex-nowrap">
             <select value={newSellTask.department} onChange={e => setNewSellTask(p => ({ ...p, department: e.target.value }))}
               className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-400">
               <option value="ACCOUNTING">💰 Accounting</option>
@@ -417,7 +454,14 @@ export default function SettingsPage() {
             </select>
             <input type="text" value={newSellTask.label} onChange={e => setNewSellTask(p => ({ ...p, label: e.target.value }))}
               placeholder="Task name..." onKeyDown={e => e.key === 'Enter' && addTemplate('SELL')}
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-400" />
+              className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-400" />
+            <select value={newSellTask.default_assignee} onChange={e => setNewSellTask(p => ({ ...p, default_assignee: e.target.value }))}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-400">
+              <option value="">No assignee</option>
+              {members.map(m => (
+                <option key={m.id} value={m.name}>{m.name}</option>
+              ))}
+            </select>
             <button onClick={() => addTemplate('SELL')} disabled={!newSellTask.label.trim() || addingTemplate}
               className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Add</button>
           </div>

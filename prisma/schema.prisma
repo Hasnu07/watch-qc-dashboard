@@ -145,13 +145,14 @@ model Setting {
 }
 
 model TaskTemplate {
-  id            Int      @id @default(autoincrement())
-  label         String
-  department    String
-  phase         String   @default("BUY")
-  task_type_key String?
-  is_locked     Boolean  @default(false)
-  is_builtin    Boolean  @default(false)
-  order         Int      @default(0)
-  created_at    DateTime @default(now())
+  id               Int      @id @default(autoincrement())
+  label            String
+  department       String
+  phase            String   @default("BUY")
+  task_type_key    String?
+  is_locked        Boolean  @default(false)
+  is_builtin       Boolean  @default(false)
+  default_assignee String?
+  order            Int      @default(0)
+  created_at       DateTime @default(now())
 }

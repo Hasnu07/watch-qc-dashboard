@@ -17,13 +17,13 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { label, department, phase } = await req.json()
+    const { label, department, phase, default_assignee } = await req.json()
     if (!label?.trim() || !department || !phase) {
       return NextResponse.json({ error: 'label, department and phase required' }, { status: 400 })
     }
     const maxOrder = await prisma.taskTemplate.aggregate({ where: { phase }, _max: { order: true } })
     const template = await prisma.taskTemplate.create({
-      data: { label: label.trim(), department, phase, is_builtin: false, order: (maxOrder._max.order ?? 0) + 1 },
+      data: { label: label.trim(), department, phase, is_builtin: false, default_assignee: default_assignee || null, order: (maxOrder._max.order ?? 0) + 1 },
     })
     return NextResponse.json(template, { status: 201 })
   } catch (err) {
