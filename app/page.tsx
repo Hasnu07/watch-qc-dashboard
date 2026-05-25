@@ -13,6 +13,9 @@ type Department = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
 type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
 
+type DeptCount = { total: number; completed: number }
+type TaskSummary = Record<'LOGISTICS' | 'ACCOUNTING' | 'SALES', DeptCount>
+
 interface Watch {
   id: number
   name: string
@@ -44,6 +47,7 @@ interface Watch {
   transit_carrier: string | null
   transit_tracking_number: string | null
   received_date: string | null
+  task_summary?: TaskSummary
 }
 
 const DEPT_CONFIG = {
@@ -70,6 +74,18 @@ export default function DashboardPage() {
     } catch (err) { console.error(err) }
   }, [])
 
+  const handleTaskDone = async (id: number) => {
+    // Optimistically remove from the dashboard, then PATCH watch as sold (hides from inventory)
+    setWatches(prev => prev.filter(w => w.id !== id))
+    try {
+      await fetch(`/api/watches/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_sold: true }),
+      })
+    } catch { fetchWatches() }
+  }
+
   useEffect(() => {
     let es: EventSource | null = null
     const connectSSE = () => {
@@ -81,7 +97,7 @@ export default function DashboardPage() {
       es.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
-          if (data.type === 'new_watch' || data.type === 'watch_updated' || data.type === 'watch_sold') fetchWatches()
+          if (['new_watch', 'watch_updated', 'watch_sold', 'task_completed', 'task_updated'].includes(data.type)) fetchWatches()
         } catch { /* ignore pings */ }
       }
       es.onerror = () => {
@@ -181,7 +197,7 @@ export default function DashboardPage() {
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
                 {watches.map(watch => (
-                  <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} />
+                  <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} onTaskDone={handleTaskDone} />
                 ))}
               </div>
             )}

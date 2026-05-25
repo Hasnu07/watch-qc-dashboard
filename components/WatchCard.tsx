@@ -7,6 +7,9 @@ type WatchStage = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
 type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
 
+type DeptCount = { total: number; completed: number }
+type TaskSummary = Record<'LOGISTICS' | 'ACCOUNTING' | 'SALES', DeptCount>
+
 interface Watch {
   id: number
   name: string
@@ -38,11 +41,13 @@ interface Watch {
   transit_carrier: string | null
   transit_tracking_number: string | null
   received_date: string | null
+  task_summary?: TaskSummary
 }
 
 interface WatchCardProps {
   watch: Watch
   onCardClick: (watch: Watch) => void
+  onTaskDone: (id: number) => void
 }
 
 const STAGES: WatchStage[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
@@ -74,9 +79,17 @@ const STAGE_CFG = {
   },
 }
 
-export default function WatchCard({ watch, onCardClick }: WatchCardProps) {
+export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardProps) {
   const cfg = STAGE_CFG[watch.stage]
-  const stageIdx = STAGES.indexOf(watch.stage)
+
+  // Department completion derived from task summary
+  const summary: TaskSummary = watch.task_summary ?? {
+    LOGISTICS: { total: 0, completed: 0 },
+    ACCOUNTING: { total: 0, completed: 0 },
+    SALES: { total: 0, completed: 0 },
+  }
+  const deptDone = (s: WatchStage) => summary[s].total > 0 && summary[s].completed === summary[s].total
+  const allDone = STAGES.every(deptDone)
 
   const tags = [watch.case_material, watch.dial_colour, watch.bracelet].filter(Boolean)
 
@@ -108,30 +121,38 @@ export default function WatchCard({ watch, onCardClick }: WatchCardProps) {
       onClick={() => onCardClick(watch)}
       className={`bg-white rounded-2xl overflow-hidden border-l-4 ${cfg.leftBorder} border border-slate-200 shadow-sm hover:shadow-md transition-all group flex flex-col cursor-pointer`}
     >
-      {/* Pipeline bar */}
+      {/* Pipeline bar — each dot becomes a check when that dept's tasks are all done */}
       <div className="px-4 pt-3 pb-2 bg-slate-50 border-b border-slate-100">
         <div className="flex items-center gap-0.5">
-          {STAGES.map((s, i) => (
-            <div key={s} className="flex items-center flex-1 last:flex-none">
-              <div className={`w-3 h-3 rounded-full flex-shrink-0 ring-2 ring-white transition-colors ${
-                i <= stageIdx ? STAGE_CFG[s].dot : 'bg-slate-300'
-              }`} />
-              {i < STAGES.length - 1 && (
-                <div className={`flex-1 h-1 mx-1 rounded-full transition-colors ${
-                  i < stageIdx ? STAGE_CFG[STAGES[i]].line : 'bg-slate-200'
-                }`} />
-              )}
-            </div>
-          ))}
+          {STAGES.map((s, i) => {
+            const done = deptDone(s)
+            return (
+              <div key={s} className="flex items-center flex-1 last:flex-none">
+                <div className={`w-5 h-5 rounded-full flex-shrink-0 ring-2 ring-white transition-colors flex items-center justify-center ${
+                  done ? STAGE_CFG[s].dot : 'bg-slate-300'
+                }`}>
+                  {done && <span className="text-white text-[10px] font-black leading-none">✓</span>}
+                </div>
+                {i < STAGES.length - 1 && (
+                  <div className={`flex-1 h-1 mx-1 rounded-full transition-colors ${
+                    deptDone(STAGES[i]) ? STAGE_CFG[STAGES[i]].line : 'bg-slate-200'
+                  }`} />
+                )}
+              </div>
+            )
+          })}
         </div>
         <div className="flex justify-between mt-1">
-          {STAGES.map((s, i) => (
-            <span key={s} className={`text-[10px] font-bold tracking-wide ${
-              i <= stageIdx ? STAGE_CFG[s].color : 'text-slate-400'
-            }`}>
-              {STAGE_CFG[s].label.toUpperCase()}
-            </span>
-          ))}
+          {STAGES.map(s => {
+            const done = deptDone(s)
+            return (
+              <span key={s} className={`text-[10px] font-bold tracking-wide ${
+                done ? STAGE_CFG[s].color : 'text-slate-400'
+              }`}>
+                {STAGE_CFG[s].label.toUpperCase()}
+              </span>
+            )
+          })}
         </div>
       </div>
 
@@ -170,17 +191,14 @@ export default function WatchCard({ watch, onCardClick }: WatchCardProps) {
       {/* Info */}
       <div className="p-4 flex flex-col gap-2.5 flex-1">
 
-        {/* Stage + origin badges */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${cfg.badge}`}>
-            {cfg.label}
-          </span>
-          {watch.origin && (
+        {/* Origin only — stage label moved to pipeline checkmarks above */}
+        {watch.origin && (
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[11px] font-medium text-slate-500 px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200">
               {watch.origin}
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Brand + Model */}
         <div>
@@ -223,6 +241,17 @@ export default function WatchCard({ watch, onCardClick }: WatchCardProps) {
             <div className="text-emerald-800 font-black text-base">{formatCurrency(watch.b2b_price)}</div>
           </div>
         </div>
+
+        {/* Task Done — removes the card from the dashboard */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onTaskDone(watch.id) }}
+          className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${
+            allDone
+              ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+              : 'bg-slate-100 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 border border-slate-200'
+          }`}>
+          {allDone ? '✓ Task Done' : '✓ Task Done'}
+        </button>
 
       </div>
     </div>

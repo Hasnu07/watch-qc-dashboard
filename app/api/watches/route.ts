@@ -10,7 +10,33 @@ export async function GET() {
       where: { is_sold: false },
       orderBy: { created_at: 'desc' },
     })
-    return NextResponse.json(watches)
+
+    // Per-watch task completion summary so the card can show dept checkmarks
+    const ids = watches.map(w => w.id)
+    const tasks = ids.length
+      ? await prisma.watchTask.findMany({
+          where: { watch_id: { in: ids }, phase: { not: 'SELL' } },
+          select: { watch_id: true, department: true, is_completed: true },
+        })
+      : []
+
+    type Summary = Record<'LOGISTICS' | 'ACCOUNTING' | 'SALES', { total: number; completed: number }>
+    const blank = (): Summary => ({
+      LOGISTICS: { total: 0, completed: 0 },
+      ACCOUNTING: { total: 0, completed: 0 },
+      SALES: { total: 0, completed: 0 },
+    })
+    const byWatch = new Map<number, Summary>()
+    for (const t of tasks) {
+      if (!byWatch.has(t.watch_id)) byWatch.set(t.watch_id, blank())
+      const s = byWatch.get(t.watch_id)!
+      const dept = t.department as keyof Summary
+      s[dept].total++
+      if (t.is_completed) s[dept].completed++
+    }
+
+    const enriched = watches.map(w => ({ ...w, task_summary: byWatch.get(w.id) ?? blank() }))
+    return NextResponse.json(enriched)
   } catch (err) {
     console.error(err)
     return NextResponse.json({ error: 'Failed to fetch watches' }, { status: 500 })
