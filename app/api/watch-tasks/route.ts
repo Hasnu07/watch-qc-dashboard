@@ -17,15 +17,15 @@ export async function GET(req: NextRequest) {
     const phase = searchParams.get('phase')
     if (phase) {
       where.phase = phase
-      // For sell tasks, show sold watches; for buy tasks, show unsold
+      // SELL tasks only show for visible Sell-type watches; BUY tasks only for visible Buy-type watches.
       if (phase === 'SELL') {
-        where.watch = { is_sold: true }
+        where.watch = { watch_type: 'SELL', is_sold: false }
       } else {
-        where.watch = { is_sold: false }
+        where.watch = { watch_type: { not: 'SELL' }, is_sold: false }
       }
     } else {
-      // Default: buy tasks only (exclude SELL phase, show unsold watches)
-      where.watch = { is_sold: false }
+      // Default: buy tasks only (exclude SELL phase, Buy-type watches that are visible)
+      where.watch = { watch_type: { not: 'SELL' }, is_sold: false }
       where.phase = { not: 'SELL' }
     }
 
