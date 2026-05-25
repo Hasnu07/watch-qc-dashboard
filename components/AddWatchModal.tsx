@@ -113,7 +113,8 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
   }
 
   const validateStep1 = () => {
-    if (watch.currency !== 'USD' && !watch.convert_rate) {
+    // Purchase section is hidden for Sell watches — skip currency validation entirely.
+    if (!isSell && watch.currency !== 'USD' && !watch.convert_rate) {
       setError(`Enter the ${watch.currency} to USD conversion rate.`)
       return false
     }
@@ -310,6 +311,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                 </div>
               </div>
 
+              {!isSell && (
               <div className={sectionCls}>
                 <p className="text-xs uppercase tracking-widest text-amber-600 font-black mb-3 flex items-center gap-2">
                   <span className="text-base">💰</span> Purchase
@@ -352,6 +354,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                   )}
                 </div>
               </div>
+              )}
 
               <div className={sectionCls}>
                 <div className="flex items-center justify-between mb-3">
