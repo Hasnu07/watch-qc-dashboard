@@ -22,7 +22,11 @@ export default function LoginPage() {
         body: JSON.stringify({ username, password }),
       })
       if (res.ok) {
-        router.push('/settings')
+        // Honor the ?next= param so the user returns to where they were heading
+        const params = new URLSearchParams(window.location.search)
+        const next = params.get('next')
+        const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
+        router.push(safeNext)
         router.refresh()
       } else {
         const data = await res.json()
@@ -50,7 +54,7 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm p-6">
-          <h2 className="text-lg font-black text-slate-900 mb-5">Sign in to Settings</h2>
+          <h2 className="text-lg font-black text-slate-900 mb-5">Sign in to continue</h2>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
