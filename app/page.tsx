@@ -70,17 +70,6 @@ export default function DashboardPage() {
     } catch (err) { console.error(err) }
   }, [])
 
-  const markSold = async (id: number) => {
-    setWatches(prev => prev.filter(w => w.id !== id))
-    try {
-      await fetch(`/api/watches/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_sold: true }),
-      })
-    } catch { fetchWatches() }
-  }
-
   useEffect(() => {
     let es: EventSource | null = null
     const connectSSE = () => {
@@ -92,8 +81,7 @@ export default function DashboardPage() {
       es.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
-          if (data.type === 'watch_sold') setWatches(prev => prev.filter(w => w.id !== data.watchId))
-          if (data.type === 'new_watch' || data.type === 'watch_updated') fetchWatches()
+          if (data.type === 'new_watch' || data.type === 'watch_updated' || data.type === 'watch_sold') fetchWatches()
         } catch { /* ignore pings */ }
       }
       es.onerror = () => {
@@ -193,7 +181,7 @@ export default function DashboardPage() {
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
                 {watches.map(watch => (
-                  <WatchCard key={watch.id} watch={watch} onMarkSold={markSold} onCardClick={(w) => setSelectedWatch(w)} />
+                  <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} />
                 ))}
               </div>
             )}

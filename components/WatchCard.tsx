@@ -42,7 +42,6 @@ interface Watch {
 
 interface WatchCardProps {
   watch: Watch
-  onMarkSold: (id: number) => void
   onCardClick: (watch: Watch) => void
 }
 
@@ -75,7 +74,7 @@ const STAGE_CFG = {
   },
 }
 
-export default function WatchCard({ watch, onMarkSold, onCardClick }: WatchCardProps) {
+export default function WatchCard({ watch, onCardClick }: WatchCardProps) {
   const cfg = STAGE_CFG[watch.stage]
   const stageIdx = STAGES.indexOf(watch.stage)
 
@@ -225,12 +224,6 @@ export default function WatchCard({ watch, onMarkSold, onCardClick }: WatchCardP
           </div>
         </div>
 
-        {/* Mark as Sold */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onMarkSold(watch.id) }}
-          className="w-full py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm bg-rose-500 hover:bg-rose-600 text-white">
-          ✓ Mark as Sold
-        </button>
       </div>
     </div>
   )

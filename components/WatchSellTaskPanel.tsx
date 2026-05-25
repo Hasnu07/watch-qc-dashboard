@@ -110,7 +110,7 @@ export default function WatchSellTaskPanel({ className }: { className?: string }
     <div className={`flex flex-col items-center justify-center h-40 text-slate-400 gap-2 ${className}`}>
       <span className="text-4xl">🏷️</span>
       <p className="font-semibold text-lg">No sold watches</p>
-      <p className="text-sm">Sell tasks will appear here when a watch is sold</p>
+      <p className="text-sm">Add a watch as 🏷️ Sell type to see tasks here</p>
     </div>
   )
 
@@ -123,7 +123,7 @@ export default function WatchSellTaskPanel({ className }: { className?: string }
             <span className="text-slate-500 text-sm font-medium">
               {totalPending === 0
                 ? '🎉 All sell tasks complete!'
-                : `${totalPending} pending · ${watchGroups.length} sold watch${watchGroups.length !== 1 ? 'es' : ''}`}
+                : `${totalPending} pending · ${watchGroups.length} sell watch${watchGroups.length !== 1 ? 'es' : ''}`}
             </span>
           </div>
         </div>
@@ -151,7 +151,7 @@ export default function WatchSellTaskPanel({ className }: { className?: string }
               >
                 <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${allDone ? 'bg-emerald-500' : 'bg-orange-500'}`} />
                 <span className={`font-black text-base flex-1 truncate ${allDone ? 'text-emerald-800' : 'text-orange-900'}`}>{watchName}</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200 flex-shrink-0">🏷️ SOLD</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200 flex-shrink-0">🏷️ SELL</span>
                 {allDone
                   ? <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">✓ Done</span>
                   : <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200 flex-shrink-0">{pending} left</span>
