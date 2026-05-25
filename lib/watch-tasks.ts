@@ -26,7 +26,7 @@ export const TASK_LABELS: Record<string, string> = {
   SALES_SET_PRICE: 'Set Price',
   SALES_UPLOAD_DRIVE: 'Upload to Drive',
   SALES_UPLOAD_STOCK_GROUP: 'Upload to Stock Group',
-  SALES_UPDATE_B2B: 'Update B2B Prices',
+  SALES_UPDATE_B2B: 'Research B2B Price',
   LOGISTICS_SET_LOCATION: 'Set Location',
   LOGISTICS_UPDATE_COST: 'Update Logistics Cost',
   LOGISTICS_ACCESSORIES_BOX: 'Box',
