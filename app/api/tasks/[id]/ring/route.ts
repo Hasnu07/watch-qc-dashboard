@@ -1,0 +1,58 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
+
+async function getGreenAPISettings() {
+  const [inst, tok, url] = await Promise.all([
+    prisma.setting.findUnique({ where: { key: 'greenapi_instance_id' } }),
+    prisma.setting.findUnique({ where: { key: 'greenapi_api_token' } }),
+    prisma.setting.findUnique({ where: { key: 'greenapi_api_url' } }),
+  ])
+  if (!inst?.value || !tok?.value) return null
+  return { instanceId: inst.value, token: tok.value, apiUrl: url?.value || 'https://api.green-api.com' }
+}
+
+export async function POST(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const taskId = parseInt(params.id, 10)
+    if (isNaN(taskId)) return NextResponse.json({ error: 'Invalid task id' }, { status: 400 })
+
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: { team_member: true, assigned_by: true },
+    })
+    if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+
+    const settings = await getGreenAPISettings()
+    if (!settings) return NextResponse.json({ error: 'WhatsApp not configured' }, { status: 503 })
+
+    const ringerName = task.assigned_by?.name ?? 'Admin'
+
+    const message =
+      `🔔 You have been ringed by *${ringerName}*\n\n` +
+      `Tell the reason why your task is still on the dashboard.\n\n` +
+      `*"${task.message_text}"*\n\n` +
+      `If your task is done go on:\n` +
+      `🔗 https://qc-dashboard-q907.onrender.com/\n` +
+      `and click the ✅ check mark.\n\n` +
+      `If you had any issues with the task kindly tell the reason.`
+
+    const sent = await sendWhatsAppMessage(
+      settings.instanceId,
+      settings.token,
+      toChatId(task.team_member.whatsapp_number),
+      message,
+      settings.apiUrl
+    )
+
+    if (!sent) return NextResponse.json({ error: 'Failed to send WhatsApp message' }, { status: 500 })
+
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error(err)
+    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+  }
+}

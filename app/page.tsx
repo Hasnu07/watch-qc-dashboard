@@ -99,6 +99,19 @@ export default function AdminTasksPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [ringing, setRinging] = useState<Record<number, 'idle' | 'sending' | 'sent' | 'error'>>({})
+
+  const ringTask = async (taskId: number) => {
+    setRinging(prev => ({ ...prev, [taskId]: 'sending' }))
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/ring`, { method: 'POST' })
+      setRinging(prev => ({ ...prev, [taskId]: res.ok ? 'sent' : 'error' }))
+      setTimeout(() => setRinging(prev => ({ ...prev, [taskId]: 'idle' })), 3000)
+    } catch {
+      setRinging(prev => ({ ...prev, [taskId]: 'error' }))
+      setTimeout(() => setRinging(prev => ({ ...prev, [taskId]: 'idle' })), 3000)
+    }
+  }
 
   const [form, setForm] = useState({
     assigned_by_id: '',
@@ -306,9 +319,37 @@ export default function AdminTasksPage() {
                       </button>
 
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold leading-snug mb-2 ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-900'}`}>
-                          {task.message_text}
-                        </p>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <p className={`text-sm font-semibold leading-snug ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+                            {task.message_text}
+                          </p>
+                          {!task.is_completed && (
+                            <button
+                              onClick={() => ringTask(task.id)}
+                              disabled={ringing[task.id] === 'sending'}
+                              title="Ring assignee on WhatsApp"
+                              className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-xl border text-xs font-bold transition-all ${
+                                ringing[task.id] === 'sent'
+                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-600'
+                                  : ringing[task.id] === 'error'
+                                  ? 'bg-red-50 border-red-300 text-red-500'
+                                  : ringing[task.id] === 'sending'
+                                  ? 'bg-amber-50 border-amber-300 text-amber-500 animate-pulse'
+                                  : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-violet-50 hover:border-violet-300 hover:text-violet-600'
+                              }`}
+                            >
+                              {ringing[task.id] === 'sent' ? (
+                                <>✅ <span>Sent!</span></>
+                              ) : ringing[task.id] === 'error' ? (
+                                <>❌ <span>Failed</span></>
+                              ) : ringing[task.id] === 'sending' ? (
+                                <>⏳ <span>Sending</span></>
+                              ) : (
+                                <>🔔 <span>Ring</span></>
+                              )}
+                            </button>
+                          )}
+                        </div>
 
                         <div className="flex items-center gap-1.5 flex-wrap mb-2">
                           {task.assigned_by && (
