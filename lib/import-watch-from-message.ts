@@ -18,7 +18,7 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
   const trimmed = (text || '').trim()
   if (!trimmed && !imageUrl) return { imported: false, skipped: 'empty' }
 
-  const parsed: ParsedWatch = trimmed ? await parseWhatsAppWatch(trimmed) : {}
+  const parsed: ParsedWatch = trimmed ? parseWhatsAppWatch(trimmed) : {}
 
   if (trimmed && parsed.should_import === false) {
     return { imported: false, skipped: 'not_a_transaction', parsed }
