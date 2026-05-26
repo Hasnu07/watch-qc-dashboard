@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma'
 import { importWatchFromMessage } from '@/lib/import-watch-from-message'
 import { trackGroup, logHit, type WebhookHit } from '@/lib/webhook-activity'
 
+// Hardcoded fallback — the webhook works even if settings are never configured.
+// Settings in the DB can still override these if needed.
+const DEFAULT_GROUP_ID   = '120363420701421193@g.us'
+const DEFAULT_GROUP_NAME = 'Purosangue team BUY AND SELL'
+
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown> = {}
   try {
@@ -71,21 +76,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
+    // Load optional overrides from settings; fall back to hardcoded defaults
     const [idSetting, nameSetting] = await Promise.all([
       prisma.setting.findUnique({ where: { key: 'whatsapp_stock_group_id' } }),
       prisma.setting.findUnique({ where: { key: 'whatsapp_stock_group_name' } }),
     ])
     const rawId = (idSetting?.value || '').trim()
-    const targetId = rawId ? (rawId.includes('@') ? rawId : `${rawId}@g.us`) : ''
-    const targetName = (nameSetting?.value || '').trim()
+    const settingsId = rawId ? (rawId.includes('@') ? rawId : `${rawId}@g.us`) : ''
+    const settingsName = (nameSetting?.value || '').trim()
 
-    const matchesById = !!targetId && chatId === targetId
-    // Case-insensitive group name match — avoids misses from capitalisation differences
-    const matchesByName = !targetId && !!targetName &&
-      chatName.trim().toLowerCase() === targetName.toLowerCase()
+    // Effective values: settings override hardcoded defaults
+    const effectiveId   = settingsId   || DEFAULT_GROUP_ID
+    const effectiveName = settingsName || DEFAULT_GROUP_NAME
 
-    if (!matchesById && !matchesByName) {
-      logHit({ ...baseHit, outcome: `IGNORED: wrong group (got "${chatName}" / "${chatId}", target_id="${targetId}", target_name="${targetName}")` })
+    // Match by ID (preferred) OR by name (case-insensitive fallback)
+    const matches =
+      chatId === effectiveId ||
+      chatName.trim().toLowerCase() === effectiveName.toLowerCase()
+
+    if (!matches) {
+      logHit({ ...baseHit, outcome: `IGNORED: wrong group (got "${chatName}" / "${chatId}", effective_id="${effectiveId}", effective_name="${effectiveName}")` })
       return NextResponse.json({ ok: true })
     }
 
