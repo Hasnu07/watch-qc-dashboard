@@ -34,6 +34,9 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
     ? nameParts.join(' ')
     : (parsed.ref_no || trimmed.split('\n')[0]?.slice(0, 60) || 'WhatsApp Import')
 
+  // Map parsed location_status to DB enum, defaulting based on context
+  const locationStatus = parsed.location_status || (parsed.location_from ? 'INCOMING' : 'IN_STOCK')
+
   const watch = await prisma.watch.create({
     data: {
       brand: parsed.brand || null,
@@ -45,6 +48,7 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
       case_material: parsed.case_material || null,
       dial_colour: parsed.dial_colour || null,
       bracelet: parsed.bracelet || null,
+      watch_date: parsed.watch_date || null,
       currency,
       purchase_price: watchType === 'BUY' && price > 0 ? price : null,
       stock_status: 'STOCK',
@@ -54,7 +58,9 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
       website_price: watchType === 'SELL' ? price : 0,
       b2b_price: 0,
       payment_status: paymentStatus,
-      location_status: 'IN_STOCK',
+      location_status: locationStatus,
+      location_from: parsed.location_from || null,
+      location_to: parsed.location_to || null,
     },
   })
 

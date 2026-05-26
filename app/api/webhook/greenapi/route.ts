@@ -12,37 +12,53 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Bare-minimum acknowledgement log so we can confirm hits are arriving
     const typeWebhook = String(body.typeWebhook || 'unknown')
 
     if (typeWebhook !== 'incomingMessageReceived') {
-      // Status callbacks (delivery receipts, etc.) — silently ack
       return NextResponse.json({ ok: true })
     }
 
     type SenderData = { chatId?: string; chatName?: string; sender?: string; senderName?: string }
-    type FileMessageData = { downloadUrl?: string; caption?: string; fileName?: string }
+    type FileMessageData = {
+      downloadUrl?: string
+      caption?: string
+      captionText?: string   // some GreenAPI versions use this instead of caption
+      text?: string          // another alternate field
+      fileName?: string
+    }
     type MessageData = {
       typeMessage?: string
       fileMessageData?: FileMessageData
+      videoMessageData?: FileMessageData  // same shape, different key
       textMessageData?: { textMessage?: string }
-      extendedTextMessageData?: { text?: string }
+      extendedTextMessageData?: { text?: string; description?: string }
     }
+
     const senderData = (body.senderData as SenderData | undefined) || {}
     const msg = (body.messageData as MessageData | undefined) || {}
     const chatId: string = senderData.chatId || ''
     const chatName: string = senderData.chatName || ''
     const isGroup = chatId.endsWith('@g.us')
     const msgType: string = msg.typeMessage || ''
-    const file = msg.fileMessageData || {}
-    const imageUrl: string = msgType === 'imageMessage' ? (file.downloadUrl || '') : ''
-    const caption: string =
-      (file.caption as string) ||
-      (msg.textMessageData?.textMessage as string) ||
-      (msg.extendedTextMessageData?.text as string) ||
-      ''
 
-    // Track every group we see, even if it's not the configured one
+    // Support imageMessage and videoMessage (both can carry a caption + downloadUrl)
+    const file: FileMessageData = msg.fileMessageData || msg.videoMessageData || {}
+    const imageUrl: string = ['imageMessage', 'videoMessage'].includes(msgType)
+      ? (file.downloadUrl || '')
+      : ''
+
+    // Robustly extract caption/text from every location GreenAPI may use
+    // Different GreenAPI versions and message types put the text in different fields
+    const caption: string = (
+      file.caption ||
+      file.captionText ||
+      file.text ||
+      msg.textMessageData?.textMessage ||
+      msg.extendedTextMessageData?.text ||
+      msg.extendedTextMessageData?.description ||
+      ''
+    ).trim()
+
     if (isGroup && chatName) trackGroup(chatId, chatName)
 
     const baseHit: WebhookHit = {
@@ -55,7 +71,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
-    // Configured target — ID takes precedence over name
     const [idSetting, nameSetting] = await Promise.all([
       prisma.setting.findUnique({ where: { key: 'whatsapp_stock_group_id' } }),
       prisma.setting.findUnique({ where: { key: 'whatsapp_stock_group_name' } }),
@@ -65,17 +80,19 @@ export async function POST(req: NextRequest) {
     const targetName = (nameSetting?.value || '').trim()
 
     const matchesById = !!targetId && chatId === targetId
-    const matchesByName = !targetId && !!targetName && chatName.trim() === targetName
+    // Case-insensitive group name match — avoids misses from capitalisation differences
+    const matchesByName = !targetId && !!targetName &&
+      chatName.trim().toLowerCase() === targetName.toLowerCase()
 
     if (!matchesById && !matchesByName) {
-      logHit({ ...baseHit, outcome: `IGNORED: wrong group (target_id="${targetId}", target_name="${targetName}")` })
+      logHit({ ...baseHit, outcome: `IGNORED: wrong group (got "${chatName}" / "${chatId}", target_id="${targetId}", target_name="${targetName}")` })
       return NextResponse.json({ ok: true })
     }
 
     const result = await importWatchFromMessage(caption, imageUrl)
     if (!result.imported) {
       if (result.skipped === 'empty') {
-        logHit({ ...baseHit, outcome: 'SKIPPED: no image and no text' })
+        logHit({ ...baseHit, outcome: `SKIPPED: no text and no image (msgType="${msgType}")` })
       } else {
         logHit({ ...baseHit, outcome: 'SKIPPED: AI flagged as non-transaction' })
       }
