@@ -100,6 +100,9 @@ export default function AdminTasksPage() {
   const [submitting, setSubmitting] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [ringing, setRinging] = useState<Record<number, 'idle' | 'sending' | 'sent' | 'error'>>({})
+  const [ncOpen, setNcOpen] = useState<number | null>(null)
+  const [ncReason, setNcReason] = useState('')
+  const [ncStatus, setNcStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
   const ringTask = async (taskId: number) => {
     setRinging(prev => ({ ...prev, [taskId]: 'sending' }))
@@ -110,6 +113,38 @@ export default function AdminTasksPage() {
     } catch {
       setRinging(prev => ({ ...prev, [taskId]: 'error' }))
       setTimeout(() => setRinging(prev => ({ ...prev, [taskId]: 'idle' })), 3000)
+    }
+  }
+
+  const openNcForm = (taskId: number) => {
+    setNcOpen(taskId)
+    setNcReason('')
+    setNcStatus('idle')
+  }
+
+  const closeNcForm = () => {
+    setNcOpen(null)
+    setNcReason('')
+    setNcStatus('idle')
+  }
+
+  const submitNotCompleted = async (taskId: number) => {
+    if (!ncReason.trim()) return
+    setNcStatus('sending')
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/not-completed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: ncReason.trim() }),
+      })
+      if (res.ok) {
+        setNcStatus('sent')
+        setTimeout(() => closeNcForm(), 2000)
+      } else {
+        setNcStatus('error')
+      }
+    } catch {
+      setNcStatus('error')
     }
   }
 
@@ -324,30 +359,38 @@ export default function AdminTasksPage() {
                             {task.message_text}
                           </p>
                           {!task.is_completed && (
-                            <button
-                              onClick={() => ringTask(task.id)}
-                              disabled={ringing[task.id] === 'sending'}
-                              title="Ring assignee on WhatsApp"
-                              className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-xl border text-xs font-bold transition-all ${
-                                ringing[task.id] === 'sent'
-                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-600'
-                                  : ringing[task.id] === 'error'
-                                  ? 'bg-red-50 border-red-300 text-red-500'
-                                  : ringing[task.id] === 'sending'
-                                  ? 'bg-amber-50 border-amber-300 text-amber-500 animate-pulse'
-                                  : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-violet-50 hover:border-violet-300 hover:text-violet-600'
-                              }`}
-                            >
-                              {ringing[task.id] === 'sent' ? (
-                                <>✅ <span>Sent!</span></>
-                              ) : ringing[task.id] === 'error' ? (
-                                <>❌ <span>Failed</span></>
-                              ) : ringing[task.id] === 'sending' ? (
-                                <>⏳ <span>Sending</span></>
-                              ) : (
-                                <>🔔 <span>Ring</span></>
-                              )}
-                            </button>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <button
+                                onClick={() => ringTask(task.id)}
+                                disabled={ringing[task.id] === 'sending'}
+                                title="Ring assignee on WhatsApp"
+                                className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border text-xs font-bold transition-all ${
+                                  ringing[task.id] === 'sent'
+                                    ? 'bg-emerald-50 border-emerald-300 text-emerald-600'
+                                    : ringing[task.id] === 'error'
+                                    ? 'bg-red-50 border-red-300 text-red-500'
+                                    : ringing[task.id] === 'sending'
+                                    ? 'bg-amber-50 border-amber-300 text-amber-500 animate-pulse'
+                                    : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-violet-50 hover:border-violet-300 hover:text-violet-600'
+                                }`}
+                              >
+                                {ringing[task.id] === 'sent' ? <>✅ <span>Sent!</span></> :
+                                 ringing[task.id] === 'error' ? <>❌ <span>Failed</span></> :
+                                 ringing[task.id] === 'sending' ? <>⏳ <span>Sending</span></> :
+                                 <>🔔 <span>Ring</span></>}
+                              </button>
+                              <button
+                                onClick={() => ncOpen === task.id ? closeNcForm() : openNcForm(task.id)}
+                                title="Report task not completed"
+                                className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border text-xs font-bold transition-all ${
+                                  ncOpen === task.id
+                                    ? 'bg-red-100 border-red-400 text-red-600'
+                                    : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
+                                }`}
+                              >
+                                ⚠️ <span>Not Done</span>
+                              </button>
+                            </div>
                           )}
                         </div>
 
@@ -393,6 +436,55 @@ export default function AdminTasksPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Not Completed inline reason form */}
+                  {ncOpen === task.id && (
+                    <div className="px-4 pb-4 border-t border-red-100 bg-red-50/60 rounded-b-2xl">
+                      <div className="pt-3">
+                        <p className="text-xs font-black text-red-600 uppercase tracking-wide mb-1">⚠️ Why wasn&apos;t this task completed?</p>
+                        {task.assigned_by && (
+                          <p className="text-xs text-slate-500 mb-2">
+                            Your reason will be sent to <span className="font-semibold text-slate-700">{task.assigned_by.name}</span> via WhatsApp.
+                          </p>
+                        )}
+                        <textarea
+                          value={ncReason}
+                          onChange={e => setNcReason(e.target.value)}
+                          placeholder={`Task not completed because...`}
+                          rows={3}
+                          disabled={ncStatus === 'sending' || ncStatus === 'sent'}
+                          className="w-full bg-white border border-red-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-colors resize-none disabled:opacity-50"
+                        />
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={() => submitNotCompleted(task.id)}
+                            disabled={!ncReason.trim() || ncStatus === 'sending' || ncStatus === 'sent'}
+                            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${
+                              ncStatus === 'sent'
+                                ? 'bg-emerald-500 text-white border border-emerald-500'
+                                : ncStatus === 'error'
+                                ? 'bg-red-500 text-white border border-red-500'
+                                : ncStatus === 'sending'
+                                ? 'bg-orange-400 text-white border border-orange-400 animate-pulse'
+                                : 'bg-red-600 hover:bg-red-700 text-white border border-red-600 disabled:opacity-40'
+                            }`}
+                          >
+                            {ncStatus === 'sent' ? '✅ Sent to ' + (task.assigned_by?.name ?? 'assigner') + '!' :
+                             ncStatus === 'error' ? '❌ Failed — try again' :
+                             ncStatus === 'sending' ? '⏳ Sending…' :
+                             `📤 Send to ${task.assigned_by?.name ?? 'assigner'}`}
+                          </button>
+                          <button
+                            onClick={closeNcForm}
+                            disabled={ncStatus === 'sending'}
+                            className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-500 hover:border-slate-300 transition-all disabled:opacity-40"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
