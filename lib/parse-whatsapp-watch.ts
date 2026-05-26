@@ -85,7 +85,7 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
     /for\s+haris\s*\(logistics\)/i.test(t)
 
   const hasSellSignal =
-    /\bsold\s+(to\b|\d+\s+to\b)/i.test(t) ||
+    /\bsold\s+(\d+\s+)?to\b/i.test(t) ||
     /^sold\s+to\s*:/im.test(t)
 
   // Also import if ref + price appear together (informal format)
@@ -108,7 +108,11 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
 
   let sold_to: string | null = null
   if (type === 'SELL') {
-    const m = t.match(/sold\s+(?:\d+\s+)?to\s+([^\n,]+)/i) || t.match(/^sold\s+to\s*:\s*(.+)$/im)
+    // Stop before "for [price]" or "@ [price]" or end-of-line
+    // e.g. "Sold 1347 to Ali Akawi for 350.000 aed" → "Ali Akawi"
+    const m =
+      t.match(/sold\s+(?:\d+\s+)?to\s+(.+?)(?:\s+for\s+[\d]|\s+@\s*[\d]|\n|$)/i) ||
+      t.match(/^sold\s+to\s*:\s*(.+)$/im)
     if (m) sold_to = m[1].trim()
   }
 
@@ -200,7 +204,10 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
 
   // ── NOTES ────────────────────────────────────────────────────────────────
   const setVal = field(t, 'Set')
-  const notes = setVal ?? null
+  // For sell messages capture payment method line e.g. "Paid wire in wio business"
+  const paymentMethodMatch = t.match(/^(paid\s+(?:wire|cash|bank|cheque|transfer|crypto)[^\n]*)/im)
+  const paymentNote = paymentMethodMatch ? paymentMethodMatch[1].trim() : null
+  const notes = [setVal, paymentNote].filter(Boolean).join('. ') || null
 
   return {
     should_import: true,

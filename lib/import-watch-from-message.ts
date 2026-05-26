@@ -29,10 +29,30 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
   const currency = parsed.currency || 'USD'
   const paymentStatus = parsed.payment_status || 'NOT_PAID'
 
+  // ── SELL: try to find and update the existing watch by stock_no ──────────
+  if (watchType === 'SELL' && parsed.stock_no) {
+    const existing = await prisma.watch.findFirst({
+      where: { stock_no: parsed.stock_no, is_sold: false },
+    })
+    if (existing) {
+      const updated = await prisma.watch.update({
+        where: { id: existing.id },
+        data: {
+          is_sold: true,
+          sold_to: parsed.sold_to || null,
+          payment_status: paymentStatus,
+          ...(price > 0 ? { website_price: price, currency } : {}),
+        },
+      })
+      emitWatchEvent({ type: 'new_watch', watchId: updated.id })
+      return { imported: true, watch: updated, parsed, watchType }
+    }
+  }
+
   const nameParts = [parsed.brand, parsed.model].filter(Boolean) as string[]
   const name = nameParts.length > 0
     ? nameParts.join(' ')
-    : (parsed.ref_no || trimmed.split('\n')[0]?.slice(0, 60) || 'WhatsApp Import')
+    : (parsed.stock_no ? `Stock #${parsed.stock_no}` : parsed.ref_no || trimmed.split('\n')[0]?.slice(0, 60) || 'WhatsApp Import')
 
   // Map parsed location_status to DB enum, defaulting based on context
   const locationStatus = parsed.location_status || (parsed.location_from ? 'INCOMING' : 'IN_STOCK')
@@ -53,6 +73,7 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
       purchase_price: watchType === 'BUY' && price > 0 ? price : null,
       stock_status: 'STOCK',
       watch_type: watchType,
+      is_sold: watchType === 'SELL',
       name,
       image_url: imageUrl || null,
       website_price: watchType === 'SELL' ? price : 0,
