@@ -291,7 +291,44 @@ export default function AdminTasksPage() {
                       {opt.label}
                     </button>
                   ))}
+                  {/* Custom time button */}
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, reminder_interval_minutes: 'custom' }))}
+                    className={`px-3 py-1.5 rounded-xl border text-sm font-semibold transition-all ${
+                      !['60','180','1440',''].includes(form.reminder_interval_minutes)
+                        ? 'bg-violet-600 border-violet-600 text-white shadow-sm'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-violet-300 hover:bg-violet-50'
+                    }`}
+                  >
+                    ⏱ Custom
+                  </button>
                 </div>
+                {/* Custom minutes input — shown when Custom is selected */}
+                {!['60','180','1440',''].includes(form.reminder_interval_minutes) && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={10080}
+                      placeholder="e.g. 90"
+                      value={form.reminder_interval_minutes === 'custom' ? '' : form.reminder_interval_minutes}
+                      onChange={e => {
+                        const v = e.target.value.replace(/\D/g, '')
+                        setForm(f => ({ ...f, reminder_interval_minutes: v || 'custom' }))
+                      }}
+                      className="w-28 bg-slate-50 border border-violet-300 rounded-xl px-3 py-1.5 text-slate-900 text-sm font-semibold focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-100 transition-colors"
+                    />
+                    <span className="text-sm text-slate-500 font-medium">minutes</span>
+                    {form.reminder_interval_minutes && form.reminder_interval_minutes !== 'custom' && (
+                      <span className="text-xs text-violet-600 font-semibold">
+                        = {Number(form.reminder_interval_minutes) >= 60
+                          ? `${(Number(form.reminder_interval_minutes)/60).toFixed(1).replace(/\.0$/,'')} hr${Number(form.reminder_interval_minutes) >= 120 ? 's' : ''}`
+                          : `${form.reminder_interval_minutes} min`}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <button
