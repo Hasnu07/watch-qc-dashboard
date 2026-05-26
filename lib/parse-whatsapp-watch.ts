@@ -105,7 +105,7 @@ export async function parseWhatsAppWatch(text: string): Promise<ParsedWatch> {
   if (!text || !text.trim()) return { should_import: false }
   try {
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       max_tokens: 800,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: text }],

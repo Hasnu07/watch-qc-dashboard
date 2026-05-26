@@ -7,7 +7,7 @@ const client = new Anthropic({
 export async function estimateTaskMinutes(taskText: string): Promise<number> {
   try {
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       max_tokens: 16,
       system:
         'You are a task time estimator for a watch trading business. Given a task description, estimate how many minutes it will take to complete. Reply with only a number. If multiple tasks are listed, estimate the total. Be realistic — most tasks take 15–90 minutes.',
