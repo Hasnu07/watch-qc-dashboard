@@ -40,7 +40,10 @@ interface WebhookHit {
 }
 
 const TASK_DEFAULT_ROWS = [
-  { dept: 'ACCOUNTING' as Department, items: [{ key: 'ACCOUNTING_MARK_PAYMENT', label: 'Mark Payment Status' }] },
+  { dept: 'ACCOUNTING' as Department, items: [
+    { key: 'ACCOUNTING_MARK_PAYMENT', label: 'Mark Payment Status' },
+    { key: 'ACCOUNTING_ADD_STOCK_FOB', label: 'Add Stock No in FOB' },
+  ]},
   { dept: 'SALES' as Department, items: [
     { key: 'SALES_SET_PRICE', label: 'Set Price' },
     { key: 'SALES_UPLOAD_DRIVE', label: 'Upload to Drive' },

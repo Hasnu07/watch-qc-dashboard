@@ -8,6 +8,7 @@ const APP_LINK = 'https://qc-dashboard-q907.onrender.com'
 
 const WATCH_TASKS = [
   { department: 'ACCOUNTING' as const, task_type: 'ACCOUNTING_MARK_PAYMENT' as const, is_locked: false },
+  { department: 'ACCOUNTING' as const, task_type: 'ACCOUNTING_ADD_STOCK_FOB' as const, is_locked: false },
   { department: 'SALES' as const, task_type: 'SALES_SET_PRICE' as const, is_locked: false },
   { department: 'SALES' as const, task_type: 'SALES_UPLOAD_DRIVE' as const, is_locked: false },
   { department: 'SALES' as const, task_type: 'SALES_UPLOAD_STOCK_GROUP' as const, is_locked: false },
@@ -24,6 +25,7 @@ const WATCH_TASKS = [
 
 export const TASK_LABELS: Record<string, string> = {
   ACCOUNTING_MARK_PAYMENT: 'Mark Payment Status',
+  ACCOUNTING_ADD_STOCK_FOB: 'Add Stock No in FOB',
   SALES_SET_PRICE: 'Set Price',
   SALES_UPLOAD_DRIVE: 'Upload to Drive',
   SALES_UPLOAD_STOCK_GROUP: 'Upload Photos To Whatsapp Stock Photos',
