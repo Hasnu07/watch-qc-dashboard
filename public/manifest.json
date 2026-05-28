@@ -1,6 +1,6 @@
 {
-  "name": "Watch QC Pipeline",
-  "short_name": "Watch QC",
+  "name": "Purosangue QC Dashboard",
+  "short_name": "Purosangue QC",
   "description": "Luxury watch trading pipeline dashboard",
   "start_url": "/dashboard",
   "display": "standalone",
@@ -8,9 +8,9 @@
   "theme_color": "#d9774b",
   "icons": [
     {
-      "src": "/watch-logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "/purosangue-qc-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }

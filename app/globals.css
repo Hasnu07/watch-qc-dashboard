@@ -1,9 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Luxurious+Script&family=Syne:wght@500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
-
 :root {
   --scroll-speed: 40;
   --color-ink: #2c2c2c;
@@ -66,7 +65,7 @@ html, body {
 }
 
 .font-luxury {
-  font-family: 'Luxurious Script', 'Brush Script MT', cursive;
+  font-family: var(--font-luxury), 'Brush Script MT', serif;
   letter-spacing: 0.02em;
   font-weight: 400;
 }

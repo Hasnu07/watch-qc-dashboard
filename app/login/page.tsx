@@ -43,11 +43,20 @@ export default function LoginPage() {
     <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <div className="w-20 h-20 rounded-full overflow-hidden border border-default mx-auto mb-5 bg-card">
-            <Image src="/watch-logo.svg" alt="Watch QC" width={80} height={80} className="w-full h-full p-3" priority />
+          <div className="mx-auto mb-6 w-28 sm:w-32">
+            <Image
+              src="/purosangue-qc-logo.png"
+              alt="Purosangue QC"
+              width={128}
+              height={128}
+              className="w-full h-auto object-contain"
+              priority
+            />
           </div>
-          <h1 className="font-display text-3xl font-bold tracking-[0.15em] text-ink uppercase">Watch QC</h1>
-          <p className="text-muted text-sm mt-2">Admin access required</p>
+          <h1 className="font-luxury text-4xl sm:text-5xl text-ink leading-none px-2">
+            Purosangue QC Dashboard
+          </h1>
+          <p className="text-muted text-sm mt-3">Admin access required</p>
         </div>
 
         <div className="card p-8">
