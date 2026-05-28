@@ -77,7 +77,7 @@ export default function DashboardPage() {
     } catch (err) { console.error(err) }
   }, [])
 
-  useEffect(() => { fetchWatches() }, [fetchWatches])
+  useEffect(() => {
     let es: EventSource | null = null
     const connectSSE = () => {
       es = new EventSource('/api/sse')
