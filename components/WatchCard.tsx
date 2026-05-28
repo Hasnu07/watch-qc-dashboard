@@ -58,30 +58,39 @@ const STAGES: WatchStage[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
 const STAGE_CFG = {
   LOGISTICS: {
     label: 'Logistics',
-    text: 'text-cyan-400',
-    dot: 'bg-cyan-500',
-    line: 'bg-cyan-500',
-    glow: 'shadow-[0_0_10px_rgba(0,210,255,0.5)]',
-    border: 'border-l-cyan-500',
-    badge: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
+    text: 'text-blue-700',
+    dot: 'bg-blue-500',
+    line: 'bg-blue-400',
+    dotGlow: '',
+    badge: 'bg-blue-50 text-blue-700 border-blue-200',
+    leftBorder: 'border-l-blue-500',
+    priceBg: 'bg-blue-50 border-blue-100',
+    priceLabel: 'text-blue-500',
+    priceVal: 'text-blue-900',
   },
   ACCOUNTING: {
     label: 'Accounting',
-    text: 'text-amber-400',
+    text: 'text-amber-700',
     dot: 'bg-amber-500',
-    line: 'bg-amber-500',
-    glow: 'shadow-[0_0_10px_rgba(251,191,36,0.5)]',
-    border: 'border-l-amber-500',
-    badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    line: 'bg-amber-400',
+    dotGlow: '',
+    badge: 'bg-amber-50 text-amber-700 border-amber-200',
+    leftBorder: 'border-l-amber-500',
+    priceBg: 'bg-amber-50 border-amber-100',
+    priceLabel: 'text-amber-500',
+    priceVal: 'text-amber-900',
   },
   SALES: {
     label: 'Sales',
-    text: 'text-emerald-400',
+    text: 'text-emerald-700',
     dot: 'bg-emerald-500',
-    line: 'bg-emerald-500',
-    glow: 'shadow-[0_0_10px_rgba(52,211,153,0.5)]',
-    border: 'border-l-emerald-500',
-    badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    line: 'bg-emerald-400',
+    dotGlow: '',
+    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    leftBorder: 'border-l-emerald-500',
+    priceBg: 'bg-emerald-50 border-emerald-100',
+    priceLabel: 'text-emerald-500',
+    priceVal: 'text-emerald-900',
   },
 }
 
@@ -101,103 +110,87 @@ export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardP
 
   const payLabel = watch.payment_status === 'PAID' ? '✓ Paid' : watch.payment_status === 'PARTIAL' ? '⏳ Partial' : '✗ Unpaid'
   const payCls = watch.payment_status === 'PAID'
-    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
     : watch.payment_status === 'PARTIAL'
-      ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-      : 'bg-pink-500/15 text-pink-300 border-pink-500/30'
+      ? 'bg-amber-50 text-amber-700 border-amber-200'
+      : 'bg-red-50 text-red-600 border-red-200'
 
   const transitDays = watch.transit_pickup_date
     ? Math.floor((Date.now() - new Date(watch.transit_pickup_date).getTime()) / (1000 * 60 * 60 * 24))
     : null
   const locLabel = watch.location_status === 'IN_TRANSIT'
     ? `🚚 Transit${transitDays != null ? ` · Day ${transitDays}` : ''}`
-    : watch.location_status === 'IN_STOCK'
-      ? '✅ In Stock'
-      : '📬 Incoming'
+    : watch.location_status === 'IN_STOCK' ? '✅ In Stock' : '📬 Incoming'
   const locCls = watch.location_status === 'IN_TRANSIT'
-    ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
+    ? 'bg-blue-50 text-blue-700 border-blue-200'
     : watch.location_status === 'IN_STOCK'
-      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-      : 'bg-white/10 text-white/50 border-white/15'
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      : 'bg-slate-50 text-slate-600 border-slate-200'
 
   return (
     <div
       onClick={() => onCardClick(watch)}
-      className={`glass rounded-2xl overflow-hidden border-l-4 ${cfg.border} hover:bg-white/[0.09] transition-all duration-300 hover:shadow-[0_8px_40px_rgba(0,0,0,0.35)] group flex flex-col cursor-pointer`}
+      className={`bg-white rounded-2xl overflow-hidden border-l-4 ${cfg.leftBorder} border border-[#c7c4d8] shadow-[0_1px_4px_rgba(15,23,42,0.06)] hover:shadow-[0_4px_16px_rgba(15,23,42,0.10)] transition-all group flex flex-col cursor-pointer`}
     >
-      {/* Pipeline bar */}
-      <div className="px-4 pt-3 pb-2 bg-white/[0.03] border-b border-white/[0.07]">
+      {/* Pipeline dots */}
+      <div className="px-4 pt-3 pb-2 bg-[#f0f3ff] border-b border-[#e4e8f5]">
         <div className="flex items-center gap-0.5">
           {STAGES.map((s, i) => {
             const done = deptDone(s)
             return (
               <div key={s} className="flex items-center flex-1 last:flex-none">
-                <div className={`w-5 h-5 rounded-full flex-shrink-0 ring-2 ring-black/20 transition-all flex items-center justify-center ${
-                  done ? `${STAGE_CFG[s].dot} ${STAGE_CFG[s].glow}` : 'bg-white/10'
-                }`}>
+                <div className={`w-5 h-5 rounded-full flex-shrink-0 ring-2 ring-white transition-colors flex items-center justify-center ${done ? STAGE_CFG[s].dot : 'bg-[#c7c4d8]'}`}>
                   {done && <span className="text-white text-[10px] font-black leading-none">✓</span>}
                 </div>
                 {i < STAGES.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-1 rounded-full transition-colors ${
-                    deptDone(STAGES[i]) ? STAGE_CFG[STAGES[i]].line : 'bg-white/10'
-                  }`} />
+                  <div className={`flex-1 h-0.5 mx-1 rounded-full transition-colors ${deptDone(STAGES[i]) ? STAGE_CFG[STAGES[i]].line : 'bg-[#dee2ef]'}`} />
                 )}
               </div>
             )
           })}
         </div>
         <div className="flex justify-between mt-1.5">
-          {STAGES.map(s => {
-            const done = deptDone(s)
-            return (
-              <span key={s} className={`text-[9px] font-bold tracking-widest uppercase ${
-                done ? STAGE_CFG[s].text : 'text-white/25'
-              }`}>
-                {STAGE_CFG[s].label}
-              </span>
-            )
-          })}
+          {STAGES.map(s => (
+            <span key={s} className={`text-[9px] font-bold tracking-widest uppercase ${deptDone(s) ? STAGE_CFG[s].text : 'text-[#777587]'}`}>
+              {STAGE_CFG[s].label}
+            </span>
+          ))}
         </div>
       </div>
 
-      {/* Payment + Location badges */}
-      <div className="px-3 pt-2 pb-1.5 flex items-center gap-1.5 bg-white/[0.02] border-b border-white/[0.06]">
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${payCls}`}>{payLabel}</span>
+      {/* Badges row */}
+      <div className="px-3 pt-2 pb-1.5 flex items-center gap-1.5 bg-[#f0f3ff] border-b border-[#e4e8f5]">
+        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${payCls}`}>{payLabel}</span>
         {isSell ? (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border ml-auto bg-orange-500/15 text-orange-300 border-orange-500/30">🏷️ Sell</span>
+          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border ml-auto bg-orange-50 text-orange-700 border-orange-200">🏷️ Sell</span>
         ) : (
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ml-auto ${locCls}`}>{locLabel}</span>
+          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ml-auto ${locCls}`}>{locLabel}</span>
         )}
       </div>
 
       {/* Image */}
-      <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-white/[0.03] to-white/[0.06] overflow-hidden">
+      <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-slate-50 to-[#f0f3ff] overflow-hidden">
         {watch.image_url ? (
           <Image src={watch.image_url} alt={watch.name} fill
             className="object-contain p-3 group-hover:scale-105 transition-transform duration-300" unoptimized />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-white/20">
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-[#c7c4d8]">
             <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-xs font-medium">No image</span>
+            <span className="text-xs font-medium text-[#777587]">No image</span>
           </div>
         )}
         {watch.stock_no && (
           <div className="absolute top-2 left-2">
-            <span className="text-xs font-black px-2.5 py-1 rounded-lg glass-strong text-white tracking-wide border border-white/20">
-              # {watch.stock_no}
+            <span className="text-xs font-black px-2.5 py-1 rounded-lg shadow-sm bg-[#2c313a] text-white tracking-wide font-mono-data">
+              #{watch.stock_no}
             </span>
           </div>
         )}
         {!isSell && (
           <div className="absolute top-2 right-2">
-            <span className={`text-xs font-bold px-2 py-1 rounded-full border ${
-              watch.stock_status === 'STOCK'
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-            }`}>
+            <span className={`text-xs font-bold px-2 py-1 rounded-full shadow-sm border ${watch.stock_status === 'STOCK' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
               {watch.stock_status === 'STOCK' ? '✓ In Stock' : '⏳ Incoming'}
             </span>
           </div>
@@ -206,26 +199,19 @@ export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardP
 
       {/* Info */}
       <div className="p-4 flex flex-col gap-2.5 flex-1">
-
-        {watch.origin && (
-          <span className="text-[11px] font-medium text-white/40 px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.08] w-fit">
-            {watch.origin}
-          </span>
+        {watch.brand && (
+          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-0">{watch.brand}</p>
         )}
-
         <div>
-          {watch.brand && (
-            <p className="text-[11px] font-black uppercase tracking-widest mb-0.5 text-gradient-cyan">{watch.brand}</p>
-          )}
-          <h3 className="text-white font-bold text-base leading-tight">
+          <h3 className="text-[#171c25] font-bold text-base leading-tight">
             {watch.model || watch.name}
           </h3>
           {(watch.ref_no || watch.stock_no || watch.watch_date) && (
-            <p className="text-white/35 text-xs mt-0.5 font-medium">
+            <p className="text-[#777587] text-xs mt-0.5 font-mono-data">
               {watch.ref_no && <>Ref. {watch.ref_no}</>}
-              {watch.ref_no && watch.stock_no && <span className="text-white/20"> · </span>}
-              {watch.stock_no && <span className="text-white/70 font-bold">#{watch.stock_no}</span>}
-              {(watch.ref_no || watch.stock_no) && watch.watch_date && <span className="text-white/20"> · </span>}
+              {watch.ref_no && watch.stock_no && <span className="text-[#c7c4d8]"> · </span>}
+              {watch.stock_no && <span className="text-[#464555] font-bold">#{watch.stock_no}</span>}
+              {(watch.ref_no || watch.stock_no) && watch.watch_date && <span className="text-[#c7c4d8]"> · </span>}
               {watch.watch_date && <>{watch.watch_date}</>}
             </p>
           )}
@@ -234,7 +220,7 @@ export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardP
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {tags.map((tag, i) => (
-              <span key={i} className="text-[11px] bg-white/[0.07] text-white/60 px-2 py-0.5 rounded-md font-medium border border-white/[0.10]">
+              <span key={i} className="text-[11px] bg-[#eaeefb] text-[#464555] px-2 py-0.5 rounded-md font-medium border border-[#c7c4d8]">
                 {tag}
               </span>
             ))}
@@ -242,35 +228,34 @@ export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardP
         )}
 
         {isSell && watch.sold_to && (
-          <p className="text-white/40 text-xs font-medium">👤 Sold to: {watch.sold_to}</p>
+          <p className="text-[#777587] text-xs font-medium">👤 Sold to: {watch.sold_to}</p>
         )}
         {!isSell && watch.bought_from && (
-          <p className="text-white/40 text-xs font-medium">📍 From: {watch.bought_from}</p>
+          <p className="text-[#777587] text-xs font-medium">📍 From: {watch.bought_from}</p>
         )}
 
-        {/* Price boxes */}
+        {/* Prices */}
         <div className="grid grid-cols-2 gap-2 mt-auto">
-          <div className="bg-cyan-500/10 rounded-xl p-2.5 border border-cyan-500/20">
-            <div className="text-cyan-400 text-[9px] font-black uppercase tracking-widest mb-0.5">Website</div>
-            <div className="text-white font-black text-base">{formatCurrency(watch.website_price)}</div>
+          <div className="bg-[#f0f3ff] rounded-xl p-2.5 border border-[#dae2fd]">
+            <div className="text-[9px] font-black uppercase tracking-widest text-indigo-400 mb-0.5">Website</div>
+            <div className="text-[#171c25] font-black text-base font-mono-data">{formatCurrency(watch.website_price)}</div>
           </div>
-          <div className="bg-emerald-500/10 rounded-xl p-2.5 border border-emerald-500/20">
-            <div className="text-emerald-400 text-[9px] font-black uppercase tracking-widest mb-0.5">B2B</div>
-            <div className="text-white font-black text-base">{formatCurrency(watch.b2b_price)}</div>
+          <div className="bg-emerald-50 rounded-xl p-2.5 border border-emerald-100">
+            <div className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-0.5">B2B</div>
+            <div className="text-emerald-900 font-black text-base font-mono-data">{formatCurrency(watch.b2b_price)}</div>
           </div>
         </div>
 
         {/* Task Done button */}
         <button
           onClick={(e) => { e.stopPropagation(); onTaskDone(watch.id) }}
-          className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all ${
+          className={`w-full py-2.5 rounded-full font-bold text-sm transition-all ${
             allDone
-              ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-[0_0_20px_rgba(52,211,153,0.35)] hover:shadow-[0_0_30px_rgba(52,211,153,0.5)]'
-              : 'bg-white/[0.06] hover:bg-white/[0.10] text-white/40 hover:text-white/70 border border-white/[0.10]'
+              ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm'
+              : 'bg-[#eaeefb] hover:bg-indigo-100 text-[#464555] hover:text-indigo-700 border border-[#c7c4d8]'
           }`}>
-          {allDone ? '✓ Task Done' : '✓ Task Done'}
+          {allDone ? '✓ Mark Sold' : '✓ Task Done'}
         </button>
-
       </div>
     </div>
   )

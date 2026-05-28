@@ -16,7 +16,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col text-slate-100">
+      <body className="bg-[#f9f9ff] text-[#171c25] min-h-screen flex flex-col">
         <NavBar />
         <main className="flex-1 flex flex-col">{children}</main>
       </body>
