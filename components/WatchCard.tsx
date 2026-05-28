@@ -140,7 +140,7 @@ export default function WatchCard({
     return (
       <div onClick={() => onCardClick(watch)}
         className={`card cursor-pointer flex gap-3 p-3 transition-colors ${cardBorder} ${cardRing}`}>
-        <div className="relative w-16 h-16 rounded-2xl bg-panel flex-shrink-0 overflow-hidden border border-default">
+        <div className="relative w-16 h-16 rounded-2xl bg-white flex-shrink-0 overflow-hidden border border-default">
           {watch.image_url ? (
             <Image src={watch.image_url} alt={watch.name} fill className="object-contain p-1" unoptimized />
           ) : (
@@ -227,7 +227,7 @@ export default function WatchCard({
         </span>
       </div>
 
-      <div className="relative w-full aspect-[4/3] bg-panel overflow-hidden border-b border-default group/image">
+      <div className="relative w-full aspect-[4/3] bg-white overflow-hidden border-b border-default group/image">
         {watch.image_url ? (
           <>
             <Image src={watch.image_url} alt={watch.name} fill className="object-contain p-4 group-hover:scale-[1.02] transition-transform duration-500" unoptimized />
