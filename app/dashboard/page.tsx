@@ -230,6 +230,10 @@ export default function DashboardPage() {
   const exitTvMode = () => {
     setInventoryTvScroll(false)
     localStorage.setItem('qc-inventory-tv-scroll', '0')
+    if (tasksPinned) {
+      setShowTasksPanel(true)
+      localStorage.setItem('qc-show-tasks', '1')
+    }
   }
 
   const toggleTasksPinned = () => {
@@ -260,17 +264,95 @@ export default function DashboardPage() {
       <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
     )
 
-  const leftWidthClass = showTasksPanel
-    ? 'w-full md:w-[58%] md:max-w-[58%] md:flex-[0_0_58%] shrink-0'
-    : 'w-full flex-1 min-w-0'
-  const panelHeightClass = inventoryTvScroll
-    ? 'h-[calc(100dvh-5.25rem)] max-h-[calc(100dvh-5.25rem)]'
-    : 'h-full max-h-full'
+  const useStickyTasks = showTasksPanel && tasksPinned && !inventoryTvScroll
+  const viewportHeightClass = 'h-[calc(100dvh-5.25rem)] max-h-[calc(100dvh-5.25rem)]'
+  const splitRowClass = useStickyTasks
+    ? 'flex flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden'
+    : 'flex flex-1 overflow-hidden min-h-0 h-full w-full'
   const inventoryGridClass = !showTasksPanel
     ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 sm:gap-4'
     : inventoryTvScroll
       ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4'
       : 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3'
+  const leftWidthClass = showTasksPanel
+    ? 'w-full md:w-[58%] md:max-w-[58%] md:flex-[0_0_58%] shrink-0'
+    : 'w-full flex-1 min-w-0'
+  const panelHeightClass = (showTasksPanel || inventoryTvScroll) && !useStickyTasks
+    ? viewportHeightClass
+    : 'h-full max-h-full'
+
+  const renderInventoryBody = () => (
+    loading ? (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+        {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
+      </div>
+    ) : watches.length === 0 ? (
+      <div className="flex flex-col items-center justify-center h-full gap-4 min-h-[280px] text-center px-4">
+        <div className="w-20 h-20 rounded-full bg-panel border border-default flex items-center justify-center text-4xl">⌚</div>
+        <p className="text-base font-semibold text-muted">No watches on pipeline</p>
+        <p className="text-sm text-muted max-w-xs">Paste a WhatsApp message or enter a stock number to get started.</p>
+        <div className="flex gap-2">
+          <button onClick={() => setShowPasteMessage(true)} className="btn-secondary">Paste message</button>
+          <button onClick={() => setShowAddWatch(true)} className="btn-primary">Add watch</button>
+        </div>
+      </div>
+    ) : filteredWatches.length === 0 ? (
+      <div className="text-center py-12 text-muted">
+        <p className="font-semibold">No watches match your filters</p>
+        <button type="button" onClick={() => { setFilters({ search: '', watchType: 'all', payment: 'all', location: 'all' }); setDeptFilter(null) }}
+          className="mt-2 text-sm text-accent font-semibold hover:underline">Clear all filters</button>
+      </div>
+    ) : (
+      <>
+        <section>
+          <div className="flex items-center gap-3 mb-4 px-1">
+            <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-ink">Buy Inventory</h3>
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-default bg-panel">{buyWatches.length}</span>
+          </div>
+          {buyWatches.length === 0 ? (
+            <p className="text-sm text-muted px-4 py-8 text-center rounded-3xl border border-dashed border-default bg-panel">
+              No buy watches match — paste a purchase message or add stock #
+            </p>
+          ) : (
+            <div className={inventoryGridClass}>
+              {buyWatches.map(watch => (
+                <WatchCard key={watch.id} watch={watch} compact={compactMode}
+                  highlighted={focusedWatchId === watch.id}
+                  searchHighlight={filters.search.trim()}
+                  onCardClick={setSelectedWatch}
+                  onRemoveRequest={setRemoveTarget}
+                  onOpenTasks={handleOpenTasks}
+                  onImageFetched={fetchWatches} />
+              ))}
+            </div>
+          )}
+        </section>
+        <section>
+          <div className="flex items-center gap-3 mb-4 px-1">
+            <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-accent">Sell Inventory</h3>
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-accent/30 bg-accent/5 text-accent">{sellWatches.length}</span>
+          </div>
+          {sellWatches.length === 0 ? (
+            <p className="text-sm text-muted px-4 py-8 text-center rounded-3xl border border-dashed border-default bg-panel">
+              No sell watches match — paste a sold message
+            </p>
+          ) : (
+            <div className={inventoryGridClass}>
+              {sellWatches.map(watch => (
+                <WatchCard key={watch.id} watch={watch} compact={compactMode}
+                  highlighted={focusedWatchId === watch.id}
+                  searchHighlight={filters.search.trim()}
+                  onCardClick={setSelectedWatch}
+                  onRemoveRequest={setRemoveTarget}
+                  onOpenTasks={handleOpenTasks}
+                  onImageFetched={fetchWatches} />
+              ))}
+            </div>
+          )}
+        </section>
+      </>
+    )
+  )
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden pb-14 md:pb-0">
@@ -294,9 +376,9 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="flex flex-1 overflow-hidden min-h-0 h-full w-full">
+      <div className={splitRowClass}>
         {/* LEFT — Inventory */}
-        <div className={`flex flex-col min-h-0 ${leftWidthClass} ${panelHeightClass} border-r border-default overflow-hidden ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`flex flex-col min-h-0 ${leftWidthClass} ${useStickyTasks ? '' : panelHeightClass} border-r border-default ${useStickyTasks ? '' : 'overflow-hidden'} ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
           <div className={`px-4 border-b border-default bg-card sm:px-8 flex-shrink-0 ${inventoryTvScroll ? 'py-3' : 'py-5 sm:py-6'}`}>
             <div className={`flex items-center justify-between gap-3 ${inventoryTvScroll ? '' : 'mb-4'}`}>
               <div>
@@ -419,6 +501,11 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {useStickyTasks ? (
+            <div className="p-4 sm:p-8 space-y-10">
+              {renderInventoryBody()}
+            </div>
+          ) : (
           <AutoScrollViewport
             enabled={inventoryTvScroll}
             className=""
@@ -426,82 +513,14 @@ export default function DashboardPage() {
             speedPxPerSec={45}
             pauseMs={2500}
           >
-            {loading ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
-              </div>
-            ) : watches.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full gap-4 min-h-[280px] text-center px-4">
-                <div className="w-20 h-20 rounded-full bg-panel border border-default flex items-center justify-center text-4xl">⌚</div>
-                <p className="text-base font-semibold text-muted">No watches on pipeline</p>
-                <p className="text-sm text-muted max-w-xs">Paste a WhatsApp message or enter a stock number to get started.</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setShowPasteMessage(true)} className="btn-secondary">Paste message</button>
-                  <button onClick={() => setShowAddWatch(true)} className="btn-primary">Add watch</button>
-                </div>
-              </div>
-            ) : filteredWatches.length === 0 ? (
-              <div className="text-center py-12 text-muted">
-                <p className="font-semibold">No watches match your filters</p>
-                <button type="button" onClick={() => { setFilters({ search: '', watchType: 'all', payment: 'all', location: 'all' }); setDeptFilter(null) }}
-                  className="mt-2 text-sm text-accent font-semibold hover:underline">Clear all filters</button>
-              </div>
-            ) : (
-              <>
-                <section>
-                  <div className="flex items-center gap-3 mb-4 px-1">
-                    <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-ink">Buy Inventory</h3>
-                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-default bg-panel">{buyWatches.length}</span>
-                  </div>
-                  {buyWatches.length === 0 ? (
-                    <p className="text-sm text-muted px-4 py-8 text-center rounded-3xl border border-dashed border-default bg-panel">
-                      No buy watches match — paste a purchase message or add stock #
-                    </p>
-                  ) : (
-                    <div className={inventoryGridClass}>
-                      {buyWatches.map(watch => (
-                        <WatchCard key={watch.id} watch={watch} compact={compactMode}
-                          highlighted={focusedWatchId === watch.id}
-                          searchHighlight={filters.search.trim()}
-                          onCardClick={setSelectedWatch}
-                          onRemoveRequest={setRemoveTarget}
-                          onOpenTasks={handleOpenTasks}
-                          onImageFetched={fetchWatches} />
-                      ))}
-                    </div>
-                  )}
-                </section>
-                <section>
-                  <div className="flex items-center gap-3 mb-4 px-1">
-                    <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-accent">Sell Inventory</h3>
-                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-accent/30 bg-accent/5 text-accent">{sellWatches.length}</span>
-                  </div>
-                  {sellWatches.length === 0 ? (
-                    <p className="text-sm text-muted px-4 py-8 text-center rounded-3xl border border-dashed border-default bg-panel">
-                      No sell watches match — paste a sold message
-                    </p>
-                  ) : (
-                    <div className={inventoryGridClass}>
-                      {sellWatches.map(watch => (
-                        <WatchCard key={watch.id} watch={watch} compact={compactMode}
-                          highlighted={focusedWatchId === watch.id}
-                          searchHighlight={filters.search.trim()}
-                          onCardClick={setSelectedWatch}
-                          onRemoveRequest={setRemoveTarget}
-                          onOpenTasks={handleOpenTasks}
-                          onImageFetched={fetchWatches} />
-                      ))}
-                    </div>
-                  )}
-                </section>
-              </>
-            )}
+            {renderInventoryBody()}
           </AutoScrollViewport>
+          )}
         </div>
 
-        {/* RIGHT — Tasks sidebar (flex split, never overlaps inventory) */}
+        {/* RIGHT — Tasks sidebar */}
         {showTasksPanel && (
-        <div className={`flex flex-col min-h-0 shrink-0 w-full md:w-[42%] md:max-w-[42%] md:flex-[0_0_42%] ${panelHeightClass} border-l border-default bg-surface overflow-hidden ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`flex flex-col min-h-0 shrink-0 w-full md:w-[42%] md:max-w-[42%] md:flex-[0_0_42%] ${viewportHeightClass} border-l border-default bg-surface overflow-hidden ${useStickyTasks ? 'md:sticky md:top-[5.25rem] md:self-start z-20' : ''} ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
           <div className="flex items-center justify-between px-4 py-5 border-b border-default bg-card sm:px-8 flex-shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <button type="button" onClick={() => setActiveTab('inventory')}
@@ -522,7 +541,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <button type="button" onClick={toggleTasksPinned} title="Keep tasks panel open in split view"
+              <button type="button" onClick={toggleTasksPinned} title="Keep tasks panel sticky while scrolling inventory"
                 className={`hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${tasksPinned ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
                 {tasksPinned ? 'Pinned' : 'Pin tasks'}
               </button>
