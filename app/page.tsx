@@ -226,7 +226,8 @@ export default function AdminTasksPage() {
 
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-black text-[#171c25] sm:text-3xl">📌 Admin Tasks</h1>
+              <h1 className="text-2xl font-black text-[#171c25] sm:text-3xl">📌 Team Tasks</h1>
+              <p className="text-[#777587] text-sm mt-0.5">Ad-hoc assignments — separate from watch pipeline tasks</p>
               <p className="text-[#464555] text-sm mt-1">Assign custom tasks between team members with optional WhatsApp reminders.</p>
             </div>
             <button

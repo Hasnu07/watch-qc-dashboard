@@ -97,13 +97,12 @@ export default function HistoryPage() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Header */}
-      <div className="px-8 py-5 border-b border-slate-200 bg-white shadow-sm">
-        <h1 className="text-3xl font-black text-slate-900">📋 Task History</h1>
-        <p className="text-slate-500 mt-1 font-medium">All watch tasks and their completion status</p>
+      <div className="px-4 py-4 sm:px-6 md:px-8 border-b border-slate-200 bg-white shadow-sm">
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">📋 Task History</h1>
+        <p className="text-slate-500 mt-1 font-medium text-sm">All watch tasks and completion status</p>
       </div>
 
-      {/* Filters */}
-      <div className="px-8 py-4 bg-white border-b border-slate-200 flex flex-wrap gap-4 items-end">
+      <div className="px-4 py-4 sm:px-6 md:px-8 bg-white border-b border-slate-200 flex flex-wrap gap-3 items-end">
         <div className="flex-1 min-w-48">
           <label className="text-xs text-slate-500 block mb-1">Search</label>
           <input type="text" value={filters.search}
@@ -153,16 +152,40 @@ export default function HistoryPage() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto px-8 py-6 bg-slate-50">
+      <div className="flex-1 overflow-auto px-4 py-4 sm:px-6 md:px-8 bg-slate-50">
         {loading ? (
-          <div className="flex items-center justify-center h-40 text-slate-400 text-lg">Loading…</div>
+          <div className="flex items-center justify-center h-40 text-slate-400">Loading…</div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-slate-400 gap-2">
-            <p className="text-xl">No tasks found</p>
-            {hasFilters && <button onClick={clearFilters} className="text-blue-600 hover:underline text-base">Clear filters</button>}
+            <p className="text-lg font-semibold">No tasks found</p>
+            {hasFilters && <button onClick={clearFilters} className="text-blue-600 hover:underline text-sm">Clear filters</button>}
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
+          <>
+          <div className="md:hidden flex flex-col gap-3">
+            {filtered.map(task => {
+              const wName = [task.watch.brand, task.watch.model].filter(Boolean).join(' ') || task.watch.name
+              const taskLabel = TASK_LABELS[task.task_type] ?? task.task_type
+              return (
+                <div key={task.id} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                  <p className="font-bold text-slate-900">{wName}</p>
+                  <p className="text-sm text-slate-600 mt-1">{taskLabel}</p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${DEPT_BADGE[task.department]}`}>{task.department}</span>
+                    {task.is_completed ? (
+                      <span className="text-xs font-bold text-emerald-600">✓ Done</span>
+                    ) : (
+                      <span className="text-xs text-slate-400">Pending</span>
+                    )}
+                  </div>
+                  {task.completed_at && (
+                    <p className="text-xs text-slate-400 mt-2">{new Date(task.completed_at).toLocaleString()}</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
             <table className="w-full text-base">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 text-sm uppercase tracking-wide border-b border-slate-200">
@@ -222,6 +245,7 @@ export default function HistoryPage() {
               {filtered.length} record{filtered.length !== 1 ? 's' : ''}
             </div>
           </div>
+          </>
         )}
       </div>
     </div>

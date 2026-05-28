@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { getTaskLabel } from '@/lib/task-labels'
 
 interface TeamMember { id: number; name: string; department: string }
 
@@ -114,8 +115,8 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
   if (tasks.length === 0) return (
     <div className={`flex flex-col items-center justify-center h-40 text-slate-400 gap-2 ${className}`}>
       <span className="text-4xl">🏷️</span>
-      <p className="font-semibold text-lg">No sold watches</p>
-      <p className="text-sm">Add a watch as 🏷️ Sell type to see tasks here</p>
+      <p className="font-semibold text-lg">No sell tasks yet</p>
+      <p className="text-sm text-center px-4">Import a sell watch — tasks appear automatically</p>
     </div>
   )
 
@@ -226,7 +227,7 @@ function SellTaskRow({
         {saving && <span className="text-slate-400 text-[10px] animate-spin inline-block">⟳</span>}
       </div>
       <span className={`text-sm flex-1 leading-snug ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-700 font-medium'}`}>
-        {task.task_type}
+        {getTaskLabel(task.task_type, 'SELL')}
       </span>
 
       {/* Simple assignee button */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const BRANDS = ['Rolex', 'Audemars Piguet', 'Patek Philippe', 'Tudor', 'Cartier', 'Richard Mille']
 const CURRENCIES = ['USD', 'GBP', 'EUR', 'HKD', 'AED']
@@ -56,14 +56,14 @@ const emptyLocation: LocationForm = {
   transit_pickup_date: '', transit_carrier: '', transit_tracking_number: '',
 }
 
-interface Props { onClose: () => void; onAdded: () => void }
+interface Props { onClose: () => void; onAdded: () => void; initialStockNo?: string }
 
-const BUY_STEPS = ['Watch Details', 'Payment', 'Location']
-const SELL_STEPS = ['Watch Details', 'Payment']
+const BUY_STEPS = ['Identity', 'Deal', 'Payment & Location']
+const SELL_STEPS = ['Identity', 'Deal', 'Payment']
 
-export default function AddWatchModal({ onClose, onAdded }: Props) {
+export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }: Props) {
   const [step, setStep] = useState(1)
-  const [watch, setWatch] = useState<WatchForm>(emptyWatch)
+  const [watch, setWatch] = useState<WatchForm>({ ...emptyWatch, stock_no: initialStockNo })
   const [payment, setPayment] = useState<PaymentForm>(emptyPayment)
   const [location, setLocation] = useState<LocationForm>(emptyLocation)
   const [loading, setLoading] = useState(false)
@@ -72,6 +72,12 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
   const [error, setError] = useState('')
   const [aiMsg, setAiMsg] = useState('')
   const [inventoryMsg, setInventoryMsg] = useState('')
+  const [showMoreDetails, setShowMoreDetails] = useState(false)
+
+  useEffect(() => {
+    if (initialStockNo) lookupStockFromInventory(initialStockNo)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const setW = (key: keyof WatchForm, val: string) => setWatch(prev => ({ ...prev, [key]: val }))
   const setP = (key: keyof PaymentForm, val: string | boolean) => setPayment(prev => ({ ...prev, [key]: val }))
@@ -167,8 +173,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
     }
   }
 
-  const validateStep1 = () => {
-    // Purchase section is hidden for Sell watches — skip currency validation entirely.
+  const validateStep2 = () => {
     if (!isSell && watch.currency !== 'USD' && !watch.convert_rate) {
       setError(`Enter the ${watch.currency} to USD conversion rate.`)
       return false
@@ -178,7 +183,7 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
   }
 
   const handleNext = () => {
-    if (step === 1 && !validateStep1()) return
+    if (step === 2 && !validateStep2()) return
     setError('')
     setStep(s => s + 1)
   }
@@ -305,6 +310,20 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
           {/* ─── STEP 1: WATCH DETAILS ─── */}
           {step === 1 && (
             <>
+              {/* Stock first */}
+              <div className="mb-5">
+                <label className={labelCls}>Stock No. — start here</label>
+                <input type="text" value={watch.stock_no} onChange={e => setW('stock_no', e.target.value)}
+                  onBlur={e => lookupStockFromInventory(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') lookupStockFromInventory(watch.stock_no) }}
+                  placeholder="e.g. 1377" className={inputCls} autoFocus={!!initialStockNo} />
+                {(stockLookupLoading || inventoryMsg) && (
+                  <p className={`text-xs mt-1 ${inventoryMsg.startsWith('✓') ? 'text-green-600' : 'text-slate-400'}`}>
+                    {stockLookupLoading ? 'Looking up inventory…' : inventoryMsg}
+                  </p>
+                )}
+              </div>
+
               {/* Watch Type */}
               <div className="mb-5">
                 <p className="text-xs uppercase tracking-widest text-slate-500 font-black mb-2">Watch Type</p>
@@ -361,175 +380,93 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                     <input type="text" value={watch.serial_no} onChange={e => setW('serial_no', e.target.value)} placeholder="e.g. 5X123456" className={inputCls} />
                   </div>
                   <div>
-                    <label className={labelCls}>Stock No.</label>
-                    <input
-                      type="text"
-                      value={watch.stock_no}
-                      onChange={e => setW('stock_no', e.target.value)}
-                      onBlur={e => lookupStockFromInventory(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') lookupStockFromInventory(watch.stock_no) }}
-                      placeholder="e.g. 1377"
-                      className={inputCls}
-                    />
-                    {(stockLookupLoading || inventoryMsg) && (
-                      <p className={`text-xs mt-1 ${inventoryMsg.startsWith('✓') ? 'text-green-600' : 'text-slate-400'}`}>
-                        {stockLookupLoading ? 'Looking up inventory…' : inventoryMsg}
-                      </p>
-                    )}
-                  </div>
-                  <div>
                     <label className={labelCls}>Watch Date / Year</label>
                     <input type="text" value={watch.watch_date} onChange={e => setW('watch_date', e.target.value)} placeholder="e.g. 2023" className={inputCls} />
                   </div>
-                </div>
-              </div>
-
-              {isSell && (
-                <div className={sectionCls}>
-                  <p className="text-xs uppercase tracking-widest text-orange-600 font-black mb-3 flex items-center gap-2">
-                    <span className="text-base">👤</span> Customer
-                  </p>
-                  <div>
-                    <label className={labelCls}>Sold To</label>
-                    <input type="text" value={watch.sold_to} onChange={e => setW('sold_to', e.target.value)}
-                      placeholder="Customer name / company" className={inputCls} />
-                    <p className="text-xs text-slate-400 mt-1.5">Who you sold this watch to.</p>
-                  </div>
-                </div>
-              )}
-
-              {!isSell && (
-              <div className={sectionCls}>
-                <p className="text-xs uppercase tracking-widest text-amber-600 font-black mb-3 flex items-center gap-2">
-                  <span className="text-base">💰</span> Purchase
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <label className={labelCls}>Bought From</label>
-                    <input type="text" value={watch.bought_from} onChange={e => setW('bought_from', e.target.value)} placeholder="Dealer name / person" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Currency</label>
-                    <div className="flex gap-1.5">
-                      {CURRENCIES.map(c => (
-                        <button key={c} type="button"
-                          onClick={() => { setW('currency', c); if (c === 'USD') setW('convert_rate', '') }}
-                          className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${
-                            watch.currency === c ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 text-slate-400 hover:text-slate-700 bg-white'
-                          }`}>
-                          {c}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelCls}>Purchase Price ({CURRENCY_SYMBOLS[watch.currency] || watch.currency})</label>
-                    <input type="number" value={watch.purchase_price} onChange={e => setW('purchase_price', e.target.value)} placeholder="0.00" min="0" step="0.01" className={inputCls} />
-                  </div>
-                  {watch.currency !== 'USD' && (
-                    <>
-                      <div>
-                        <label className={labelCls}>Rate: 1 {watch.currency} = ? USD</label>
-                        <input type="number" value={watch.convert_rate} onChange={e => setW('convert_rate', e.target.value)} placeholder="e.g. 1.27" min="0" step="0.000001" className={inputCls} />
-                      </div>
-                      {purchasePriceUSD !== null && (
-                        <div className="flex items-end pb-1">
-                          <span className="text-green-600 text-sm font-semibold">≈ ${purchasePriceUSD.toLocaleString()} USD</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-              )}
-
-              <div className={sectionCls}>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs uppercase tracking-widest text-violet-600 font-black flex items-center gap-2">
-                    <span className="text-base">⚙️</span> Watch Details
-                  </p>
-                  <div className="flex items-center gap-2">
-                    {aiMsg && (
-                      <span className={`text-xs ${aiMsg.startsWith('✓') ? 'text-green-600' : 'text-amber-600'}`}>{aiMsg}</span>
-                    )}
-                    <button type="button" onClick={handleAIFill} disabled={aiLoading || !watch.brand}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 text-xs font-semibold transition-all disabled:opacity-40">
-                      {aiLoading ? <span className="animate-spin text-base leading-none">⟳</span> : <span>✨</span>}
-                      {aiLoading ? 'Thinking...' : 'AI Autofill'}
-                    </button>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelCls}>Case Material</label>
-                    <input type="text" value={watch.case_material} onChange={e => setW('case_material', e.target.value)} placeholder="e.g. Oystersteel" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Dial Colour</label>
-                    <input type="text" value={watch.dial_colour} onChange={e => setW('dial_colour', e.target.value)} placeholder="e.g. Black" className={inputCls} />
-                  </div>
-                  <div className="col-span-2">
-                    <label className={labelCls}>Bracelet / Strap</label>
-                    <input type="text" value={watch.bracelet} onChange={e => setW('bracelet', e.target.value)} placeholder="e.g. Oyster Bracelet" className={inputCls} />
-                  </div>
-                </div>
-              </div>
-
-              <div className={sectionCls}>
-                <p className="text-xs uppercase tracking-widest text-emerald-600 font-black mb-3 flex items-center gap-2">
-                  <span className="text-base">📍</span> {isSell ? 'Origin' : 'Status & Origin'}
-                </p>
-                <div className={`grid gap-3 items-start ${isSell ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                  {!isSell && (
-                    <div>
-                      <label className={labelCls}>Stock Status</label>
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => setW('stock_status', 'STOCK')}
-                          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                            watch.stock_status === 'STOCK' ? 'bg-green-50 border-green-300 text-green-700' : 'border-slate-200 text-slate-400 hover:text-slate-600 bg-white'
-                          }`}>
-                          ✓ In Stock
-                        </button>
-                        <button type="button" onClick={() => setW('stock_status', 'INCOMING')}
-                          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                            watch.stock_status === 'INCOMING' ? 'bg-amber-50 border-amber-300 text-amber-700' : 'border-slate-200 text-slate-400 hover:text-slate-600 bg-white'
-                          }`}>
-                          ⏳ Incoming
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  <div>
-                    <label className={labelCls}>Origin <span className="text-slate-300">(optional)</span></label>
-                    <input type="text" value={watch.origin} onChange={e => setW('origin', e.target.value)} placeholder="e.g. UK, Japan" className={inputCls} />
-                  </div>
-                </div>
-              </div>
-
-              <div className={sectionCls}>
-                <p className="text-xs uppercase tracking-widest text-blue-600 font-black mb-3 flex items-center gap-2">
-                  <span className="text-base">🏷️</span> Listing & Pricing
-                </p>
-                <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <label className={labelCls}>Image URL</label>
                     <input type="url" value={watch.image_url} onChange={e => setW('image_url', e.target.value)} placeholder="https://..." className={inputCls} />
                   </div>
-                  <div>
-                    <label className={labelCls}>Website Price (USD) *</label>
-                    <input type="number" value={watch.website_price} onChange={e => setW('website_price', e.target.value)} placeholder="0.00" min="0" step="0.01" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>B2B Price (USD) *</label>
-                    <input type="number" value={watch.b2b_price} onChange={e => setW('b2b_price', e.target.value)} placeholder="0.00" min="0" step="0.01" className={inputCls} />
-                  </div>
                 </div>
+              </div>
+
+              <div className={sectionCls}>
+                <button type="button" onClick={() => setShowMoreDetails(v => !v)}
+                  className="text-xs font-bold text-violet-600 uppercase tracking-wide">
+                  {showMoreDetails ? '▾ Hide' : '▸'} More details (case, dial, bracelet)
+                </button>
+                {showMoreDetails && (
+                  <div className="mt-3">
+                    <div className="flex justify-end mb-2 gap-2">
+                      {aiMsg && <span className={`text-xs ${aiMsg.startsWith('✓') ? 'text-green-600' : 'text-amber-600'}`}>{aiMsg}</span>}
+                      <button type="button" onClick={handleAIFill} disabled={aiLoading || !watch.brand}
+                        className="px-3 py-1.5 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 text-xs font-semibold disabled:opacity-40">
+                        ✨ AI Autofill
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className={labelCls}>Case Material</label><input type="text" value={watch.case_material} onChange={e => setW('case_material', e.target.value)} className={inputCls} /></div>
+                      <div><label className={labelCls}>Dial Colour</label><input type="text" value={watch.dial_colour} onChange={e => setW('dial_colour', e.target.value)} className={inputCls} /></div>
+                      <div className="col-span-2"><label className={labelCls}>Bracelet</label><input type="text" value={watch.bracelet} onChange={e => setW('bracelet', e.target.value)} className={inputCls} /></div>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
 
-          {/* ─── STEP 2: PAYMENT STATUS ─── */}
           {step === 2 && (
+            <>
+              {isSell ? (
+                <div className="mb-5">
+                  <label className={labelCls}>Sold To</label>
+                  <input type="text" value={watch.sold_to} onChange={e => setW('sold_to', e.target.value)} className={inputCls} />
+                </div>
+              ) : (
+                <>
+                  <div className="mb-5">
+                    <label className={labelCls}>Bought From</label>
+                    <input type="text" value={watch.bought_from} onChange={e => setW('bought_from', e.target.value)} className={inputCls} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-5">
+                    <div>
+                      <label className={labelCls}>Currency</label>
+                      <div className="flex gap-1 flex-wrap">
+                        {CURRENCIES.map(c => (
+                          <button key={c} type="button" onClick={() => { setW('currency', c); if (c === 'USD') setW('convert_rate', '') }}
+                            className={`py-2 px-2 rounded-lg text-xs font-bold border ${watch.currency === c ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-400'}`}>{c}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Purchase Price</label>
+                      <input type="number" value={watch.purchase_price} onChange={e => setW('purchase_price', e.target.value)} className={inputCls} />
+                    </div>
+                    {watch.currency !== 'USD' && (
+                      <>
+                        <div><label className={labelCls}>FX rate to USD</label><input type="number" value={watch.convert_rate} onChange={e => setW('convert_rate', e.target.value)} className={inputCls} /></div>
+                        {purchasePriceUSD !== null && <div className="text-green-600 text-sm font-semibold flex items-end">≈ ${purchasePriceUSD.toLocaleString()}</div>}
+                      </>
+                    )}
+                  </div>
+                  <div className="mb-5">
+                    <label className={labelCls}>Stock Status</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setW('stock_status', 'STOCK')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border ${watch.stock_status === 'STOCK' ? 'bg-green-50 border-green-300 text-green-700' : 'border-slate-200 text-slate-400'}`}>In Stock</button>
+                      <button type="button" onClick={() => setW('stock_status', 'INCOMING')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border ${watch.stock_status === 'INCOMING' ? 'bg-amber-50 border-amber-300 text-amber-700' : 'border-slate-200 text-slate-400'}`}>Incoming</button>
+                    </div>
+                  </div>
+                </>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className={labelCls}>Website Price (USD)</label><input type="number" value={watch.website_price} onChange={e => setW('website_price', e.target.value)} className={inputCls} /></div>
+                <div><label className={labelCls}>B2B Price (USD)</label><input type="number" value={watch.b2b_price} onChange={e => setW('b2b_price', e.target.value)} className={inputCls} /></div>
+              </div>
+            </>
+          )}
+
+          {/* ─── STEP 3: PAYMENT (+ location for buy step 3) ─── */}
+          {step === 3 && (
             <div className="pt-2">
               <p className="text-xs uppercase tracking-widest text-emerald-600 font-black mb-4 flex items-center gap-2">
                 <span className="text-base">💳</span> Payment Status
@@ -602,73 +539,20 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                   )}
                 </div>
               )}
-            </div>
-          )}
-
-          {/* ─── STEP 3: LOCATION ─── */}
-          {step === 3 && (
-            <div className="pt-2">
-              <p className="text-xs uppercase tracking-widest text-blue-600 font-black mb-4 flex items-center gap-2">
-                <span className="text-base">📦</span> Watch Location
-              </p>
-
-              <div className="grid grid-cols-2 gap-3 mb-5">
-                <div>
-                  <label className={labelCls}>From <span className="text-slate-300">(optional)</span></label>
-                  <input type="text" value={location.location_from} onChange={e => setL('location_from', e.target.value)} placeholder="e.g. Tokyo, Japan" className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>To <span className="text-slate-300">(optional)</span></label>
-                  <input type="text" value={location.location_to} onChange={e => setL('location_to', e.target.value)} placeholder="e.g. London, UK" className={inputCls} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 mb-5">
-                {([
-                  { val: 'INCOMING' as LocationStatus, icon: '📬', label: 'Incoming', desc: 'Awaiting dispatch', bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-700' },
-                  { val: 'IN_TRANSIT' as LocationStatus, icon: '🚚', label: 'In Transit', desc: 'Being shipped', bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-700' },
-                  { val: 'IN_STOCK' as LocationStatus, icon: '✅', label: 'In Stock', desc: 'Arrived & received', bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-700' },
-                ] as const).map(opt => (
-                  <button key={opt.val} type="button"
-                    onClick={() => setL('location_status', opt.val)}
-                    className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                      location.location_status === opt.val
-                        ? `${opt.bg} ${opt.border} shadow-sm`
-                        : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                    }`}>
-                    <div className={`text-2xl mb-2 ${location.location_status !== opt.val ? 'opacity-30' : ''}`}>{opt.icon}</div>
-                    <div className={`text-sm font-black ${location.location_status === opt.val ? opt.text : 'text-slate-500'}`}>{opt.label}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">{opt.desc}</div>
-                  </button>
-                ))}
-              </div>
-
-              {location.location_status === 'IN_TRANSIT' && (
-                <div className="border-2 border-blue-100 rounded-2xl p-4 bg-blue-50/40">
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-3">🚚 Transit Details</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>Pickup Date</label>
-                      <input type="date" value={location.transit_pickup_date} onChange={e => setL('transit_pickup_date', e.target.value)} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Carrier</label>
-                      <input type="text" value={location.transit_carrier} onChange={e => setL('transit_carrier', e.target.value)} placeholder="e.g. DHL, FedEx" className={inputCls} />
-                    </div>
-                    <div className="col-span-2">
-                      <label className={labelCls}>Tracking Number <span className="text-slate-300">(optional)</span></label>
-                      <input type="text" value={location.transit_tracking_number} onChange={e => setL('transit_tracking_number', e.target.value)} placeholder="e.g. 1Z999AA10123456784" className={inputCls} />
-                    </div>
+              {!isSell && (
+                <div className="border-t border-slate-100 pt-5 mt-5">
+                  <p className="text-xs uppercase tracking-widest text-blue-600 font-black mb-4">📦 Location</p>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div><label className={labelCls}>From</label><input type="text" value={location.location_from} onChange={e => setL('location_from', e.target.value)} className={inputCls} /></div>
+                    <div><label className={labelCls}>To</label><input type="text" value={location.location_to} onChange={e => setL('location_to', e.target.value)} className={inputCls} /></div>
                   </div>
-                </div>
-              )}
-
-              {location.location_status === 'IN_STOCK' && (
-                <div className="flex items-center gap-3 bg-emerald-50 border-2 border-emerald-200 rounded-2xl px-4 py-3">
-                  <span className="text-2xl">✅</span>
-                  <div>
-                    <p className="text-sm font-bold text-emerald-700">Received &amp; In Stock</p>
-                    <p className="text-xs text-emerald-600">Received date will be set to today automatically.</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['INCOMING', 'IN_TRANSIT', 'IN_STOCK'] as LocationStatus[]).map(s => (
+                      <button key={s} type="button" onClick={() => setL('location_status', s)}
+                        className={`py-2 rounded-xl text-xs font-bold border ${location.location_status === s ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'border-slate-200 text-slate-400'}`}>
+                        {s === 'INCOMING' ? 'Incoming' : s === 'IN_TRANSIT' ? 'Transit' : 'In Stock'}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}

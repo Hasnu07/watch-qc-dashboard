@@ -9,6 +9,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        ink: '#171c25',
+        muted: '#777587',
+        border: '#c7c4d8',
+        surface: '#f9f9ff',
+        panel: '#f0f3ff',
+        buy: '#4f46e5',
+        sell: '#f97316',
         bg: {
           primary: '#0a0a0f',
           secondary: '#111118',

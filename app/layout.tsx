@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import NavBar from '@/components/NavBar'
+import { SseProvider } from '@/components/SseProvider'
 
 export const metadata: Metadata = {
   title: 'QC Dashboard — Watch Trading',
@@ -10,15 +11,16 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-[#f9f9ff] text-[#171c25] min-h-screen flex flex-col">
-        <NavBar />
-        <main className="flex-1 flex flex-col">{children}</main>
+      <body className="bg-surface text-ink min-h-screen flex flex-col">
+        <SseProvider>
+          <NavBar />
+          <main className="flex-1 flex flex-col">{children}</main>
+        </SseProvider>
       </body>
     </html>
   )

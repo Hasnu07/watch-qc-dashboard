@@ -6,6 +6,13 @@
 
 :root {
   --scroll-speed: 40;
+  --color-ink: #171c25;
+  --color-muted: #777587;
+  --color-border: #c7c4d8;
+  --color-surface: #f9f9ff;
+  --color-panel: #f0f3ff;
+  --color-buy: #4f46e5;
+  --color-sell: #f97316;
 }
 
 * { box-sizing: border-box; }
@@ -14,8 +21,8 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #f9f9ff;
-  color: #171c25;
+  background-color: var(--color-surface);
+  color: var(--color-ink);
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
@@ -52,5 +59,10 @@ html, body {
   font-weight: 500;
 }
 
-/* Pill button base */
-.pill { border-radius: 9999px; }
+/* Design token utilities */
+.text-ink { color: var(--color-ink); }
+.text-muted { color: var(--color-muted); }
+.bg-surface { background-color: var(--color-surface); }
+.bg-panel { background-color: var(--color-panel); }
+.border-default { border-color: var(--color-border); }
+

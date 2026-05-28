@@ -174,7 +174,7 @@ function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: Task
       <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-100">
         <span className="text-slate-300 text-sm">🔒</span>
         <span className="text-slate-400 text-sm flex-1">{TASK_LABELS[task.task_type] ?? task.task_type}</span>
-        <span className="text-xs text-slate-300 italic">Awaiting payment</span>
+        <span className="text-xs text-slate-300 italic">Mark payment first</span>
       </div>
     )
   }
@@ -616,10 +616,10 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
 
   if (loading) return <div className={`flex items-center justify-center h-40 text-slate-400 ${className}`}>Loading tasks…</div>
   if (tasks.length === 0) return (
-    <div className={`flex flex-col items-center justify-center h-40 text-slate-400 gap-2 ${className}`}>
-      <span className="text-4xl">✓</span>
-      <p className="font-semibold text-lg">No active watches</p>
-      <p className="text-sm">Add a watch to generate tasks</p>
+    <div className={`flex flex-col items-center justify-center h-48 text-slate-400 gap-3 px-6 text-center ${className}`}>
+      <span className="text-4xl">📋</span>
+      <p className="font-semibold text-lg text-slate-600">No buy tasks yet</p>
+      <p className="text-sm">Add a buy watch — tasks are created automatically</p>
     </div>
   )
 
