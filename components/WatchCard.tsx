@@ -50,6 +50,7 @@ interface Watch {
 interface WatchCardProps {
   watch: Watch
   onCardClick: (watch: Watch) => void
+  onRemove?: (id: number) => void
 }
 
 const STAGES: WatchStage[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
@@ -93,9 +94,32 @@ const STAGE_CFG = {
   },
 }
 
-export default function WatchCard({ watch, onCardClick }: WatchCardProps) {
-  const cfg = STAGE_CFG[watch.stage]
+const TYPE_CFG = {
+  BUY: {
+    leftBorder: 'border-l-indigo-500',
+    headerBg: 'bg-indigo-50/80',
+    headerBorder: 'border-indigo-100',
+    brandText: 'text-indigo-600',
+    imageBg: 'from-indigo-50 to-[#f0f3ff]',
+    pricePrimaryBg: 'bg-indigo-50 border-indigo-100',
+    pricePrimaryLabel: 'text-indigo-500',
+    progressBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  },
+  SELL: {
+    leftBorder: 'border-l-orange-500',
+    headerBg: 'bg-orange-50/80',
+    headerBorder: 'border-orange-100',
+    brandText: 'text-orange-600',
+    imageBg: 'from-orange-50 to-amber-50',
+    pricePrimaryBg: 'bg-orange-50 border-orange-100',
+    pricePrimaryLabel: 'text-orange-500',
+    progressBg: 'bg-orange-50 text-orange-700 border-orange-200',
+  },
+} as const
+
+export default function WatchCard({ watch, onCardClick, onRemove }: WatchCardProps) {
   const isSell = watch.watch_type === 'SELL'
+  const typeCfg = isSell ? TYPE_CFG.SELL : TYPE_CFG.BUY
 
   const summary: TaskSummary = watch.task_summary ?? {
     LOGISTICS: { total: 0, completed: 0 },
@@ -129,10 +153,32 @@ export default function WatchCard({ watch, onCardClick }: WatchCardProps) {
   return (
     <div
       onClick={() => onCardClick(watch)}
-      className={`bg-white rounded-2xl overflow-hidden border-l-4 ${cfg.leftBorder} border border-[#c7c4d8] shadow-[0_1px_4px_rgba(15,23,42,0.06)] hover:shadow-[0_4px_16px_rgba(15,23,42,0.10)] transition-all group flex flex-col cursor-pointer`}
+      className={`bg-white rounded-2xl overflow-hidden border-l-4 ${typeCfg.leftBorder} border border-[#c7c4d8] shadow-[0_1px_4px_rgba(15,23,42,0.06)] hover:shadow-[0_4px_16px_rgba(15,23,42,0.10)] transition-all group flex flex-col cursor-pointer`}
     >
+      {/* Type ribbon + remove */}
+      <div className={`px-3 py-1.5 flex items-center justify-between border-b ${typeCfg.headerBorder} ${typeCfg.headerBg}`}>
+        <span className={`text-[10px] font-black uppercase tracking-widest ${isSell ? 'text-orange-700' : 'text-indigo-700'}`}>
+          {isSell ? '🏷️ Sell Watch' : '🛒 Buy Watch'}
+        </span>
+        {onRemove && (
+          <button
+            type="button"
+            title="Remove (no WhatsApp notification)"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (window.confirm(`Remove "${watch.name}"?\n\nDeletes watch and tasks. No WhatsApp notification will be sent.`)) {
+                onRemove(watch.id)
+              }
+            }}
+            className="text-[10px] font-bold px-2 py-0.5 rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 border border-transparent hover:border-red-200 transition-colors"
+          >
+            ✕ Remove
+          </button>
+        )}
+      </div>
+
       {/* Pipeline dots */}
-      <div className="px-4 pt-3 pb-2 bg-[#f0f3ff] border-b border-[#e4e8f5]">
+      <div className={`px-4 pt-3 pb-2 border-b ${typeCfg.headerBorder} ${typeCfg.headerBg}`}>
         <div className="flex items-center gap-0.5">
           {STAGES.map((s, i) => {
             const done = deptDone(s)
@@ -158,17 +204,17 @@ export default function WatchCard({ watch, onCardClick }: WatchCardProps) {
       </div>
 
       {/* Badges row */}
-      <div className="px-3 pt-2 pb-1.5 flex items-center gap-1.5 bg-[#f0f3ff] border-b border-[#e4e8f5]">
+      <div className={`px-3 pt-2 pb-1.5 flex items-center gap-1.5 border-b ${typeCfg.headerBorder} ${typeCfg.headerBg}`}>
         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${payCls}`}>{payLabel}</span>
         {isSell ? (
-          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border ml-auto bg-orange-50 text-orange-700 border-orange-200">🏷️ Sell</span>
+          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border ml-auto bg-orange-100 text-orange-800 border-orange-200">Sale deal</span>
         ) : (
           <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ml-auto ${locCls}`}>{locLabel}</span>
         )}
       </div>
 
       {/* Image */}
-      <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-slate-50 to-[#f0f3ff] overflow-hidden">
+      <div className={`relative w-full aspect-[4/3] bg-gradient-to-br ${typeCfg.imageBg} overflow-hidden`}>
         {watch.image_url ? (
           <Image src={watch.image_url} alt={watch.name} fill
             className="object-contain p-3 group-hover:scale-105 transition-transform duration-300" unoptimized />
@@ -199,7 +245,7 @@ export default function WatchCard({ watch, onCardClick }: WatchCardProps) {
       {/* Info */}
       <div className="p-4 flex flex-col gap-2.5 flex-1">
         {watch.brand && (
-          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-0">{watch.brand}</p>
+          <p className={`text-[10px] font-black uppercase tracking-widest mb-0 ${typeCfg.brandText}`}>{watch.brand}</p>
         )}
         <div>
           <h3 className="text-[#171c25] font-bold text-base leading-tight">
@@ -235,21 +281,27 @@ export default function WatchCard({ watch, onCardClick }: WatchCardProps) {
 
         {/* Prices */}
         <div className="grid grid-cols-2 gap-2 mt-auto">
-          <div className="bg-[#f0f3ff] rounded-xl p-2.5 border border-[#dae2fd]">
-            <div className="text-[9px] font-black uppercase tracking-widest text-indigo-400 mb-0.5">Website</div>
+          <div className={`rounded-xl p-2.5 border ${typeCfg.pricePrimaryBg}`}>
+            <div className={`text-[9px] font-black uppercase tracking-widest mb-0.5 ${typeCfg.pricePrimaryLabel}`}>
+              {isSell ? 'Sale Price' : 'Website'}
+            </div>
             <div className="text-[#171c25] font-black text-base font-mono-data">{formatCurrency(watch.website_price)}</div>
           </div>
-          <div className="bg-emerald-50 rounded-xl p-2.5 border border-emerald-100">
-            <div className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-0.5">B2B</div>
-            <div className="text-emerald-900 font-black text-base font-mono-data">{formatCurrency(watch.b2b_price)}</div>
+          <div className={`rounded-xl p-2.5 border ${isSell ? 'bg-amber-50 border-amber-100' : 'bg-emerald-50 border-emerald-100'}`}>
+            <div className={`text-[9px] font-black uppercase tracking-widest mb-0.5 ${isSell ? 'text-amber-600' : 'text-emerald-500'}`}>
+              {isSell ? 'Stock #' : 'B2B'}
+            </div>
+            <div className={`font-black text-base font-mono-data ${isSell ? 'text-amber-900' : 'text-emerald-900'}`}>
+              {isSell && watch.stock_no ? `#${watch.stock_no}` : formatCurrency(watch.b2b_price)}
+            </div>
           </div>
         </div>
 
-        {/* Task progress — auto-removed from dashboard when all phase tasks are complete */}
-        <div className={`w-full py-2.5 rounded-full font-bold text-sm text-center ${
+        {/* Task progress */}
+        <div className={`w-full py-2.5 rounded-full font-bold text-sm text-center border ${
           allDone
-            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-            : 'bg-[#eaeefb] text-[#464555] border border-[#c7c4d8]'
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            : typeCfg.progressBg
         }`}>
           {allDone ? '✓ All tasks complete' : `${STAGES.filter(deptDone).length}/${STAGES.length} departments done`}
         </div>

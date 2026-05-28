@@ -49,6 +49,8 @@ interface Watch {
   transit_carrier: string | null
   transit_tracking_number: string | null
   received_date: string | null
+  watch_type?: 'BUY' | 'SELL'
+  sold_to?: string | null
   task_summary?: TaskSummary
 }
 
@@ -104,6 +106,20 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchWatches() }, [fetchWatches])
 
+  const buyWatches = watches.filter(w => w.watch_type !== 'SELL')
+  const sellWatches = watches.filter(w => w.watch_type === 'SELL')
+
+  const handleRemove = async (id: number) => {
+    setWatches(prev => prev.filter(w => w.id !== id))
+    if (selectedWatch?.id === id) setSelectedWatch(null)
+    try {
+      const res = await fetch(`/api/watches/${id}`, { method: 'DELETE' })
+      if (!res.ok) fetchWatches()
+    } catch {
+      fetchWatches()
+    }
+  }
+
   const stageCounts = {
     LOGISTICS: watches.filter(w => w.stage === 'LOGISTICS').length,
     ACCOUNTING: watches.filter(w => w.stage === 'ACCOUNTING').length,
@@ -138,8 +154,10 @@ export default function DashboardPage() {
           <div className="px-4 py-4 border-b border-[#dee2ef] bg-white sm:px-6 sm:py-5">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <div>
-                <h2 className="text-xl font-black text-[#171c25] sm:text-2xl">Watch Inventory</h2>
-                <p className="text-[#777587] text-xs mt-0.5 font-medium sm:text-sm">{watches.length} active watches in pipeline</p>
+                <h2 className="text-xl font-black text-[#171c25] sm:text-2xl">Watch Dashboard</h2>
+                <p className="text-[#777587] text-xs mt-0.5 font-medium sm:text-sm">
+                  {buyWatches.length} buy · {sellWatches.length} sell · {watches.length} total
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${sseConnected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
@@ -176,26 +194,58 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 bg-[#f0f3ff] sm:p-5">
+          <div className="flex-1 overflow-y-auto p-3 bg-[#f0f3ff] sm:p-5 space-y-6">
             {watches.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full gap-4">
+              <div className="flex flex-col items-center justify-center h-full gap-4 min-h-[280px]">
                 <div className="w-20 h-20 rounded-full bg-[#eaeefb] border border-[#c7c4d8] flex items-center justify-center">
                   <svg className="w-10 h-10 text-[#c7c4d8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p className="text-base font-semibold text-[#777587]">No watches in inventory</p>
+                <p className="text-base font-semibold text-[#777587]">No watches on dashboard</p>
                 <button onClick={() => setShowAddWatch(true)}
                   className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-semibold text-sm transition-all">
                   + Add your first watch
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
-                {watches.map(watch => (
-                  <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} />
-                ))}
-              </div>
+              <>
+                {/* Buy watches */}
+                <section>
+                  <div className="flex items-center gap-2 mb-3 px-1">
+                    <div className="w-1 h-6 rounded-full bg-indigo-500" />
+                    <h3 className="text-sm font-black text-indigo-800 uppercase tracking-wider">Buy Watches</h3>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">{buyWatches.length}</span>
+                  </div>
+                  {buyWatches.length === 0 ? (
+                    <p className="text-sm text-[#777587] px-1 py-4 text-center bg-indigo-50/50 rounded-xl border border-indigo-100 border-dashed">No buy watches — paste or add a purchase</p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+                      {buyWatches.map(watch => (
+                        <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} onRemove={handleRemove} />
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                {/* Sell watches */}
+                <section>
+                  <div className="flex items-center gap-2 mb-3 px-1">
+                    <div className="w-1 h-6 rounded-full bg-orange-500" />
+                    <h3 className="text-sm font-black text-orange-800 uppercase tracking-wider">Sell Watches</h3>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">{sellWatches.length}</span>
+                  </div>
+                  {sellWatches.length === 0 ? (
+                    <p className="text-sm text-[#777587] px-1 py-4 text-center bg-orange-50/50 rounded-xl border border-orange-100 border-dashed">No sell watches — paste a sold message</p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+                      {sellWatches.map(watch => (
+                        <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} onRemove={handleRemove} />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </>
             )}
           </div>
         </div>
