@@ -80,7 +80,7 @@ model Watch {
   transit_tracking_number String?
   received_date           DateTime?
   created_at              DateTime   @default(now())
-  updated_at              DateTime   @updatedAt
+  updated_at              DateTime   @default(now()) @updatedAt
   linked_buy_watch_id     Int?
   linked_buy_watch        Watch?     @relation("BuySellLink", fields: [linked_buy_watch_id], references: [id], onDelete: SetNull)
   linked_sell_watches     Watch[]    @relation("BuySellLink")
