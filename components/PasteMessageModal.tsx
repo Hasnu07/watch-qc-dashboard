@@ -62,42 +62,42 @@ export default function PasteMessageModal({ onClose, onImported, onViewWatch }: 
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl border border-slate-200 w-full max-w-xl shadow-2xl my-4">
-        <div className="flex items-center justify-between px-6 py-5 border-b-2 border-slate-100 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-t-3xl">
+    <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="card w-full max-w-xl shadow-none my-4">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-default bg-card rounded-t-3xl">
           <div>
-            <h2 className="text-xl font-black text-white">📋 Paste WhatsApp Message</h2>
-            <p className="text-emerald-100 text-xs mt-0.5">Parses buy/sell and enriches from inventory CSV</p>
+            <h2 className="font-display text-xl font-bold text-ink tracking-wide">📋 Paste WhatsApp Message</h2>
+            <p className="text-muted text-xs mt-0.5">Parses buy/sell and enriches from inventory CSV</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center font-bold">&times;</button>
+          <button onClick={onClose} className="btn-ghost w-8 h-8 p-0 rounded-full text-lg leading-none">&times;</button>
         </div>
 
         <div className="px-6 py-5 max-h-[60vh] overflow-y-auto flex flex-col gap-4">
           {!success && (
             <>
               <div>
-                <label className="text-xs text-slate-600 block mb-1.5 font-bold uppercase tracking-wide">Message Text</label>
+                <label className="section-label block mb-1.5">Message Text</label>
                 <textarea value={text} onChange={e => setText(e.target.value)} rows={9}
                   placeholder={`Paste the full WhatsApp message here…`}
-                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-emerald-400 resize-none font-mono" />
+                  className="input-field rounded-2xl resize-none font-mono min-h-[180px]" />
               </div>
               <div>
-                <label className="text-xs text-slate-600 block mb-1.5 font-bold uppercase tracking-wide">Image URL <span className="text-slate-400 normal-case font-medium">(optional)</span></label>
+                <label className="section-label block mb-1.5">Image URL <span className="normal-case tracking-normal font-normal">(optional)</span></label>
                 <input type="url" value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..."
-                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-400" />
+                  className="input-field rounded-2xl" />
               </div>
             </>
           )}
 
-          {error && <div className="px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-sm text-red-700 font-medium">✗ {error}</div>}
+          {error && <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-2xl text-sm text-red-700 font-medium">✗ {error}</div>}
           {skipped && (
-            <div className="px-4 py-3 bg-amber-50 border-2 border-amber-200 rounded-xl text-sm text-amber-800">
+            <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-2xl text-sm text-amber-800">
               <p className="font-bold mb-1">⚠ Not imported</p>
               <p className="text-xs">{skipped === 'not_a_transaction' ? 'Message looks like chatter — include seller/sold-to, price, or reference.' : `Skipped: ${skipped}`}</p>
             </div>
           )}
           {success && preview && (
-            <div className="px-4 py-4 bg-emerald-50 border-2 border-emerald-200 rounded-xl text-sm text-emerald-800">
+            <div className="px-4 py-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-sm text-emerald-800">
               <p className="font-bold mb-2">
                 ✓ Imported as {preview.type === 'SELL' ? '🏷️ Sell' : '🛒 Buy'}
                 {preview.inventory_matched && <span className="ml-2 font-semibold">· CSV matched</span>}
@@ -114,19 +114,19 @@ export default function PasteMessageModal({ onClose, onImported, onViewWatch }: 
               <div className="flex gap-2">
                 {importedWatchId && onViewWatch && (
                   <button onClick={() => { onViewWatch(importedWatchId); onClose() }}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm">View on pipeline</button>
+                    className="flex-1 btn-primary">View on pipeline</button>
                 )}
-                <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border-2 border-emerald-300 text-emerald-800 font-bold text-sm">Close</button>
+                <button onClick={onClose} className="flex-1 btn-ghost">Close</button>
               </div>
             </div>
           )}
         </div>
 
         {!success && (
-          <div className="flex gap-3 px-6 py-5 border-t-2 border-slate-100">
-            <button onClick={onClose} className="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-500 font-bold">Cancel</button>
+          <div className="flex gap-3 px-6 py-5 border-t border-default bg-card rounded-b-3xl">
+            <button onClick={onClose} className="flex-1 btn-ghost">Cancel</button>
             <button onClick={handleImport} disabled={loading || (!text.trim() && !imageUrl)}
-              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black disabled:opacity-50">
+              className="flex-1 btn-primary disabled:opacity-50">
               {loading ? 'Parsing…' : '📋 Parse & Import'}
             </button>
           </div>

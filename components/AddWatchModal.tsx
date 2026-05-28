@@ -260,21 +260,23 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
     }
   }
 
-  const inputCls = 'w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition-all'
-  const labelCls = 'text-xs text-slate-600 block mb-1.5 font-bold uppercase tracking-wide'
-  const sectionCls = 'border-t-2 border-slate-100 pt-5 mt-5'
+  const inputCls = 'input-field rounded-2xl'
+  const labelCls = 'section-label block mb-1.5'
+  const sectionCls = 'border-t border-default pt-5 mt-5'
+  const chipCls = (active: boolean) =>
+    active ? 'chip-active flex-1 text-center py-2' : 'chip flex-1 text-center py-2 hover:border-accent/40 hover:text-ink'
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl border border-slate-200 w-full max-w-2xl shadow-2xl my-4">
+    <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="card w-full max-w-2xl shadow-none my-4">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b-2 border-slate-100 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-t-3xl">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-default bg-card rounded-t-3xl">
           <div>
-            <h2 className="text-xl font-black text-white">Add Watch</h2>
-            <p className="text-indigo-200 text-xs mt-0.5">Step {step} of {totalSteps} — {STEPS[step - 1]}</p>
+            <h2 className="font-display text-xl font-bold text-ink tracking-wide">Add Watch</h2>
+            <p className="text-muted text-xs mt-0.5">Step {step} of {totalSteps} — {STEPS[step - 1]}</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition-colors font-bold">&times;</button>
+          <button onClick={onClose} className="btn-ghost w-8 h-8 p-0 rounded-full text-lg leading-none">&times;</button>
         </div>
 
         {/* Step indicator */}
@@ -287,17 +289,17 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
               return (
                 <div key={s} className="flex items-center flex-1 last:flex-none">
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-all ${
-                      done ? 'bg-indigo-600 text-white' : active ? 'bg-indigo-600 text-white ring-4 ring-indigo-100' : 'bg-slate-100 text-slate-400'
-                    }`}>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                      done || active ? 'bg-accent text-white' : 'bg-panel text-muted'
+                    } ${active ? 'ring-4 ring-accent/20' : ''}`}>
                       {done ? '✓' : s}
                     </div>
-                    <span className={`text-xs font-bold hidden sm:block whitespace-nowrap ${active ? 'text-indigo-600' : done ? 'text-slate-500' : 'text-slate-400'}`}>
+                    <span className={`text-xs font-semibold hidden sm:block whitespace-nowrap ${active ? 'text-accent' : done ? 'text-muted' : 'text-muted/60'}`}>
                       {label}
                     </span>
                   </div>
                   {i < STEPS.length - 1 && (
-                    <div className={`flex-1 h-0.5 mx-3 rounded-full ${done ? 'bg-indigo-400' : 'bg-slate-200'}`} />
+                    <div className={`flex-1 h-0.5 mx-3 rounded-full ${done ? 'bg-accent/60' : 'bg-ink/10'}`} />
                   )}
                 </div>
               )
@@ -318,7 +320,7 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
                   onKeyDown={e => { if (e.key === 'Enter') lookupStockFromInventory(watch.stock_no) }}
                   placeholder="e.g. 1377" className={inputCls} autoFocus={!!initialStockNo} />
                 {(stockLookupLoading || inventoryMsg) && (
-                  <p className={`text-xs mt-1 ${inventoryMsg.startsWith('✓') ? 'text-green-600' : 'text-slate-400'}`}>
+                  <p className={`text-xs mt-1 ${inventoryMsg.startsWith('✓') ? 'text-emerald-600' : 'text-muted'}`}>
                     {stockLookupLoading ? 'Looking up inventory…' : inventoryMsg}
                   </p>
                 )}
@@ -326,34 +328,26 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
 
               {/* Watch Type */}
               <div className="mb-5">
-                <p className="text-xs uppercase tracking-widest text-slate-500 font-black mb-2">Watch Type</p>
+                <p className="section-label mb-2">Watch Type</p>
                 <div className="flex gap-3">
                   <button type="button" onClick={() => { setW('watch_type', 'BUY') }}
-                    className={`flex-1 py-3 rounded-2xl text-sm font-black border-2 transition-all ${
-                      watch.watch_type === 'BUY'
-                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                        : 'bg-white border-slate-200 text-slate-400 hover:border-indigo-300 hover:text-indigo-500'
-                    }`}>
+                    className={chipCls(watch.watch_type === 'BUY')}>
                     🛒 Buy
                   </button>
                   <button type="button" onClick={() => { setW('watch_type', 'SELL'); if (step > SELL_STEPS.length) setStep(SELL_STEPS.length) }}
-                    className={`flex-1 py-3 rounded-2xl text-sm font-black border-2 transition-all ${
-                      watch.watch_type === 'SELL'
-                        ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
-                        : 'bg-white border-slate-200 text-slate-400 hover:border-orange-300 hover:text-orange-500'
-                    }`}>
+                    className={watch.watch_type === 'SELL' ? 'chip-active flex-1 text-center py-3' : 'chip flex-1 text-center py-3 hover:border-accent/40 hover:text-ink'}>
                     🏷️ Sell
                   </button>
                 </div>
                 {isSell && (
-                  <p className="text-xs text-orange-600 mt-2 font-medium">
+                  <p className="text-xs text-accent mt-2 font-medium">
                     🏷️ For Sell watches, stock & location fields are skipped — you already own the watch.
                   </p>
                 )}
               </div>
 
               <div>
-                <p className="text-xs uppercase tracking-widest text-indigo-600 font-black mb-3 flex items-center gap-2">
+                <p className="section-label mb-3 flex items-center gap-2">
                   <span className="text-base">🕐</span> Watch Identity
                 </p>
                 <div className="grid grid-cols-2 gap-3">
@@ -392,7 +386,7 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
 
               <div className={sectionCls}>
                 <button type="button" onClick={() => setShowMoreDetails(v => !v)}
-                  className="text-xs font-bold text-violet-600 uppercase tracking-wide">
+                  className="text-xs font-semibold text-accent uppercase tracking-wide">
                   {showMoreDetails ? '▾ Hide' : '▸'} More details (case, dial, bracelet)
                 </button>
                 {showMoreDetails && (
@@ -400,7 +394,7 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
                     <div className="flex justify-end mb-2 gap-2">
                       {aiMsg && <span className={`text-xs ${aiMsg.startsWith('✓') ? 'text-green-600' : 'text-amber-600'}`}>{aiMsg}</span>}
                       <button type="button" onClick={handleAIFill} disabled={aiLoading || !watch.brand}
-                        className="px-3 py-1.5 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 text-xs font-semibold disabled:opacity-40">
+                        className="btn-secondary text-xs py-1.5 px-3 disabled:opacity-40">
                         ✨ AI Autofill
                       </button>
                     </div>
@@ -434,7 +428,7 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
                       <div className="flex gap-1 flex-wrap">
                         {CURRENCIES.map(c => (
                           <button key={c} type="button" onClick={() => { setW('currency', c); if (c === 'USD') setW('convert_rate', '') }}
-                            className={`py-2 px-2 rounded-lg text-xs font-bold border ${watch.currency === c ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-400'}`}>{c}</button>
+                            className={watch.currency === c ? 'chip-active py-2 px-2 text-center' : 'chip py-2 px-2 text-center hover:border-accent/40 hover:text-ink'}>{c}</button>
                         ))}
                       </div>
                     </div>
@@ -452,8 +446,8 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
                   <div className="mb-5">
                     <label className={labelCls}>Stock Status</label>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => setW('stock_status', 'STOCK')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border ${watch.stock_status === 'STOCK' ? 'bg-green-50 border-green-300 text-green-700' : 'border-slate-200 text-slate-400'}`}>In Stock</button>
-                      <button type="button" onClick={() => setW('stock_status', 'INCOMING')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border ${watch.stock_status === 'INCOMING' ? 'bg-amber-50 border-amber-300 text-amber-700' : 'border-slate-200 text-slate-400'}`}>Incoming</button>
+                      <button type="button" onClick={() => setW('stock_status', 'STOCK')} className={`flex-1 py-2 rounded-2xl text-sm font-semibold border ${watch.stock_status === 'STOCK' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'chip hover:border-accent/40'}`}>In Stock</button>
+                      <button type="button" onClick={() => setW('stock_status', 'INCOMING')} className={`flex-1 py-2 rounded-2xl text-sm font-semibold border ${watch.stock_status === 'INCOMING' ? 'bg-amber-50 border-amber-300 text-amber-700' : 'chip hover:border-accent/40'}`}>Incoming</button>
                     </div>
                   </div>
                 </>
@@ -468,7 +462,7 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
           {/* ─── STEP 3: PAYMENT (+ location for buy step 3) ─── */}
           {step === 3 && (
             <div className="pt-2">
-              <p className="text-xs uppercase tracking-widest text-emerald-600 font-black mb-4 flex items-center gap-2">
+              <p className="section-label mb-4 flex items-center gap-2">
                 <span className="text-base">💳</span> Payment Status
               </p>
 
@@ -487,22 +481,22 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
                     className={`p-4 rounded-2xl border-2 text-left transition-all ${
                       payment.payment_status === opt.val
                         ? `${opt.activeBg} ${opt.border} shadow-sm`
-                        : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                        : 'bg-panel border-default hover:border-strong'
                     }`}>
-                    <div className={`text-2xl mb-2 ${payment.payment_status === opt.val ? opt.text : 'text-slate-300'}`}>{opt.icon}</div>
-                    <div className={`text-sm font-black ${payment.payment_status === opt.val ? opt.text : 'text-slate-500'}`}>{opt.label}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">{opt.desc}</div>
+                    <div className={`text-2xl mb-2 ${payment.payment_status === opt.val ? opt.text : 'text-muted/40'}`}>{opt.icon}</div>
+                    <div className={`text-sm font-black ${payment.payment_status === opt.val ? opt.text : 'text-muted'}`}>{opt.label}</div>
+                    <div className="text-xs text-muted mt-0.5">{opt.desc}</div>
                   </button>
                 ))}
               </div>
 
               {payment.payment_status !== 'NOT_PAID' && (
-                <div className="border-2 border-slate-100 rounded-2xl p-4">
+                <div className="border border-default rounded-2xl p-4 bg-panel/40">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-bold text-slate-700">Add Payment Record</p>
+                    <p className="text-sm font-semibold text-ink">Add Payment Record</p>
                     <button type="button"
                       onClick={() => setP('add_payment_record', !payment.add_payment_record)}
-                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${payment.add_payment_record ? 'bg-indigo-600' : 'bg-slate-200'}`}>
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${payment.add_payment_record ? 'bg-accent' : 'bg-panel border border-default'}`}>
                       <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${payment.add_payment_record ? 'left-5' : 'left-0.5'}`} />
                     </button>
                   </div>
@@ -532,7 +526,7 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
                         <input type="date" value={payment.payment_date} onChange={e => setP('payment_date', e.target.value)} className={inputCls} />
                       </div>
                       <div className="col-span-2">
-                        <label className={labelCls}>Notes <span className="text-slate-300">(optional)</span></label>
+                        <label className={labelCls}>Notes <span className="normal-case tracking-normal text-muted/60">(optional)</span></label>
                         <input type="text" value={payment.notes} onChange={e => setP('notes', e.target.value)} placeholder="e.g. Wire transfer ref #1234" className={inputCls} />
                       </div>
                     </div>
@@ -540,8 +534,8 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
                 </div>
               )}
               {!isSell && (
-                <div className="border-t border-slate-100 pt-5 mt-5">
-                  <p className="text-xs uppercase tracking-widest text-blue-600 font-black mb-4">📦 Location</p>
+                <div className="border-t border-default pt-5 mt-5">
+                  <p className="section-label mb-4">📦 Location</p>
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div><label className={labelCls}>From</label><input type="text" value={location.location_from} onChange={e => setL('location_from', e.target.value)} className={inputCls} /></div>
                     <div><label className={labelCls}>To</label><input type="text" value={location.location_to} onChange={e => setL('location_to', e.target.value)} className={inputCls} /></div>
@@ -549,7 +543,7 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
                   <div className="grid grid-cols-3 gap-2">
                     {(['INCOMING', 'IN_TRANSIT', 'IN_STOCK'] as LocationStatus[]).map(s => (
                       <button key={s} type="button" onClick={() => setL('location_status', s)}
-                        className={`py-2 rounded-xl text-xs font-bold border ${location.location_status === s ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'border-slate-200 text-slate-400'}`}>
+                        className={location.location_status === s ? 'chip-active py-2 text-center' : 'chip py-2 text-center hover:border-accent/40 hover:text-ink'}>
                         {s === 'INCOMING' ? 'Incoming' : s === 'IN_TRANSIT' ? 'Transit' : 'In Stock'}
                       </button>
                     ))}
@@ -569,19 +563,19 @@ export default function AddWatchModal({ onClose, onAdded, initialStockNo = '' }:
         )}
 
         {/* Footer */}
-        <div className="flex gap-3 px-6 py-5 border-t-2 border-slate-100">
+        <div className="flex gap-3 px-6 py-5 border-t border-default bg-card rounded-b-3xl">
           <button type="button" onClick={step === 1 ? onClose : handleBack}
-            className="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all font-bold">
+            className="flex-1 btn-ghost">
             {step === 1 ? 'Cancel' : '← Back'}
           </button>
           {step < totalSteps ? (
             <button type="button" onClick={handleNext}
-              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-black transition-all shadow-sm">
+              className="flex-1 btn-primary">
               Next →
             </button>
           ) : (
             <button type="button" onClick={handleSubmit} disabled={loading}
-              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-black transition-all disabled:opacity-50 shadow-sm">
+              className="flex-1 btn-primary disabled:opacity-50">
               {loading ? 'Adding…' : '+ Add Watch'}
             </button>
           )}

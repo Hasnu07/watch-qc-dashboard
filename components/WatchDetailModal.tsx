@@ -248,8 +248,10 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
     finally { setSaving(false) }
   }
 
-  const inputCls = 'w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition-all'
-  const labelCls = 'text-xs text-slate-600 block mb-1.5 font-bold uppercase tracking-wide'
+  const inputCls = 'input-field rounded-2xl'
+  const labelCls = 'section-label block mb-1.5'
+  const chipCls = (active: boolean) =>
+    active ? 'chip-active flex-1 text-center py-1.5' : 'chip flex-1 text-center py-1.5 hover:border-accent/40 hover:text-ink'
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'details', label: '📋 Details' },
@@ -259,35 +261,35 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
   ]
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl border border-slate-200 w-full max-w-2xl shadow-2xl my-4">
+    <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="card w-full max-w-2xl shadow-none my-4">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-slate-800 to-slate-900 rounded-t-3xl">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-default bg-card rounded-t-3xl">
           <div>
-            <h2 className="text-xl font-black text-white">
+            <h2 className="font-display text-xl font-bold text-ink tracking-wide">
               {watch.brand ? `${watch.brand} ` : ''}{watch.model || watch.name}
             </h2>
             {(watch.ref_no || watch.stock_no) && (
-              <p className="text-slate-400 text-xs mt-0.5">
+              <p className="text-muted text-xs mt-0.5">
                 {watch.ref_no && <>Ref. {watch.ref_no}</>}
-                {watch.ref_no && watch.stock_no && <span className="text-slate-300"> · </span>}
-                {watch.stock_no && <span className="text-slate-700 font-bold">#{watch.stock_no}</span>}
+                {watch.ref_no && watch.stock_no && <span> · </span>}
+                {watch.stock_no && <span className="font-mono-data font-semibold text-ink">#{watch.stock_no}</span>}
               </p>
             )}
           </div>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 text-white text-xl leading-none flex items-center justify-center transition-colors font-bold">
+            className="btn-ghost w-8 h-8 p-0 rounded-full text-lg leading-none">
             &times;
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-200 px-6 pt-4 bg-white">
+        <div className="flex border-b border-default px-6 pt-4 bg-card">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`mr-6 pb-3 text-sm font-bold border-b-2 transition-all ${
-                tab === t.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
+              className={`mr-6 pb-3 text-sm font-semibold border-b-2 transition-all ${
+                tab === t.id ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-ink'
               }`}>
               {t.label}
             </button>
@@ -329,7 +331,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                   placeholder="e.g. 1377"
                   className={inputCls}
                 />
-                {stockLookupLoading && <p className="text-xs text-slate-400 mt-1">Looking up inventory…</p>}
+                {stockLookupLoading && <p className="text-xs text-muted mt-1">Looking up inventory…</p>}
               </div>
               <div>
                 <label className={labelCls}>Watch Date / Year</label>
@@ -343,10 +345,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                 <label className={labelCls}>Currency</label>
                 <div className="flex gap-1">
                   {CURRENCIES.map(c => (
-                    <button key={c} type="button" onClick={() => setW('currency', c)}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                        watch.currency === c ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 text-slate-400 hover:text-slate-700 bg-white'
-                      }`}>
+                    <button key={c} type="button" onClick={() => setW('currency', c)} className={chipCls(watch.currency === c)}>
                       {c}
                     </button>
                   ))}
@@ -403,41 +402,41 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                     className={`p-3 rounded-xl border-2 text-center transition-all ${
                       watch.payment_status === opt.val
                         ? `${opt.activeBg} ${opt.border} shadow-sm`
-                        : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                        : 'bg-panel border-default hover:border-strong'
                     }`}>
-                    <div className={`text-xl mb-1 ${watch.payment_status === opt.val ? opt.text : 'text-slate-300'}`}>{opt.icon}</div>
-                    <div className={`text-sm font-black ${watch.payment_status === opt.val ? opt.text : 'text-slate-500'}`}>{opt.label}</div>
+                    <div className={`text-xl mb-1 ${watch.payment_status === opt.val ? opt.text : 'text-muted/40'}`}>{opt.icon}</div>
+                    <div className={`text-sm font-black ${watch.payment_status === opt.val ? opt.text : 'text-muted'}`}>{opt.label}</div>
                   </button>
                 ))}
               </div>
 
               {/* History */}
               <div className="mb-5">
-                <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-3">Payment History</p>
+                <p className="section-label mb-3">Payment History</p>
                 {loadingPayments ? (
-                  <div className="text-center text-slate-400 py-4 text-sm">Loading...</div>
+                  <div className="text-center text-muted py-4 text-sm">Loading...</div>
                 ) : payments.length === 0 ? (
-                  <div className="text-center text-slate-400 py-4 bg-slate-50 rounded-xl border border-slate-100 text-sm">
+                  <div className="text-center text-muted py-4 bg-panel rounded-2xl border border-default text-sm">
                     No payments recorded yet
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <div className="overflow-x-auto rounded-2xl border border-default">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
+                        <tr className="bg-panel text-muted text-xs uppercase border-b border-default">
                           <th className="text-left px-4 py-2.5 font-semibold">Date</th>
                           <th className="text-left px-4 py-2.5 font-semibold">Amount</th>
                           <th className="text-left px-4 py-2.5 font-semibold">Method</th>
                           <th className="text-left px-4 py-2.5 font-semibold">Notes</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-[var(--color-border)]">
                         {payments.map(p => (
-                          <tr key={p.id} className="bg-white hover:bg-slate-50">
-                            <td className="px-4 py-2.5 text-slate-500">{new Date(p.payment_date).toLocaleDateString()}</td>
-                            <td className="px-4 py-2.5 text-slate-900 font-semibold">{p.currency} {p.amount.toLocaleString()}</td>
-                            <td className="px-4 py-2.5 text-slate-500">{PAYMENT_METHOD_LABELS[p.payment_method]}</td>
-                            <td className="px-4 py-2.5 text-slate-400 truncate max-w-[120px]">{p.notes || '—'}</td>
+                          <tr key={p.id} className="bg-card hover:bg-panel">
+                            <td className="px-4 py-2.5 text-muted">{new Date(p.payment_date).toLocaleDateString()}</td>
+                            <td className="px-4 py-2.5 text-ink font-semibold">{p.currency} {p.amount.toLocaleString()}</td>
+                            <td className="px-4 py-2.5 text-muted">{PAYMENT_METHOD_LABELS[p.payment_method]}</td>
+                            <td className="px-4 py-2.5 text-muted truncate max-w-[120px]">{p.notes || '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -447,8 +446,8 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
               </div>
 
               {/* Add payment */}
-              <form onSubmit={addPayment} className="border-2 border-slate-100 rounded-2xl p-4">
-                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">Add Payment Record</p>
+              <form onSubmit={addPayment} className="border border-default rounded-2xl p-4 bg-panel/40">
+                <p className="section-label mb-3">Add Payment Record</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelCls}>Amount</label>
@@ -474,7 +473,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                     <input type="date" value={newPayment.payment_date} onChange={e => setNewPayment(p => ({ ...p, payment_date: e.target.value }))} className={inputCls} />
                   </div>
                   <div className="col-span-2">
-                    <label className={labelCls}>Notes <span className="text-slate-300">(optional)</span></label>
+                    <label className={labelCls}>Notes <span className="normal-case tracking-normal text-muted/60">(optional)</span></label>
                     <input type="text" value={newPayment.notes} onChange={e => setNewPayment(p => ({ ...p, notes: e.target.value }))} placeholder="e.g. Wire transfer ref #1234" className={inputCls} />
                   </div>
                 </div>
@@ -482,7 +481,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                   <p className="text-red-600 text-sm mt-2 bg-red-50 rounded-lg px-3 py-2 border border-red-100">{paymentError}</p>
                 )}
                 <button type="submit" disabled={addingPayment}
-                  className="mt-3 w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors disabled:opacity-50">
+                  className="mt-3 w-full btn-primary disabled:opacity-50">
                   {addingPayment ? 'Adding...' : '+ Add Payment'}
                 </button>
               </form>
@@ -492,7 +491,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
           {/* ─── LOCATION TAB ─── */}
           {tab === 'location' && (
             <div>
-              <p className="text-xs uppercase tracking-widest text-blue-600 font-black mb-4">Watch Location</p>
+              <p className="section-label mb-4">Watch Location</p>
 
               <div className="grid grid-cols-2 gap-3 mb-5">
                 <div>
@@ -507,8 +506,8 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
 
               <div className="grid grid-cols-3 gap-3 mb-5">
                 {([
-                  { val: 'INCOMING' as LocationStatus, icon: '📬', label: 'Incoming', desc: 'Awaiting dispatch', bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-700' },
-                  { val: 'IN_TRANSIT' as LocationStatus, icon: '🚚', label: 'In Transit', desc: 'Being shipped', bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-700' },
+                  { val: 'INCOMING' as LocationStatus, icon: '📬', label: 'Incoming', desc: 'Awaiting dispatch', bg: 'bg-panel', border: 'border-default', text: 'text-ink' },
+                  { val: 'IN_TRANSIT' as LocationStatus, icon: '🚚', label: 'In Transit', desc: 'Being shipped', bg: 'bg-accent/10', border: 'border-accent/40', text: 'text-accent' },
                   { val: 'IN_STOCK' as LocationStatus, icon: '✅', label: 'In Stock', desc: 'Arrived & received', bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-700' },
                 ] as const).map(opt => (
                   <button key={opt.val} type="button"
@@ -516,18 +515,18 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                     className={`p-4 rounded-2xl border-2 text-left transition-all ${
                       watch.location_status === opt.val
                         ? `${opt.bg} ${opt.border} shadow-sm`
-                        : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                        : 'bg-panel border-default hover:border-strong'
                     }`}>
                     <div className={`text-2xl mb-2 ${watch.location_status !== opt.val ? 'opacity-30' : ''}`}>{opt.icon}</div>
-                    <div className={`text-sm font-black ${watch.location_status === opt.val ? opt.text : 'text-slate-500'}`}>{opt.label}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">{opt.desc}</div>
+                    <div className={`text-sm font-black ${watch.location_status === opt.val ? opt.text : 'text-muted'}`}>{opt.label}</div>
+                    <div className="text-xs text-muted mt-0.5">{opt.desc}</div>
                   </button>
                 ))}
               </div>
 
               {watch.location_status === 'IN_TRANSIT' && (
-                <div className="border-2 border-blue-100 rounded-2xl p-4 bg-blue-50/40">
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-3">🚚 Transit Details</p>
+                <div className="border border-accent/30 rounded-2xl p-4 bg-accent/5">
+                  <p className="section-label mb-3">🚚 Transit Details</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className={labelCls}>Pickup Date</label>
@@ -541,7 +540,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                       <input type="text" value={watch.transit_carrier || ''} onChange={e => setW('transit_carrier', e.target.value || null)} placeholder="e.g. DHL, FedEx" className={inputCls} />
                     </div>
                     <div className="col-span-2">
-                      <label className={labelCls}>Tracking Number <span className="text-slate-300">(optional)</span></label>
+                      <label className={labelCls}>Tracking Number <span className="normal-case tracking-normal text-muted/60">(optional)</span></label>
                       <input type="text" value={watch.transit_tracking_number || ''} onChange={e => setW('transit_tracking_number', e.target.value || null)} placeholder="e.g. 1Z999AA10123456784" className={inputCls} />
                     </div>
                   </div>
@@ -561,17 +560,17 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
           {tab === 'activity' && (
             <div>
               {loadingActivities ? (
-                <p className="text-sm text-slate-400 text-center py-8">Loading timeline…</p>
+                <p className="text-sm text-muted text-center py-8">Loading timeline…</p>
               ) : activities.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-8">No activity recorded yet</p>
+                <p className="text-sm text-muted text-center py-8">No activity recorded yet</p>
               ) : (
                 <div className="space-y-3">
                   {activities.map(a => (
-                    <div key={a.id} className="flex gap-3 border-l-2 border-indigo-200 pl-3 py-1">
+                    <div key={a.id} className="flex gap-3 border-l-2 border-accent/40 pl-3 py-1">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-slate-800">{a.action.replace(/_/g, ' ')}</p>
-                        {a.detail && <p className="text-xs text-slate-500 mt-0.5">{a.detail}</p>}
-                        <p className="text-[10px] text-slate-400 mt-1">
+                        <p className="text-sm font-bold text-ink">{a.action.replace(/_/g, ' ')}</p>
+                        {a.detail && <p className="text-xs text-muted mt-0.5">{a.detail}</p>}
+                        <p className="text-[10px] text-muted mt-1">
                           {new Date(a.created_at).toLocaleString()}
                           {a.actor && <> · {a.actor}</>}
                         </p>
@@ -585,20 +584,19 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
         </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-3 px-6 py-4 border-t-2 border-slate-100">
+        <div className="flex items-center gap-3 px-6 py-4 border-t border-default bg-card rounded-b-3xl">
           {saveMsg && (
-            <span className={`text-sm font-medium ${saveMsg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
+            <span className={`text-sm font-medium ${saveMsg.startsWith('Error') ? 'text-red-500' : 'text-emerald-600'}`}>
               {saveMsg}
             </span>
           )}
           <div className="flex-1" />
-          <button onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border-2 border-slate-200 text-slate-500 hover:text-slate-900 font-bold text-sm transition-all">
+          <button onClick={onClose} className="btn-ghost">
             Close
           </button>
           {(tab === 'details' || tab === 'location') && (
             <button onClick={tab === 'details' ? saveDetails : saveLocation} disabled={saving}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-all disabled:opacity-50">
+              className="btn-primary disabled:opacity-50">
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
           )}

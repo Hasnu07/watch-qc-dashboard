@@ -220,9 +220,9 @@ export default function DashboardPage() {
 
   const TaskListWrapper = ({ children }: { children: React.ReactNode }) =>
     autoScroll ? (
-      <AutoScrollList className="flex-1" speedPxPerSec={40}>{children}</AutoScrollList>
+      <AutoScrollList className="flex-1 min-h-0" speedPxPerSec={50} enabled={autoScroll}>{children}</AutoScrollList>
     ) : (
-      <div className="flex-1 overflow-y-auto">{children}</div>
+      <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
     )
 
   return (
@@ -247,7 +247,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
         {/* LEFT — Inventory */}
         <div className={`flex-col w-full md:w-[58%] border-r border-default overflow-hidden ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
           <div className="px-4 py-5 border-b border-default bg-card sm:px-8 sm:py-6">
@@ -413,7 +413,7 @@ export default function DashboardPage() {
         </div>
 
         {/* RIGHT — Tasks */}
-        <div className={`flex-col w-full md:w-[42%] overflow-hidden ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`flex-col w-full md:w-[42%] overflow-hidden min-h-0 flex ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
           <div className="flex items-center justify-between px-4 py-5 border-b border-default bg-card sm:px-8">
             <div className="flex items-center gap-2 min-w-0">
               <button type="button" onClick={() => setActiveTab('inventory')}

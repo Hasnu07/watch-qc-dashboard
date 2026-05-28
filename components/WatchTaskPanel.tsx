@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-
-type Department = 'ACCOUNTING' | 'SALES' | 'LOGISTICS'
+import WatchTaskToolbar, { WatchTaskEmptyFilter } from '@/components/WatchTaskToolbar'
+import { useWatchTaskFilters } from '@/hooks/useWatchTaskFilters'
+import { DEPT_CONFIG, DEPT_ORDER, type Department } from '@/lib/ui-constants'
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
 type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
 
@@ -21,12 +22,7 @@ interface WatchTask {
   assigned_to: string | null; metadata: Record<string, unknown> | null; watch: WatchInfo
 }
 
-const DEPT_CONFIG = {
-  ACCOUNTING: { label: 'Accounting', icon: '💰', color: 'text-amber-700', border: 'border-amber-200', bg: 'bg-amber-50', solid: 'bg-amber-500' },
-  SALES:      { label: 'Sales',      icon: '🤝', color: 'text-emerald-700', border: 'border-emerald-200', bg: 'bg-emerald-50', solid: 'bg-emerald-500' },
-  LOGISTICS:  { label: 'Logistics',  icon: '📦', color: 'text-blue-700', border: 'border-blue-200', bg: 'bg-blue-50', solid: 'bg-blue-500' },
-}
-const DEPT_ORDER: Department[] = ['ACCOUNTING', 'SALES', 'LOGISTICS']
+const compactInput = 'input-field py-1.5 text-sm rounded-2xl'
 
 const TASK_LABELS: Record<string, string> = {
   ACCOUNTING_MARK_PAYMENT: 'Mark Payment Status',
@@ -57,8 +53,8 @@ const PAY_COLORS: Record<PaymentStatus, string> = {
 const PAY_LABELS: Record<PaymentStatus, string> = { NOT_PAID: 'Not Paid', PARTIAL: 'Partial', PAID: 'Paid' }
 
 const LOC_COLORS: Record<LocationStatus, string> = {
-  INCOMING: 'bg-slate-100 text-slate-700 border-slate-300',
-  IN_TRANSIT: 'bg-blue-50 text-blue-700 border-blue-300',
+  INCOMING: 'bg-panel text-ink border-default',
+  IN_TRANSIT: 'bg-accent/10 text-accent border-accent/40',
   IN_STOCK: 'bg-emerald-50 text-emerald-700 border-emerald-300',
 }
 const LOC_LABELS: Record<LocationStatus, string> = {
@@ -103,8 +99,8 @@ function AssigneePicker({ currentAssignee, teamMembers, onAssign }: AssigneePick
         disabled={saving}
         className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all disabled:opacity-50 ${
           currentAssignee
-            ? 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100'
-            : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-indigo-300 hover:text-indigo-500'
+            ? 'bg-accent/10 text-accent border-accent/30 hover:bg-accent/15'
+            : 'bg-panel text-muted border-default hover:border-accent/40 hover:text-accent'
         }`}
       >
         {saving ? <span className="animate-spin inline-block">⟳</span>
@@ -113,15 +109,15 @@ function AssigneePicker({ currentAssignee, teamMembers, onAssign }: AssigneePick
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-20 bg-white rounded-xl border border-slate-200 shadow-lg min-w-[120px] py-1 overflow-hidden">
+        <div className="absolute right-0 top-full mt-1 z-20 bg-card rounded-xl border border-default shadow-lg min-w-[120px] py-1 overflow-hidden">
           {teamMembers.map(m => (
             <button
               key={m.id}
               onClick={() => handleSelect(m.name)}
               className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
                 currentAssignee === m.name
-                  ? 'bg-violet-50 text-violet-700 font-bold'
-                  : 'text-slate-700 hover:bg-slate-50'
+                  ? 'bg-accent/10 text-accent font-bold'
+                  : 'text-ink hover:bg-panel'
               }`}
             >
               👤 {m.name}
@@ -129,10 +125,10 @@ function AssigneePicker({ currentAssignee, teamMembers, onAssign }: AssigneePick
           ))}
           {currentAssignee && (
             <>
-              <div className="border-t border-slate-100 my-1" />
+              <div className="border-t border-default my-1" />
               <button
                 onClick={() => handleSelect(null)}
-                className="w-full text-left px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-50 hover:text-red-500 transition-colors"
+                className="w-full text-left px-3 py-1.5 text-xs text-muted hover:bg-panel hover:text-red-500 transition-colors"
               >
                 Remove
               </button>
@@ -173,10 +169,10 @@ function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: Task
 
   if (task.is_locked) {
     return (
-      <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-100">
-        <span className="text-slate-300 text-sm">🔒</span>
-        <span className="text-slate-400 text-sm flex-1">{TASK_LABELS[task.task_type] ?? task.task_type}</span>
-        <span className="text-xs text-slate-300 italic">Mark payment first</span>
+      <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-panel border border-default">
+        <span className="text-muted/50 text-sm">🔒</span>
+        <span className="text-muted text-sm flex-1">{TASK_LABELS[task.task_type] ?? task.task_type}</span>
+        <span className="text-xs text-muted/50 italic">Mark payment first</span>
       </div>
     )
   }
@@ -208,16 +204,16 @@ function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: Task
   }
 
   return (
-    <div className={`rounded-xl border transition-all ${task.is_completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
+    <div className={`rounded-xl border transition-all ${task.is_completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-card border-default hover:border-strong'}`}>
       <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none" onClick={handleClick}>
         {/* Checkbox */}
-        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-indigo-400 bg-white'}`}>
+        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'border-default hover:border-accent bg-card'}`}>
           {task.is_completed && <span className="text-white text-[10px] font-black leading-none">✓</span>}
-          {saving && !task.is_completed && <span className="text-slate-400 text-[10px] animate-spin inline-block">⟳</span>}
+          {saving && !task.is_completed && <span className="text-muted text-[10px] animate-spin inline-block">⟳</span>}
         </div>
 
         {/* Label */}
-        <span className={`text-sm flex-1 leading-snug min-w-0 ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-700 font-medium'}`}>
+        <span className={`text-sm flex-1 leading-snug min-w-0 ${task.is_completed ? 'line-through text-muted' : 'text-ink font-medium'}`}>
           {TASK_LABELS[task.task_type] ?? task.task_type}
         </span>
 
@@ -228,13 +224,13 @@ function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: Task
 
         {task.task_type === 'ACCOUNTING_ADD_STOCK_FOB' && task.watch.fob_url && (
           <a href={task.watch.fob_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-            className="text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+            className="text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 bg-accent/10 text-accent border-accent/30 hover:bg-accent/15">
             Open FOB ↗
           </a>
         )}
 
         {task.task_type === 'ACCOUNTING_ADD_STOCK_FOB' && task.watch.stock_no && (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 bg-slate-50 text-slate-600 border-slate-200 font-mono">#{task.watch.stock_no}</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 bg-panel text-muted border-default font-mono-data">#{task.watch.stock_no}</span>
         )}
 
         {/* Assignee picker */}
@@ -246,49 +242,49 @@ function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: Task
 
         {/* Expand arrow */}
         {hasInlineForm && !task.is_completed && (
-          <span className={`text-slate-400 text-xs transition-transform duration-150 flex-shrink-0 ${open ? 'rotate-180' : ''}`}>▾</span>
+          <span className={`text-muted text-xs transition-transform duration-150 flex-shrink-0 ${open ? 'rotate-180' : ''}`}>▾</span>
         )}
       </div>
 
       {open && !task.is_completed && (
-        <div className="px-3 pb-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
+        <div className="px-3 pb-3 border-t border-default" onClick={e => e.stopPropagation()}>
           {task.task_type === 'ACCOUNTING_MARK_PAYMENT' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-1.5">
                 {(['NOT_PAID', 'PARTIAL', 'PAID'] as PaymentStatus[]).map(s => (
                   <button key={s} type="button" onClick={() => setPayStatus(s)}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${payStatus === s ? PAY_COLORS[s] : 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'}`}>
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${payStatus === s ? PAY_COLORS[s] : 'bg-panel border-default text-muted hover:border-accent/40'}`}>
                     {PAY_LABELS[s]}
                   </button>
                 ))}
               </div>
-              <button onClick={handleSavePayment} disabled={saving} className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Save & Complete'}</button>
+              <button onClick={handleSavePayment} disabled={saving} className="btn-primary w-full py-1.5 text-xs disabled:opacity-50">{saving ? 'Saving…' : 'Save & Complete'}</button>
             </div>
           )}
           {task.task_type === 'SALES_SET_PRICE' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-1 block">Website $</label>
-                  <input type="number" value={websitePrice} onChange={e => setWebsitePrice(e.target.value)} placeholder="0.00" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
+                  <label className="section-label text-[10px] mb-1 block">Website $</label>
+                  <input type="number" value={websitePrice} onChange={e => setWebsitePrice(e.target.value)} placeholder="0.00" className={compactInput} />
                 </div>
                 <div className="flex-1">
-                  <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-1 block">B2B $</label>
-                  <input type="number" value={b2bPrice} onChange={e => setB2bPrice(e.target.value)} placeholder="0.00" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
+                  <label className="section-label text-[10px] mb-1 block">B2B $</label>
+                  <input type="number" value={b2bPrice} onChange={e => setB2bPrice(e.target.value)} placeholder="0.00" className={compactInput} />
                 </div>
               </div>
-              <button onClick={handleSavePrice} disabled={saving || !websitePrice || !b2bPrice} className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Save & Complete'}</button>
+              <button onClick={handleSavePrice} disabled={saving || !websitePrice || !b2bPrice} className="btn-primary w-full py-1.5 text-xs disabled:opacity-50">{saving ? 'Saving…' : 'Save & Complete'}</button>
             </div>
           )}
           {task.task_type === 'LOGISTICS_UPDATE_COST' && (
             <div className="pt-2.5 flex flex-col gap-2">
               <div className="flex gap-2">
-                <input type="number" value={cost} onChange={e => setCost(e.target.value)} placeholder="Cost amount" className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
-                <select value={costCurrency} onChange={e => setCostCurrency(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400">
+                <input type="number" value={cost} onChange={e => setCost(e.target.value)} placeholder="Cost amount" className={`${compactInput} flex-1`} />
+                <select value={costCurrency} onChange={e => setCostCurrency(e.target.value)} className={compactInput}>
                   {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <button onClick={handleSaveCost} disabled={saving || !cost} className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Save & Complete'}</button>
+              <button onClick={handleSaveCost} disabled={saving || !cost} className="btn-primary w-full py-1.5 text-xs disabled:opacity-50">{saving ? 'Saving…' : 'Save & Complete'}</button>
             </div>
           )}
           {task.task_type === 'LOGISTICS_SET_LOCATION' && (
@@ -296,22 +292,22 @@ function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: Task
               <div className="flex gap-1.5">
                 {(['INCOMING', 'IN_TRANSIT', 'IN_STOCK'] as LocationStatus[]).map(s => (
                   <button key={s} type="button" onClick={() => setLocStatus(s)}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${locStatus === s ? LOC_COLORS[s] : 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'}`}>
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${locStatus === s ? LOC_COLORS[s] : 'bg-panel border-default text-muted hover:border-accent/40'}`}>
                     {LOC_LABELS[s]}
                   </button>
                 ))}
               </div>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-1 block">From</label>
-                  <input type="text" value={locFrom} onChange={e => setLocFrom(e.target.value)} placeholder="e.g. Supplier" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
+                  <label className="section-label text-[10px] mb-1 block">From</label>
+                  <input type="text" value={locFrom} onChange={e => setLocFrom(e.target.value)} placeholder="e.g. Supplier" className={compactInput} />
                 </div>
                 <div className="flex-1">
-                  <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-1 block">Location / To</label>
-                  <input type="text" value={locTo} onChange={e => setLocTo(e.target.value)} placeholder="e.g. London Office" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-400" />
+                  <label className="section-label text-[10px] mb-1 block">Location / To</label>
+                  <input type="text" value={locTo} onChange={e => setLocTo(e.target.value)} placeholder="e.g. London Office" className={compactInput} />
                 </div>
               </div>
-              <button onClick={handleSaveLocation} disabled={saving} className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Save & Complete'}</button>
+              <button onClick={handleSaveLocation} disabled={saving} className="btn-primary w-full py-1.5 text-xs disabled:opacity-50">{saving ? 'Saving…' : 'Save & Complete'}</button>
             </div>
           )}
         </div>
@@ -366,20 +362,20 @@ function AccessoriesGroup({ tasks, teamMembers, onComplete, onUncomplete, onAssi
   }
 
   return (
-    <div className={`rounded-xl border transition-all ${allDone ? 'bg-emerald-50/50 border-emerald-100' : someSelected ? 'bg-amber-50/30 border-amber-100' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
+    <div className={`rounded-xl border transition-all ${allDone ? 'bg-emerald-50/50 border-emerald-100' : someSelected ? 'bg-amber-50/30 border-amber-100' : 'bg-card border-default hover:border-strong'}`}>
       <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none" onClick={() => setOpen(o => !o)}>
         {/* Main checkbox */}
         <div onClick={handleMainClick}
-          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer ${allDone ? 'bg-emerald-500 border-emerald-500' : someSelected ? 'bg-white border-amber-400 hover:border-amber-500' : 'border-slate-300 hover:border-indigo-400 bg-white'}`}>
-          {savingAll ? <span className="text-slate-400 text-[10px] animate-spin inline-block">⟳</span>
+          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer ${allDone ? 'bg-emerald-500 border-emerald-500' : someSelected ? 'bg-white border-amber-400 hover:border-amber-500' : 'border-default hover:border-accent bg-card'}`}>
+          {savingAll ? <span className="text-muted text-[10px] animate-spin inline-block">⟳</span>
             : allDone ? <span className="text-white text-[10px] font-black leading-none">✓</span>
             : someSelected ? <span className="text-amber-500 text-[10px] font-black leading-none">—</span>
             : null}
         </div>
 
-        <span className={`text-sm flex-1 font-medium ${allDone ? 'line-through text-slate-400' : 'text-slate-700'}`}>Accessories</span>
+        <span className={`text-sm flex-1 font-medium ${allDone ? 'line-through text-muted' : 'text-ink'}`}>Accessories</span>
 
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${allDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : someSelected ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${allDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : someSelected ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-panel text-muted border-default'}`}>
           {completedCount}/{tasks.length}
         </span>
 
@@ -390,18 +386,18 @@ function AccessoriesGroup({ tasks, teamMembers, onComplete, onUncomplete, onAssi
           onAssign={handleGroupAssign}
         />
 
-        <span className={`text-slate-400 text-xs transition-transform duration-150 flex-shrink-0 ${open ? 'rotate-180' : ''}`}>▾</span>
+        <span className={`text-muted text-xs transition-transform duration-150 flex-shrink-0 ${open ? 'rotate-180' : ''}`}>▾</span>
       </div>
 
       {open && (
-        <div className="px-3 pb-3 pt-1 border-t border-slate-100 flex flex-col gap-1">
+        <div className="px-3 pb-3 pt-1 border-t border-default flex flex-col gap-1">
           {tasks.map(task => (
-            <div key={task.id} className="flex items-center gap-2.5 py-1.5 px-1 cursor-pointer rounded-lg hover:bg-slate-50 transition-colors" onClick={() => handleToggle(task)}>
-              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-indigo-400 bg-white'}`}>
+            <div key={task.id} className="flex items-center gap-2.5 py-1.5 px-1 cursor-pointer rounded-lg hover:bg-panel transition-colors" onClick={() => handleToggle(task)}>
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'border-default hover:border-accent bg-card'}`}>
                 {task.is_completed && <span className="text-white text-[8px] font-black leading-none">✓</span>}
-                {saving === task.id && !task.is_completed && <span className="text-slate-400 text-[8px] inline-block animate-spin">⟳</span>}
+                {saving === task.id && !task.is_completed && <span className="text-muted text-[8px] inline-block animate-spin">⟳</span>}
               </div>
-              <span className={`text-sm flex-1 ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-600'}`}>
+              <span className={`text-sm flex-1 ${task.is_completed ? 'line-through text-muted' : 'text-muted'}`}>
                 {ACCESSORY_LABELS[task.task_type] ?? task.task_type}
               </span>
             </div>
@@ -449,18 +445,18 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onTo
   }
 
   return (
-    <div id={`watch-tasks-${watchId}`} className={`rounded-2xl border overflow-hidden mb-3 shadow-sm scroll-mt-4 ${allDone ? 'border-emerald-200' : 'border-slate-200'}`}>
+    <div id={`watch-tasks-${watchId}`} className={`rounded-2xl border overflow-hidden mb-3 ${allDone ? 'border-emerald-200' : 'border-default'}`}>
       {/* Header */}
-      <div className={`flex items-center gap-2 px-4 py-3.5 ${allDone ? 'bg-emerald-50' : 'bg-white'}`}>
+      <div className={`flex items-center gap-2 px-4 py-3.5 ${allDone ? 'bg-emerald-50' : 'bg-card'}`}>
         <button onClick={onToggle} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
-          <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${allDone ? 'bg-emerald-500' : 'bg-indigo-500'}`} />
-          <span className={`font-black text-base truncate ${allDone ? 'text-emerald-800' : 'text-slate-900'}`}>{watchName}</span>
+          <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${allDone ? 'bg-emerald-500' : 'bg-accent'}`} />
+          <span className={`font-display font-bold text-base truncate ${allDone ? 'text-emerald-800' : 'text-ink'}`}>{watchName}</span>
         </button>
 
         {/* Auto assign button */}
         <button onClick={handleAutoAssign} disabled={assigning}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex-shrink-0 disabled:opacity-50 ${
-            assignDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+            assignDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-accent/10 text-accent border-accent/30 hover:bg-accent/15'
           }`}>
           {assigning ? <><span className="animate-spin inline-block">⟳</span> Assigning…</>
             : assignDone ? <>✓ Assigned</>
@@ -469,17 +465,17 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onTo
 
         {allDone
           ? <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">✓ Done</span>
-          : <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex-shrink-0">{pending} left</span>
+          : <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-accent/10 text-accent border border-accent/30 flex-shrink-0">{pending} left</span>
         }
 
         <button onClick={onToggle} className="flex-shrink-0 pl-1">
-          <span className={`text-slate-400 text-sm transition-transform duration-200 inline-block ${expanded ? 'rotate-180' : ''}`}>▾</span>
+          <span className={`text-muted text-sm transition-transform duration-200 inline-block ${expanded ? 'rotate-180' : ''}`}>▾</span>
         </button>
       </div>
 
       {/* Department sections */}
       {expanded && (
-        <div className="border-t border-slate-100">
+        <div className="border-t border-default">
           {DEPT_ORDER.map(dept => {
             const dt = deptTasks[dept]
             if (!dt || dt.length === 0) return null
@@ -490,10 +486,10 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onTo
             const accessoryTasks = dt.filter(t => ACCESSORY_TASK_TYPES.includes(t.task_type))
 
             return (
-              <div key={dept} className={`px-3 py-3 ${dept !== 'LOGISTICS' ? 'border-b border-slate-100' : ''}`}>
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl mb-2.5 ${cfg.bg} border ${cfg.border}`}>
+              <div key={dept} className={`px-3 py-3 ${dept !== 'LOGISTICS' ? 'border-b border-default' : ''}`}>
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl mb-2.5 ${cfg.bg}`}>
                   <span className="text-sm">{cfg.icon}</span>
-                  <span className={`text-xs font-black uppercase tracking-widest ${cfg.color}`}>{cfg.label}</span>
+                  <span className={`section-label text-[10px] ${cfg.color}`}>{cfg.label}</span>
                   <span className={`ml-auto text-[10px] font-bold ${deptDone ? 'text-emerald-600' : cfg.color}`}>
                     {deptDone ? '✓ Done' : `${deptPending} left`}
                   </span>
@@ -517,22 +513,15 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onTo
 
 // ── Main panel ─────────────────────────────────────────────────────────────
 
-type SortMode = 'new' | 'pending' | 'name'
-
 export default function WatchTaskPanel({ className, focusedWatchId }: { className?: string; focusedWatchId?: number | null }) {
   const [tasks, setTasks] = useState<WatchTask[]>([])
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
-  const [sort, setSort] = useState<SortMode>('new')
   const [expandedWatchId, setExpandedWatchId] = useState<number | null>(null)
-  const [myTasksOnly, setMyTasksOnly] = useState(false)
-  const [myName, setMyName] = useState('')
-
-  useEffect(() => {
-    const stored = localStorage.getItem('qc_my_name') || ''
-    setMyName(stored)
-    setMyTasksOnly(localStorage.getItem('qc_my_tasks_filter') === '1')
-  }, [])
+  const {
+    myTasksOnly, setMyTasksOnly, myName, setMyName, sort, setSort,
+    filterByAssignee, clearMyTasksFilter,
+  } = useWatchTaskFilters()
 
   useEffect(() => {
     if (focusedWatchId != null) {
@@ -619,9 +608,7 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
   }, [])
 
   // Group by watch
-  const filteredTasks = myTasksOnly && myName
-    ? tasks.filter(t => t.assigned_to === myName)
-    : tasks
+  const filteredTasks = filterByAssignee(tasks)
 
   const byWatch = new Map<number, { watchId: number; watchName: string; tasks: WatchTask[] }>()
   for (const task of filteredTasks) {
@@ -639,43 +626,11 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
 
   const totalPending = filteredTasks.filter(t => !t.is_completed && !t.is_locked).length
 
-  const clearMyTasksFilter = () => {
-    setMyTasksOnly(false)
-    localStorage.setItem('qc_my_tasks_filter', '0')
-  }
-
-  const taskToolbar = (
-    <div className="flex items-center gap-3 mb-4 flex-wrap">
-      <div className="flex-1 min-w-[140px] px-4 py-2.5 bg-white rounded-xl border border-slate-200 shadow-sm">
-        <span className="text-slate-500 text-sm font-medium">
-          {totalPending === 0 && !myTasksOnly ? '🎉 All tasks complete!' : `${totalPending} pending · ${watchGroups.length} watch${watchGroups.length !== 1 ? 'es' : ''}`}
-        </span>
-      </div>
-      <label className="flex items-center gap-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2.5 cursor-pointer">
-        <input type="checkbox" checked={myTasksOnly} onChange={e => {
-          setMyTasksOnly(e.target.checked)
-          localStorage.setItem('qc_my_tasks_filter', e.target.checked ? '1' : '0')
-        }} />
-        My tasks
-      </label>
-      <input type="text" value={myName} onChange={e => {
-        setMyName(e.target.value)
-        localStorage.setItem('qc_my_name', e.target.value)
-      }} placeholder="Your name" className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-28 focus:outline-none focus:border-indigo-400" />
-      <select value={sort} onChange={e => setSort(e.target.value as SortMode)}
-        className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-600 font-medium shadow-sm focus:outline-none focus:border-indigo-400 cursor-pointer">
-        <option value="new">🕐 New first</option>
-        <option value="pending">⚡ Most pending</option>
-        <option value="name">🔤 Name A–Z</option>
-      </select>
-    </div>
-  )
-
-  if (loading) return <div className={`flex items-center justify-center h-40 text-slate-400 ${className}`}>Loading tasks…</div>
+  if (loading) return <div className={`flex items-center justify-center h-40 text-muted ${className}`}>Loading tasks…</div>
   if (tasks.length === 0) return (
-    <div className={`flex flex-col items-center justify-center h-48 text-slate-400 gap-3 px-6 text-center ${className}`}>
+    <div className={`flex flex-col items-center justify-center h-48 text-muted gap-3 px-6 text-center ${className}`}>
       <span className="text-4xl">📋</span>
-      <p className="font-semibold text-lg text-slate-600">No buy tasks yet</p>
+      <p className="font-semibold text-lg text-ink">No buy tasks yet</p>
       <p className="text-sm">Add a buy watch — tasks are created automatically</p>
     </div>
   )
@@ -683,18 +638,20 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
   return (
     <div className={className}>
       <div className="p-4">
-        {taskToolbar}
+        <WatchTaskToolbar
+          totalPending={totalPending}
+          watchCount={watchGroups.length}
+          myTasksOnly={myTasksOnly}
+          onMyTasksOnlyChange={setMyTasksOnly}
+          myName={myName}
+          onMyNameChange={setMyName}
+          teamMembers={teamMembers}
+          sort={sort}
+          onSortChange={setSort}
+        />
 
         {filteredTasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-3 px-6 text-center">
-            <span className="text-4xl">👤</span>
-            <p className="font-semibold text-lg text-slate-600">No tasks assigned to you</p>
-            <p className="text-sm">Turn off &quot;My tasks&quot; above, or set your name to match assignee names.</p>
-            <button type="button" onClick={clearMyTasksFilter}
-              className="mt-2 btn-primary text-sm">
-              Show all tasks
-            </button>
-          </div>
+          <WatchTaskEmptyFilter onShowAll={clearMyTasksFilter} />
         ) : (
           watchGroups.map(({ watchId, watchName, tasks: watchTasks }) => (
             <WatchAccordion
