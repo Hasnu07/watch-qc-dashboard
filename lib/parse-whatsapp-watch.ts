@@ -87,6 +87,7 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
 
   const hasSellSignal =
     /\bsold\s+(\d+\s+)?to\b/i.test(t) ||
+    /\bsold\s+\d+\s+for\b/i.test(t) ||
     /^sold\s+to\s*:/im.test(t) ||
     /^sold\s+to\s+\S/im.test(t)
 
@@ -114,7 +115,9 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
 
   let sold_to: string | null = null
   if (type === 'SELL') {
+    const soldForTo = t.match(/\bsold\s+\d+\s+for\s+[\d,. ]+\s*\w+\s+to\s+(.+?)(?:\n|$)/i)
     const m =
+      soldForTo ||
       t.match(/sold\s+(?:\d+\s+)?to\s+(.+?)(?:\s+for\s+[\d]|\s+@\s*[\d]|\n|$)/i) ||
       t.match(/^sold\s+to\s*:\s*(.+)$/im) ||
       t.match(/^sold\s+to\s+(.+)$/im)
@@ -146,9 +149,11 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
 
   // ── STOCK NO ─────────────────────────────────────────────────────────────
   let stock_no: string | null = null
-  const stockSoldMatch = t.match(/\bsold\s+(\d+)\s+to\b/i)
+  const stockSoldToMatch = t.match(/\bsold\s+(\d+)\s+to\b/i)
+  const stockSoldForMatch = t.match(/\bsold\s+(\d+)\s+for\b/i)
   const stockForMatch = t.match(/^(\d{3,6})\s+for\s+[\d,.]+\s*(usdt|usd|eur|gbp|aed|hkd)\b/im)
-  if (stockSoldMatch) stock_no = stockSoldMatch[1]
+  if (stockSoldForMatch) stock_no = stockSoldForMatch[1]
+  else if (stockSoldToMatch) stock_no = stockSoldToMatch[1]
   else if (stockForMatch) stock_no = stockForMatch[1]
   else stock_no = field(t, 'Stock No', 'Stock Number', 'Stock')
 
@@ -171,7 +176,14 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
     if (!currency) currency = parseCurrency(t) // fallback: scan whole message
   }
 
-  // Fallback: bare price pattern  "55.000 gbp" or "44000 aed" or "1002 for 62000 usdt"
+  // Fallback: "Sold 1305 for 680.000 Hkd to ..." or bare price patterns
+  if (!price) {
+    const soldForLine = t.match(/\bsold\s+\d+\s+for\s+([\d,. ]+)\s*(hkd|usd|eur|gbp|£|aed|usdt)\b/i)
+    if (soldForLine) {
+      price = parsePrice(soldForLine[1])
+      currency = parseCurrency(soldForLine[0])
+    }
+  }
   if (!price) {
     const stockLine = t.match(/^(\d{3,6})\s+for\s+([\d,. ]+)\s*(usdt|usd|eur|gbp|£|aed|hkd)\b/im)
     if (stockLine) {
@@ -217,11 +229,10 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
   }
 
   // ── NOTES ────────────────────────────────────────────────────────────────
-  const setVal = field(t, 'Set')
-  // For sell messages capture payment method line e.g. "Paid wire in wio business"
+  const setVal = field(t, 'Set') || (/\bfull\s+set\b/i.test(t) ? 'Full set' : null)
+  const deliverMatch = t.match(/^(need to deliver[^\n]*|nonpayment on collection[^\n]*)/im)
   const paymentMethodMatch = t.match(/^(paid\s+(?:wire|cash|bank|cheque|transfer|crypto)[^\n]*)/im)
-  const paymentNote = paymentMethodMatch ? paymentMethodMatch[1].trim() : null
-  const notes = [setVal, paymentNote].filter(Boolean).join('. ') || null
+  const notes = [setVal, deliverMatch?.[1]?.trim(), paymentMethodMatch?.[1]?.trim()].filter(Boolean).join('. ') || null
 
   return {
     should_import: true,
