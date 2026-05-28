@@ -32,6 +32,10 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: var(--color-panel); }
 ::-webkit-scrollbar-thumb { background: rgba(44, 44, 44, 0.22); border-radius: 999px; }

@@ -267,8 +267,9 @@ export default function DashboardPage() {
   const useStickyTasks = showTasksPanel && tasksPinned && !inventoryTvScroll
   const viewportHeightClass = 'h-[calc(100dvh-5.25rem)] max-h-[calc(100dvh-5.25rem)]'
   const splitRowClass = useStickyTasks
-    ? 'flex flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden'
+    ? 'flex w-full'
     : 'flex flex-1 overflow-hidden min-h-0 h-full w-full'
+  const pinnedTasksClass = 'md:fixed md:top-[5.25rem] md:right-0 md:w-[42%] md:max-w-[42%] md:z-30'
   const inventoryGridClass = !showTasksPanel
     ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 sm:gap-4'
     : inventoryTvScroll
@@ -355,7 +356,7 @@ export default function DashboardPage() {
   )
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden pb-14 md:pb-0">
+    <div className={`flex flex-col pb-14 md:pb-0 ${useStickyTasks ? '' : 'flex-1 overflow-hidden'}`}>
 
       {/* Mobile top tabs */}
       <div className="flex md:hidden border-b border-default bg-card sticky top-0 z-40">
@@ -518,9 +519,14 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {/* Spacer keeps left column at 58% while tasks panel is fixed on the right */}
+        {useStickyTasks && showTasksPanel && (
+          <div className="hidden md:block shrink-0 w-[42%] max-w-[42%] flex-[0_0_42%]" aria-hidden="true" />
+        )}
+
         {/* RIGHT — Tasks sidebar */}
         {showTasksPanel && (
-        <div className={`flex flex-col min-h-0 shrink-0 w-full md:w-[42%] md:max-w-[42%] md:flex-[0_0_42%] ${viewportHeightClass} border-l border-default bg-surface overflow-hidden ${useStickyTasks ? 'md:sticky md:top-[5.25rem] md:self-start z-20' : ''} ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`flex flex-col min-h-0 shrink-0 w-full md:w-[42%] md:max-w-[42%] md:flex-[0_0_42%] ${viewportHeightClass} border-l border-default bg-surface overflow-hidden ${useStickyTasks ? pinnedTasksClass : ''} ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
           <div className="flex items-center justify-between px-4 py-5 border-b border-default bg-card sm:px-8 flex-shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <button type="button" onClick={() => setActiveTab('inventory')}
