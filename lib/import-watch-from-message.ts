@@ -7,6 +7,7 @@ import { enrichFromInventory, lookupInventoryByStockNo } from './inventory-csv'
 import { logWatchActivity } from './watch-activity'
 import { saveImportInbox } from './import-inbox'
 import { hashMessage } from './message-hash'
+import { findWatchImageUrl } from './watch-image-fetch'
 
 export interface ImportOptions {
   source?: 'webhook' | 'paste' | 'inbox'
@@ -48,6 +49,36 @@ async function findDuplicateWatch(stockNo: string | null | undefined, watchType:
     // WatchActivity table may not exist yet during migration
   }
   return null
+}
+
+type ImportedWatch = Awaited<ReturnType<typeof prisma.watch.create>>
+
+function scheduleBackgroundImageFetch(watch: ImportedWatch) {
+  if (watch.image_url) return
+
+  void (async () => {
+    try {
+      const found = await findWatchImageUrl({
+        id: watch.id,
+        image_url: null,
+        stock_no: watch.stock_no,
+        brand: watch.brand,
+        model: watch.model,
+        ref_no: watch.ref_no,
+        linked_buy_watch_id: watch.linked_buy_watch_id,
+      })
+      if (!found) return
+
+      await prisma.watch.update({
+        where: { id: watch.id },
+        data: { image_url: found.url },
+      })
+      await logWatchActivity(watch.id, 'image_fetched', `Auto ${found.source}`)
+      emitWatchEvent({ type: 'watch_updated', watchId: watch.id })
+    } catch (err) {
+      console.error('[import] background image fetch failed for watch', watch.id, err)
+    }
+  })()
 }
 
 export async function importWatchFromMessage(
@@ -223,6 +254,8 @@ export async function importWatchFromMessage(
   }
 
   emitWatchEvent({ type: 'new_watch', watchId: watch.id })
+
+  scheduleBackgroundImageFetch(watch)
 
   if (opts.inboxId) {
     const { markImportInboxImported } = await import('./import-inbox')
