@@ -380,7 +380,8 @@ export default function DashboardPage() {
                           searchHighlight={filters.search.trim()}
                           onCardClick={setSelectedWatch}
                           onRemoveRequest={setRemoveTarget}
-                          onOpenTasks={handleOpenTasks} />
+                          onOpenTasks={handleOpenTasks}
+                          onImageFetched={fetchWatches} />
                       ))}
                     </div>
                   )}
@@ -402,7 +403,8 @@ export default function DashboardPage() {
                           searchHighlight={filters.search.trim()}
                           onCardClick={setSelectedWatch}
                           onRemoveRequest={setRemoveTarget}
-                          onOpenTasks={handleOpenTasks} />
+                          onOpenTasks={handleOpenTasks}
+                          onImageFetched={fetchWatches} />
                       ))}
                     </div>
                   )}

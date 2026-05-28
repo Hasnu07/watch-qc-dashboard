@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import { formatCurrency } from '@/lib/utils'
 import { DEPT_ORDER, type Department } from '@/lib/ui-constants'
@@ -61,6 +62,7 @@ interface WatchCardProps {
   onCardClick: (watch: Watch) => void
   onRemoveRequest?: (watch: Watch) => void
   onOpenTasks?: (watch: Watch) => void
+  onImageFetched?: () => void
 }
 
 function highlightText(text: string, q: string) {
@@ -87,9 +89,31 @@ function badge(text: string, variant: 'neutral' | 'accent' | 'warn' | 'ok' = 'ne
 
 export default function WatchCard({
   watch, compact = false, highlighted = false, searchHighlight = '',
-  onCardClick, onRemoveRequest, onOpenTasks,
+  onCardClick, onRemoveRequest, onOpenTasks, onImageFetched,
 }: WatchCardProps) {
   const isSell = watch.watch_type === 'SELL'
+  const [fetchingImage, setFetchingImage] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+
+  async function handleFetchImage(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (fetchingImage) return
+    setFetchingImage(true)
+    setFetchError(null)
+    try {
+      const res = await fetch(`/api/watches/${watch.id}/fetch-image`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setFetchError(data.error || 'Could not find an image')
+        return
+      }
+      onImageFetched?.()
+    } catch {
+      setFetchError('Could not find an image')
+    } finally {
+      setFetchingImage(false)
+    }
+  }
 
   const summary: TaskSummary = watch.task_summary ?? {
     LOGISTICS: { total: 0, completed: 0 },
@@ -200,9 +224,14 @@ export default function WatchCard({
         {watch.image_url ? (
           <Image src={watch.image_url} alt={watch.name} fill className="object-contain p-4 group-hover:scale-[1.02] transition-transform duration-500" unoptimized />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-muted">
+          <div className="w-full h-full flex flex-col items-center justify-center text-muted px-4">
             <span className="text-4xl opacity-40">⌚</span>
             <span className="text-xs mt-1">No image</span>
+            <button type="button" onClick={handleFetchImage} disabled={fetchingImage}
+              className="mt-3 text-xs font-semibold px-4 py-2 rounded-full border border-accent/40 text-accent bg-card hover:bg-accent/5 transition-colors disabled:opacity-60">
+              {fetchingImage ? 'Finding image…' : 'Fetch image'}
+            </button>
+            {fetchError && <span className="text-[10px] text-accent/80 mt-2 text-center">{fetchError}</span>}
           </div>
         )}
         {watch.stock_no && (
