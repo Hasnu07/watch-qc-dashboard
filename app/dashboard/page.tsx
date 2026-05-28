@@ -266,9 +266,11 @@ export default function DashboardPage() {
   const panelHeightClass = inventoryTvScroll
     ? 'h-[calc(100dvh-5.25rem)] max-h-[calc(100dvh-5.25rem)]'
     : 'h-full max-h-full'
-  const inventoryGridClass = inventoryTvScroll
-    ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4'
-    : 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3'
+  const inventoryGridClass = !showTasksPanel
+    ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 sm:gap-4'
+    : inventoryTvScroll
+      ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4'
+      : 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3'
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden pb-14 md:pb-0">
