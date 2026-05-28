@@ -280,13 +280,14 @@ export default function DashboardPage() {
 
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* LEFT — Inventory */}
-        <div className={`flex-col ${leftWidthClass} border-r border-default overflow-hidden min-h-0 ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
-          <div className="px-4 py-5 border-b border-default bg-card sm:px-8 sm:py-6">
-            <div className="flex items-center justify-between mb-4 gap-3">
+        <div className={`flex flex-col ${leftWidthClass} border-r border-default overflow-hidden min-h-0 ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
+          <div className={`px-4 border-b border-default bg-card sm:px-8 flex-shrink-0 ${inventoryTvScroll ? 'py-3' : 'py-5 sm:py-6'}`}>
+            <div className={`flex items-center justify-between gap-3 ${inventoryTvScroll ? '' : 'mb-4'}`}>
               <div>
                 <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink tracking-wide">Watch Pipeline</h2>
                 <p className="text-muted text-sm mt-1">
                   {buyWatches.length} buy · {sellWatches.length} sell · {watches.length} total
+                  {inventoryTvScroll && <span className="text-accent font-semibold"> · TV mode</span>}
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -294,23 +295,29 @@ export default function DashboardPage() {
                   <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-accent live-dot' : 'bg-muted'}`} />
                   {sseConnected ? 'Live' : 'Polling'}
                 </div>
-                <button onClick={() => setShowCommandPalette(true)} title="Command palette (⌘K)" className="btn-ghost hidden sm:inline-flex text-xs">⌘K</button>
-                <a href="/api/watches/export" download className="btn-ghost hidden sm:inline-flex text-xs">Export</a>
-                <button onClick={() => setShowPasteMessage(true)} title="Paste WhatsApp message" className="btn-secondary text-xs sm:text-sm">
-                  <span className="hidden sm:inline">Paste</span><span className="sm:hidden">📋</span>
-                </button>
+                {!inventoryTvScroll && (
+                  <>
+                    <button onClick={() => setShowCommandPalette(true)} title="Command palette (⌘K)" className="btn-ghost hidden sm:inline-flex text-xs">⌘K</button>
+                    <a href="/api/watches/export" download className="btn-ghost hidden sm:inline-flex text-xs">Export</a>
+                    <button onClick={() => setShowPasteMessage(true)} title="Paste WhatsApp message" className="btn-secondary text-xs sm:text-sm">
+                      <span className="hidden sm:inline">Paste</span><span className="sm:hidden">📋</span>
+                    </button>
+                  </>
+                )}
                 <button type="button" onClick={toggleInventoryTvScroll} title="Auto-scroll inventory for TV display"
-                  className={`hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${inventoryTvScroll ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
+                  className={`inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${inventoryTvScroll ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
                   {inventoryTvScroll ? 'TV scroll on' : 'TV scroll'}
                 </button>
-                <button onClick={() => { setAddWatchStock(''); setShowAddWatch(true) }} className="btn-primary text-xs sm:text-sm">
-                  <span className="text-lg leading-none">+</span>
-                  <span className="hidden sm:inline">Add Watch</span>
-                </button>
+                {!inventoryTvScroll && (
+                  <button onClick={() => { setAddWatchStock(''); setShowAddWatch(true) }} className="btn-primary text-xs sm:text-sm">
+                    <span className="text-lg leading-none">+</span>
+                    <span className="hidden sm:inline">Add Watch</span>
+                  </button>
+                )}
               </div>
             </div>
 
-            {pipelineStats && (
+            {!inventoryTvScroll && pipelineStats && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                 {[
                   ['Pipeline value', formatCurrency(pipelineStats.total_pipeline_value), false],
@@ -326,6 +333,8 @@ export default function DashboardPage() {
               </div>
             )}
 
+            {!inventoryTvScroll && (
+            <>
             <ImportInboxPanel onImported={fetchWatches} />
 
             {/* Stock-first quick entry */}
@@ -373,13 +382,15 @@ export default function DashboardPage() {
                 Clear department filter
               </button>
             )}
+            </>
+            )}
           </div>
 
           <AutoScrollViewport
             enabled={inventoryTvScroll}
-            className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-10 min-h-0"
-            speedPxPerSec={28}
-            pauseMs={3000}
+            className="flex-1 min-h-0 p-4 sm:p-8 space-y-10"
+            speedPxPerSec={40}
+            pauseMs={2500}
           >
             {loading ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
