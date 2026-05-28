@@ -46,7 +46,7 @@ export default function NavBar() {
 
           <Link
             href="/dashboard"
-            className="font-luxury text-2xl lg:text-[1.75rem] text-ink text-center leading-none hover:text-accent transition-colors"
+            className="font-luxury text-4xl lg:text-5xl text-ink text-center leading-none hover:text-accent transition-colors whitespace-nowrap"
           >
             Purosangue QC Dashboard
           </Link>
@@ -64,7 +64,7 @@ export default function NavBar() {
             <div className="w-14" />
             <Link
               href="/dashboard"
-              className="font-luxury text-xl text-ink text-center leading-tight hover:text-accent transition-colors px-2"
+              className="font-luxury text-3xl text-ink text-center leading-none hover:text-accent transition-colors px-2 whitespace-nowrap"
             >
               Purosangue QC Dashboard
             </Link>
