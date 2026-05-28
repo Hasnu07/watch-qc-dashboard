@@ -43,13 +43,13 @@ export default function LoginPage() {
     <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <div className="mx-auto mb-6 w-28 sm:w-32">
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border border-default mx-auto mb-6 bg-card flex items-center justify-center p-4">
             <Image
               src="/purosangue-qc-logo.png"
               alt="Purosangue QC"
-              width={128}
-              height={128}
-              className="w-full h-auto object-contain"
+              width={112}
+              height={112}
+              className="w-full h-full object-contain"
               priority
             />
           </div>

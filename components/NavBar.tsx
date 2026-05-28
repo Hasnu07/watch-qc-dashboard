@@ -8,8 +8,6 @@ export default function NavBar() {
   const pathname = usePathname()
   const { connected } = useSseStatus()
 
-  if (pathname === '/login') return null
-
   const navLink = (href: string, label: string, subtitle?: string) => {
     const active = pathname === href
     return (
