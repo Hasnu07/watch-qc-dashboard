@@ -257,16 +257,21 @@ export default function DashboardPage() {
     localStorage.setItem('qc-compact-cards', v ? '1' : '0')
   }
 
+  const usePageScrollLayout = !inventoryTvScroll
+  const useStickyTasks = showTasksPanel && tasksPinned && usePageScrollLayout
+  const taskPanelLocked = useStickyTasks || (!usePageScrollLayout && showTasksPanel)
+
   const TaskListWrapper = ({ children }: { children: React.ReactNode }) =>
     autoScroll ? (
       <AutoScrollList className="flex-1 min-h-0" speedPxPerSec={50} enabled={autoScroll}>{children}</AutoScrollList>
-    ) : (
+    ) : taskPanelLocked ? (
       <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
+    ) : (
+      <div>{children}</div>
     )
 
-  const useStickyTasks = showTasksPanel && tasksPinned && !inventoryTvScroll
   const viewportHeightClass = 'h-[calc(100dvh-5.25rem)] max-h-[calc(100dvh-5.25rem)]'
-  const splitRowClass = useStickyTasks
+  const splitRowClass = usePageScrollLayout
     ? 'flex w-full'
     : 'flex flex-1 overflow-hidden min-h-0 h-full w-full'
   const pinnedTasksClass = 'md:fixed md:top-[5.25rem] md:right-0 md:w-[42%] md:max-w-[42%] md:z-30'
@@ -278,7 +283,7 @@ export default function DashboardPage() {
   const leftWidthClass = showTasksPanel
     ? 'w-full md:w-[58%] md:max-w-[58%] md:flex-[0_0_58%] shrink-0'
     : 'w-full flex-1 min-w-0'
-  const panelHeightClass = (showTasksPanel || inventoryTvScroll) && !useStickyTasks
+  const panelHeightClass = !usePageScrollLayout && (showTasksPanel || inventoryTvScroll)
     ? viewportHeightClass
     : 'h-full max-h-full'
 
@@ -356,7 +361,7 @@ export default function DashboardPage() {
   )
 
   return (
-    <div className={`flex flex-col pb-14 md:pb-0 ${useStickyTasks ? '' : 'flex-1 overflow-hidden'}`}>
+    <div className={`flex flex-col pb-14 md:pb-0 ${usePageScrollLayout ? '' : 'flex-1 overflow-hidden'}`}>
 
       {/* Mobile top tabs */}
       <div className="flex md:hidden border-b border-default bg-card sticky top-0 z-40">
@@ -379,7 +384,7 @@ export default function DashboardPage() {
 
       <div className={splitRowClass}>
         {/* LEFT — Inventory */}
-        <div className={`flex flex-col min-h-0 ${leftWidthClass} ${useStickyTasks ? '' : panelHeightClass} border-r border-default ${useStickyTasks ? '' : 'overflow-hidden'} ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`flex flex-col ${leftWidthClass} ${usePageScrollLayout ? '' : `${panelHeightClass} min-h-0 overflow-hidden`} border-r border-default ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
           <div className={`px-4 border-b border-default bg-card sm:px-8 flex-shrink-0 ${inventoryTvScroll ? 'py-3' : 'py-5 sm:py-6'}`}>
             <div className={`flex items-center justify-between gap-3 ${inventoryTvScroll ? '' : 'mb-4'}`}>
               <div>
@@ -502,11 +507,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {useStickyTasks ? (
-            <div className="p-4 sm:p-8 space-y-10">
-              {renderInventoryBody()}
-            </div>
-          ) : (
+          {inventoryTvScroll ? (
           <AutoScrollViewport
             enabled={inventoryTvScroll}
             className=""
@@ -516,6 +517,10 @@ export default function DashboardPage() {
           >
             {renderInventoryBody()}
           </AutoScrollViewport>
+          ) : (
+            <div className="p-4 sm:p-8 space-y-10">
+              {renderInventoryBody()}
+            </div>
           )}
         </div>
 
@@ -526,7 +531,7 @@ export default function DashboardPage() {
 
         {/* RIGHT — Tasks sidebar */}
         {showTasksPanel && (
-        <div className={`flex flex-col min-h-0 shrink-0 w-full md:w-[42%] md:max-w-[42%] md:flex-[0_0_42%] ${viewportHeightClass} border-l border-default bg-surface overflow-hidden ${useStickyTasks ? pinnedTasksClass : ''} ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`flex flex-col shrink-0 w-full md:w-[42%] md:max-w-[42%] md:flex-[0_0_42%] border-l border-default bg-surface ${useStickyTasks ? `${viewportHeightClass} overflow-hidden ${pinnedTasksClass}` : usePageScrollLayout ? '' : `${viewportHeightClass} min-h-0 overflow-hidden`} ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
           <div className="flex items-center justify-between px-4 py-5 border-b border-default bg-card sm:px-8 flex-shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <button type="button" onClick={() => setActiveTab('inventory')}
@@ -562,7 +567,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="sticky top-0 z-20 flex border-b border-default bg-card/95 backdrop-blur-sm px-4 gap-2 pt-2 flex-shrink-0">
+          <div className={`flex border-b border-default bg-card/95 backdrop-blur-sm px-4 gap-2 pt-2 flex-shrink-0 ${taskPanelLocked ? 'sticky top-0 z-20' : ''}`}>
             <button onClick={() => { setTaskTab('buy'); setActiveTab('tasks') }}
               className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${taskTab === 'buy' ? 'border-accent text-accent' : 'border-transparent text-muted'}`}>
               Buy Tasks
