@@ -50,7 +50,6 @@ interface Watch {
 interface WatchCardProps {
   watch: Watch
   onCardClick: (watch: Watch) => void
-  onTaskDone: (id: number) => void
 }
 
 const STAGES: WatchStage[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
@@ -94,7 +93,7 @@ const STAGE_CFG = {
   },
 }
 
-export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardProps) {
+export default function WatchCard({ watch, onCardClick }: WatchCardProps) {
   const cfg = STAGE_CFG[watch.stage]
   const isSell = watch.watch_type === 'SELL'
 
@@ -246,16 +245,14 @@ export default function WatchCard({ watch, onCardClick, onTaskDone }: WatchCardP
           </div>
         </div>
 
-        {/* Task Done button */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onTaskDone(watch.id) }}
-          className={`w-full py-2.5 rounded-full font-bold text-sm transition-all ${
-            allDone
-              ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm'
-              : 'bg-[#eaeefb] hover:bg-indigo-100 text-[#464555] hover:text-indigo-700 border border-[#c7c4d8]'
-          }`}>
-          {allDone ? '✓ Mark Sold' : '✓ Task Done'}
-        </button>
+        {/* Task progress — auto-removed from dashboard when all phase tasks are complete */}
+        <div className={`w-full py-2.5 rounded-full font-bold text-sm text-center ${
+          allDone
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            : 'bg-[#eaeefb] text-[#464555] border border-[#c7c4d8]'
+        }`}>
+          {allDone ? '✓ All tasks complete' : `${STAGES.filter(deptDone).length}/${STAGES.length} departments done`}
+        </div>
       </div>
     </div>
   )

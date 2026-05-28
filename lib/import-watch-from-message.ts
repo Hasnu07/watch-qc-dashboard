@@ -29,54 +29,62 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
   const currency = parsed.currency || 'USD'
   const paymentStatus = parsed.payment_status || 'NOT_PAID'
 
-  // ── SELL: try to find and update the existing watch by stock_no ──────────
+  // SELL: copy details from the matching stock watch if we have one, but always create a new entry.
+  let brand = parsed.brand || null
+  let model = parsed.model || null
+  let ref_no = parsed.ref_no || null
+  let dial_colour = parsed.dial_colour || null
+  let bracelet = parsed.bracelet || null
+  let case_material = parsed.case_material || null
+  let watch_date = parsed.watch_date || null
+  let resolvedImageUrl = imageUrl || null
+
   if (watchType === 'SELL' && parsed.stock_no) {
-    const existing = await prisma.watch.findFirst({
-      where: { stock_no: parsed.stock_no, is_sold: false },
+    const source = await prisma.watch.findFirst({
+      where: { stock_no: parsed.stock_no, watch_type: { not: 'SELL' } },
+      orderBy: { created_at: 'desc' },
     })
-    if (existing) {
-      const updated = await prisma.watch.update({
-        where: { id: existing.id },
-        data: {
-          is_sold: true,
-          sold_to: parsed.sold_to || null,
-          payment_status: paymentStatus,
-          ...(price > 0 ? { website_price: price, currency } : {}),
-        },
-      })
-      emitWatchEvent({ type: 'new_watch', watchId: updated.id })
-      return { imported: true, watch: updated, parsed, watchType }
+    if (source) {
+      brand = brand || source.brand
+      model = model || source.model
+      ref_no = ref_no || source.ref_no
+      dial_colour = dial_colour || source.dial_colour
+      bracelet = bracelet || source.bracelet
+      case_material = case_material || source.case_material
+      watch_date = watch_date || source.watch_date
+      resolvedImageUrl = resolvedImageUrl || source.image_url
     }
   }
 
-  const nameParts = [parsed.brand, parsed.model].filter(Boolean) as string[]
+  const nameParts = [brand, model].filter(Boolean) as string[]
   const name = nameParts.length > 0
     ? nameParts.join(' ')
-    : (parsed.stock_no ? `Stock #${parsed.stock_no}` : parsed.ref_no || trimmed.split('\n')[0]?.slice(0, 60) || 'WhatsApp Import')
+    : parsed.stock_no
+      ? `Stock #${parsed.stock_no}${parsed.sold_to ? ` → ${parsed.sold_to}` : ''}`
+      : parsed.ref_no || parsed.sold_to || trimmed.split('\n')[0]?.slice(0, 60) || 'WhatsApp Import'
 
-  // Map parsed location_status to DB enum, defaulting based on context
   const locationStatus = parsed.location_status || (parsed.location_from ? 'INCOMING' : 'IN_STOCK')
 
   const watch = await prisma.watch.create({
     data: {
-      brand: parsed.brand || null,
-      model: parsed.model || null,
-      ref_no: parsed.ref_no || null,
+      brand,
+      model,
+      ref_no,
       stock_no: parsed.stock_no || null,
       bought_from: watchType === 'BUY' ? (parsed.bought_from || null) : null,
       sold_to: watchType === 'SELL' ? (parsed.sold_to || null) : null,
-      case_material: parsed.case_material || null,
-      dial_colour: parsed.dial_colour || null,
-      bracelet: parsed.bracelet || null,
-      watch_date: parsed.watch_date || null,
+      case_material,
+      dial_colour,
+      bracelet,
+      watch_date,
       currency,
       purchase_price: watchType === 'BUY' && price > 0 ? price : null,
       stock_status: 'STOCK',
       watch_type: watchType,
-      is_sold: watchType === 'SELL',
+      is_sold: false,
       name,
-      image_url: imageUrl || null,
-      website_price: watchType === 'SELL' ? price : 0,
+      image_url: resolvedImageUrl,
+      website_price: watchType === 'SELL' && price > 0 ? price : 0,
       b2b_price: 0,
       payment_status: paymentStatus,
       location_status: locationStatus,

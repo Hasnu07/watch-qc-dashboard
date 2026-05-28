@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { visibleWatchFilter } from '@/lib/watch-visibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,17 +16,17 @@ export async function GET(req: NextRequest) {
     if (watchId) where.watch_id = parseInt(watchId, 10)
 
     const phase = searchParams.get('phase')
+    const visibleFilter = await visibleWatchFilter()
+
     if (phase) {
       where.phase = phase
-      // SELL tasks only show for visible Sell-type watches; BUY tasks only for visible Buy-type watches.
       if (phase === 'SELL') {
-        where.watch = { watch_type: 'SELL', is_sold: false }
+        where.watch = { ...visibleFilter, watch_type: 'SELL' }
       } else {
-        where.watch = { watch_type: { not: 'SELL' }, is_sold: false }
+        where.watch = { ...visibleFilter, watch_type: { not: 'SELL' } }
       }
     } else {
-      // Default: buy tasks only (exclude SELL phase, Buy-type watches that are visible)
-      where.watch = { watch_type: { not: 'SELL' }, is_sold: false }
+      where.watch = { ...visibleFilter, watch_type: { not: 'SELL' } }
       where.phase = { not: 'SELL' }
     }
 

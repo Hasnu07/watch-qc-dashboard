@@ -77,18 +77,7 @@ export default function DashboardPage() {
     } catch (err) { console.error(err) }
   }, [])
 
-  const handleTaskDone = async (id: number) => {
-    setWatches(prev => prev.filter(w => w.id !== id))
-    try {
-      await fetch(`/api/watches/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_sold: true }),
-      })
-    } catch { fetchWatches() }
-  }
-
-  useEffect(() => {
+  useEffect(() => { fetchWatches() }, [fetchWatches])
     let es: EventSource | null = null
     const connectSSE = () => {
       es = new EventSource('/api/sse')
@@ -204,7 +193,7 @@ export default function DashboardPage() {
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
                 {watches.map(watch => (
-                  <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} onTaskDone={handleTaskDone} />
+                  <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} />
                 ))}
               </div>
             )}

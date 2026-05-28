@@ -57,6 +57,7 @@ function parseCurrency(text: string): 'USD' | 'GBP' | 'EUR' | 'AED' | 'HKD' | nu
   if (/\bgbp\b|£/.test(t)) return 'GBP'
   if (/\baed\b|\bdirham/.test(t)) return 'AED'
   if (/\bhkd\b/.test(t)) return 'HKD'
+  if (/\busdt\b/.test(t)) return 'USD'
   if (/\busd\b|\$/.test(t)) return 'USD'
   return null
 }
@@ -86,18 +87,23 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
 
   const hasSellSignal =
     /\bsold\s+(\d+\s+)?to\b/i.test(t) ||
-    /^sold\s+to\s*:/im.test(t)
+    /^sold\s+to\s*:/im.test(t) ||
+    /^sold\s+to\s+\S/im.test(t)
+
+  // Informal sell: "1002 for 62000 usdt" on its own line
+  const hasStockForPrice = /^\d{3,6}\s+for\s+[\d,.]+\s*(usdt|usd|eur|gbp|aed|hkd)\b/im.test(t)
 
   // Also import if ref + price appear together (informal format)
   const hasRefAndPrice =
     /\b[A-Z0-9]{5,}[-/][A-Z0-9]+\b|\b1[26]\d{4}[A-Z]{0,3}\b/.test(t) &&
     /\d[\d,.]+\s*(euro|eur|gbp|aed|usd|hkd)/i.test(t)
 
-  if (!hasBuySignal && !hasSellSignal && !hasRefAndPrice) {
+  if (!hasBuySignal && !hasSellSignal && !hasRefAndPrice && !hasStockForPrice) {
     return { should_import: false }
   }
 
-  const type: 'BUY' | 'SELL' = hasSellSignal && !hasBuySignal ? 'SELL' : 'BUY'
+  const type: 'BUY' | 'SELL' =
+    (hasSellSignal || hasStockForPrice) && !hasBuySignal ? 'SELL' : 'BUY'
 
   // ── SELLER / BUYER ───────────────────────────────────────────────────────
   let bought_from: string | null = field(t, 'Seller', 'Bought from', 'Buy from')
@@ -108,11 +114,10 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
 
   let sold_to: string | null = null
   if (type === 'SELL') {
-    // Stop before "for [price]" or "@ [price]" or end-of-line
-    // e.g. "Sold 1347 to Ali Akawi for 350.000 aed" → "Ali Akawi"
     const m =
       t.match(/sold\s+(?:\d+\s+)?to\s+(.+?)(?:\s+for\s+[\d]|\s+@\s*[\d]|\n|$)/i) ||
-      t.match(/^sold\s+to\s*:\s*(.+)$/im)
+      t.match(/^sold\s+to\s*:\s*(.+)$/im) ||
+      t.match(/^sold\s+to\s+(.+)$/im)
     if (m) sold_to = m[1].trim()
   }
 
@@ -142,7 +147,9 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
   // ── STOCK NO ─────────────────────────────────────────────────────────────
   let stock_no: string | null = null
   const stockSoldMatch = t.match(/\bsold\s+(\d+)\s+to\b/i)
+  const stockForMatch = t.match(/^(\d{3,6})\s+for\s+[\d,.]+\s*(usdt|usd|eur|gbp|aed|hkd)\b/im)
   if (stockSoldMatch) stock_no = stockSoldMatch[1]
+  else if (stockForMatch) stock_no = stockForMatch[1]
   else stock_no = field(t, 'Stock No', 'Stock Number', 'Stock')
 
   // ── DIAL & BRACELET ──────────────────────────────────────────────────────
@@ -164,9 +171,16 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
     if (!currency) currency = parseCurrency(t) // fallback: scan whole message
   }
 
-  // Fallback: bare price pattern  "55.000 gbp" or "44000 aed"
+  // Fallback: bare price pattern  "55.000 gbp" or "44000 aed" or "1002 for 62000 usdt"
   if (!price) {
-    const pm = t.match(/\b([\d,.]{4,})\s*(euro|eur|gbp|£|usd|\$|aed|hkd)\b/i)
+    const stockLine = t.match(/^(\d{3,6})\s+for\s+([\d,. ]+)\s*(usdt|usd|eur|gbp|£|aed|hkd)\b/im)
+    if (stockLine) {
+      price = parsePrice(stockLine[2])
+      currency = parseCurrency(stockLine[0])
+    }
+  }
+  if (!price) {
+    const pm = t.match(/\b([\d,.]{4,})\s*(euro|eur|gbp|£|usd|\$|aed|hkd|usdt)\b/i)
     if (pm) {
       price = parsePrice(pm[1])
       currency = parseCurrency(pm[0])

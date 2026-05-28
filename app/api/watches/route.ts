@@ -3,16 +3,12 @@ import { prisma } from '@/lib/prisma'
 import { emitWatchEvent } from '@/lib/events'
 import { createWatchTasks } from '@/lib/watch-tasks'
 import { createWatchSellTasks } from '@/lib/sell-tasks'
+import { getVisibleWatches } from '@/lib/watch-visibility'
 
 export async function GET() {
   try {
-    const watches = await prisma.watch.findMany({
-      where: { is_sold: false },
-      orderBy: { created_at: 'desc' },
-    })
+    const watches = await getVisibleWatches()
 
-    // Per-watch task completion summary so the card can show dept checkmarks.
-    // BUY-type watches use BUY-phase tasks; SELL-type watches use SELL-phase tasks.
     const buyIds = watches.filter(w => w.watch_type !== 'SELL').map(w => w.id)
     const sellIds = watches.filter(w => w.watch_type === 'SELL').map(w => w.id)
     const [buyTasks, sellTasks] = await Promise.all([

@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+import { getVisibleWatches } from './watch-visibility'
 import { sendWhatsAppMessage, toChatId } from './greenapi'
 import { emitWatchTaskEvent } from './events'
 
@@ -179,12 +180,15 @@ export async function sendPendingTaskReminders() {
   if (!settings) return
 
   // Fetch all pending, unlocked watch tasks that have an assignee
+  const visible = await getVisibleWatches()
+  const visibleIds = new Set(visible.map(w => w.id))
+
   const pendingTasks = await prisma.watchTask.findMany({
     where: {
       is_completed: false,
       is_locked: false,
       assigned_to: { not: null },
-      watch: { is_sold: false },
+      watch_id: { in: Array.from(visibleIds) },
     },
     include: { watch: { select: { id: true, name: true, brand: true, model: true } } },
     orderBy: { watch_id: 'asc' },
