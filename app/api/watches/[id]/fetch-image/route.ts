@@ -24,7 +24,7 @@ export async function POST(
     const found = await findWatchImageUrl(watch, { force })
     if (!found) {
       return NextResponse.json({
-        error: 'No official brand image found. Add brand + reference, or paste an image URL manually.',
+        error: 'No official brand image found. Set brand + reference, add SERPER_API_KEY for better search, or paste an image URL manually.',
       }, { status: 404 })
     }
 

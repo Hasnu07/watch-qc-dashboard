@@ -13,6 +13,9 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: SERPER_API_KEY
+        sync: false
+        optional: true
       - key: NEXT_PUBLIC_BASE_URL
         sync: false
       - key: NODE_ENV

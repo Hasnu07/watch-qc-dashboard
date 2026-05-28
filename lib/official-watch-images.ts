@@ -1,8 +1,13 @@
+import { resolveDirectBrandImage } from './brand-image-direct'
+
 export type OfficialBrandConfig = {
   key: string
   domains: string[]
   searchDomain: string
 }
+
+const BROWSER_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 const OFFICIAL_BRANDS: OfficialBrandConfig[] = [
   { key: 'rolex', domains: ['rolex.com', 'content.rolex.com', 'media.rolex.com'], searchDomain: 'rolex.com' },
@@ -23,8 +28,8 @@ const OFFICIAL_BRANDS: OfficialBrandConfig[] = [
   { key: 'a lange', domains: ['alange-soehne.com'], searchDomain: 'alange-soehne.com' },
 ]
 
-const BLOCKED_PATH_RE = /\/bg\/|background|luminescence|fav_icon|favicon|logo|icon|sprite|banner|thumbnail/i
-const PREFERRED_PATH_RE = /upright|watch\.png|face_white|product-shot|packshot|gallery\/1000|appdpfeaturedsetting/i
+const BLOCKED_PATH_RE = /\/bg\/|background|luminescence|fav_icon|favicon|logo|icon|sprite|banner|thumbnail|error/i
+const PREFERRED_PATH_RE = /upright|watch\.png|face_white|product-shot|packshot|gallery\/1000|appdpfeaturedsetting|appdpmain/i
 
 export function matchOfficialBrand(brand: string | null | undefined): OfficialBrandConfig | null {
   if (!brand) return null
@@ -60,35 +65,6 @@ export function scoreOfficialImage(url: string, ref: string | null | undefined, 
   return score
 }
 
-async function fetchDdgImages(query: string, signal: AbortSignal): Promise<Array<{ image: string; title?: string }>> {
-  const searchRes = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}`, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PurosangueQC/1.0)' },
-    signal,
-  })
-  if (!searchRes.ok) return []
-
-  const html = await searchRes.text()
-  const vqdMatch = html.match(/vqd=["']?([\d-]+)/)
-  if (!vqdMatch) return []
-
-  const imageRes = await fetch(
-    `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(query)}&vqd=${vqdMatch[1]}&f=,,,,,&p=1`,
-    {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; PurosangueQC/1.0)',
-        Referer: 'https://duckduckgo.com/',
-      },
-      signal,
-    },
-  )
-  if (!imageRes.ok) return []
-
-  const data = (await imageRes.json()) as { results?: Array<{ image?: string; title?: string }> }
-  return (data.results || [])
-    .map(result => ({ image: result.image?.trim() || '', title: result.title }))
-    .filter(result => /^https?:\/\//i.test(result.image))
-}
-
 function buildOfficialQueries(
   brand: OfficialBrandConfig,
   ref: string | null | undefined,
@@ -101,13 +77,116 @@ function buildOfficialQueries(
   if (refText) {
     queries.add(`site:${brand.searchDomain} ${refText} png`)
     queries.add(`site:${brand.searchDomain} ${refText} watch png`)
+    queries.add(`site:${brand.searchDomain} ${refText} watch`)
     queries.add(`site:${brand.searchDomain} ${refText}`)
   }
   if (modelText && refText) {
     queries.add(`site:${brand.searchDomain} ${modelText} ${refText} png`)
+    queries.add(`${brand.searchDomain} ${modelText} ${refText} watch png`)
   }
 
   return Array.from(queries)
+}
+
+function pickBestCandidate(
+  urls: string[],
+  ref: string | null | undefined,
+  domains: string[],
+): string | null {
+  const scored = urls
+    .map(url => ({ url, score: scoreOfficialImage(url, ref, domains) }))
+    .filter(item => item.score >= 80)
+    .sort((a, b) => b.score - a.score)
+  return scored[0]?.url || null
+}
+
+async function searchSerperImages(query: string, signal: AbortSignal): Promise<string[]> {
+  const apiKey = process.env.SERPER_API_KEY?.trim()
+  if (!apiKey) return []
+
+  try {
+    const res = await fetch('https://google.serper.dev/images', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ q: query, num: 10 }),
+      signal,
+    })
+    if (!res.ok) return []
+
+    const data = (await res.json()) as {
+      images?: Array<{ imageUrl?: string; link?: string }>
+    }
+    return (data.images || [])
+      .map(item => item.imageUrl?.trim() || '')
+      .filter(url => /^https?:\/\//i.test(url))
+  } catch {
+    return []
+  }
+}
+
+async function fetchDdgImages(query: string, signal: AbortSignal): Promise<string[]> {
+  try {
+    const searchRes = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}&iax=images&ia=images`, {
+      headers: {
+        'User-Agent': BROWSER_UA,
+        Accept: 'text/html,application/xhtml+xml',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal,
+    })
+    if (!searchRes.ok) return []
+
+    const html = await searchRes.text()
+    const vqdMatch =
+      html.match(/vqd=["']?([\d-]+)/) ||
+      html.match(/vqd=([\d-]+)&/) ||
+      html.match(/"vqd":"([^"]+)"/)
+    if (!vqdMatch) return []
+
+    const imageRes = await fetch(
+      `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(query)}&vqd=${encodeURIComponent(vqdMatch[1])}&f=,,,,,&p=1`,
+      {
+        headers: {
+          'User-Agent': BROWSER_UA,
+          Referer: 'https://duckduckgo.com/',
+          Accept: 'application/json',
+        },
+        signal,
+      },
+    )
+    if (!imageRes.ok) return []
+
+    const data = (await imageRes.json()) as { results?: Array<{ image?: string }> }
+    return (data.results || [])
+      .map(result => result.image?.trim() || '')
+      .filter(url => /^https?:\/\//i.test(url))
+  } catch {
+    return []
+  }
+}
+
+async function searchWithProviders(
+  queries: string[],
+  ref: string | null | undefined,
+  domains: string[],
+  signal: AbortSignal,
+): Promise<string | null> {
+  const hasSerper = !!process.env.SERPER_API_KEY?.trim()
+  const providers = hasSerper
+    ? [searchSerperImages, fetchDdgImages]
+    : [fetchDdgImages, searchSerperImages]
+
+  for (const query of queries) {
+    for (const provider of providers) {
+      const urls = await provider(query, signal)
+      const best = pickBestCandidate(urls, ref, domains)
+      if (best) return best
+    }
+  }
+  return null
 }
 
 export async function searchOfficialBrandImage(
@@ -119,25 +198,16 @@ export async function searchOfficialBrandImage(
   if (!brand) return null
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 15000)
+  const timeout = setTimeout(() => controller.abort(), 20000)
 
   try {
+    const directUrl = await resolveDirectBrandImage(brand.key, ref, model, controller.signal)
+    if (directUrl) return directUrl
+
     const queries = buildOfficialQueries(brand, ref, model)
-    const candidates: Array<{ url: string; score: number }> = []
+    if (queries.length === 0) return null
 
-    for (const query of queries) {
-      const results = await fetchDdgImages(query, controller.signal)
-      for (const result of results) {
-        const score = scoreOfficialImage(result.image, ref, brand.domains)
-        if (score >= 90) candidates.push({ url: result.image, score })
-      }
-      const best = candidates.sort((a, b) => b.score - a.score)[0]
-      if (best && best.score >= 140) break
-    }
-
-    candidates.sort((a, b) => b.score - a.score)
-    const top = candidates[0]
-    return top?.score >= 90 ? top.url : null
+    return await searchWithProviders(queries, ref, brand.domains, controller.signal)
   } catch {
     return null
   } finally {
