@@ -4,8 +4,8 @@
   "description": "Luxury watch trading pipeline dashboard",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#f9f9ff",
-  "theme_color": "#4f46e5",
+  "background_color": "#f2f0e4",
+  "theme_color": "#d9774b",
   "icons": [
     {
       "src": "/watch-logo.svg",

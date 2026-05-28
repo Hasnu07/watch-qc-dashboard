@@ -691,7 +691,7 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
             <p className="font-semibold text-lg text-slate-600">No tasks assigned to you</p>
             <p className="text-sm">Turn off &quot;My tasks&quot; above, or set your name to match assignee names.</p>
             <button type="button" onClick={clearMyTasksFilter}
-              className="mt-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700">
+              className="mt-2 btn-primary text-sm">
               Show all tasks
             </button>
           </div>

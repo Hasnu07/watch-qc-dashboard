@@ -31,8 +31,8 @@ export default function CommandPalette({ watches, onClose, onSelectStock, onPast
   const isStock = /^\d+$/.test(ql)
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 z-[70] flex items-start justify-center pt-[15vh] p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-ink/40 z-[70] flex items-start justify-center pt-[15vh] p-4" onClick={onClose}>
+      <div className="card w-full max-w-lg shadow-none" onClick={e => e.stopPropagation()}>
         <input
           autoFocus
           value={q}
@@ -40,27 +40,27 @@ export default function CommandPalette({ watches, onClose, onSelectStock, onPast
           onKeyDown={e => {
             if (e.key === 'Enter' && isStock) { onSelectStock(ql); onClose() }
           }}
-          placeholder="Search stock #, brand, model… (Enter stock # to add)"
-          className="w-full px-5 py-4 text-base border-b border-slate-200 focus:outline-none"
+          placeholder="Search stock #, brand, model…"
+          className="w-full px-6 py-5 text-base border-b border-default bg-transparent focus:outline-none font-display tracking-wide"
         />
-        <div className="p-2 max-h-64 overflow-y-auto">
-          <button type="button" onClick={() => { onPaste(); onClose() }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium">📋 Paste WhatsApp message</button>
-          <button type="button" onClick={() => { onAddWatch(); onClose() }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium">+ Add watch</button>
+        <div className="p-3 max-h-64 overflow-y-auto space-y-1">
+          <button type="button" onClick={() => { onPaste(); onClose() }} className="w-full text-left px-4 py-2.5 rounded-2xl hover:bg-panel text-sm font-medium">Paste WhatsApp message</button>
+          <button type="button" onClick={() => { onAddWatch(); onClose() }} className="w-full text-left px-4 py-2.5 rounded-2xl hover:bg-panel text-sm font-medium">Add watch</button>
           {isStock && (
             <button type="button" onClick={() => { onSelectStock(ql); onClose() }}
-              className="w-full text-left px-3 py-2 rounded-lg bg-indigo-50 text-indigo-800 text-sm font-bold">
+              className="w-full text-left px-4 py-2.5 rounded-2xl bg-accent/10 text-accent text-sm font-semibold">
               Add stock #{ql}
             </button>
           )}
           {matches.map(w => (
             <button key={w.id} type="button" onClick={() => { onOpenWatch(w.id); onClose() }}
-              className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm">
-              {w.stock_no && <span className="font-bold font-mono">#{w.stock_no} </span>}
+              className="w-full text-left px-4 py-2.5 rounded-2xl hover:bg-panel text-sm">
+              {w.stock_no && <span className="font-semibold font-mono-data">#{w.stock_no} </span>}
               {w.brand} {w.model || w.name}
             </button>
           ))}
         </div>
-        <p className="px-4 py-2 text-[10px] text-slate-400 border-t">⌘K / Ctrl+K · / search · n new watch</p>
+        <p className="px-5 py-3 text-[10px] text-muted border-t border-default uppercase tracking-widest">⌘K · / search · n new watch</p>
       </div>
     </div>
   )

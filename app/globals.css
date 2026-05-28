@@ -2,17 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
 
 :root {
   --scroll-speed: 40;
-  --color-ink: #171c25;
-  --color-muted: #777587;
-  --color-border: #c7c4d8;
-  --color-surface: #f9f9ff;
-  --color-panel: #f0f3ff;
-  --color-buy: #4f46e5;
-  --color-sell: #f97316;
+  --color-ink: #2c2c2c;
+  --color-muted: #6b6560;
+  --color-border: rgba(44, 44, 44, 0.14);
+  --color-border-strong: rgba(44, 44, 44, 0.28);
+  --color-surface: #f2f0e4;
+  --color-panel: #ebe7d9;
+  --color-card: #faf8f3;
+  --color-accent: #d9774b;
+  --color-accent-dark: #c4663d;
+  --color-sand: #f2e394;
+  --color-buy: #5c5348;
+  --color-sell: #d9774b;
 }
 
 * { box-sizing: border-box; }
@@ -23,18 +28,16 @@ html, body {
   padding: 0;
   background-color: var(--color-surface);
   color: var(--color-ink);
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: #eaeefb; }
-::-webkit-scrollbar-thumb { background: #c7c4d8; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #9994b0; }
+::-webkit-scrollbar-track { background: var(--color-panel); }
+::-webkit-scrollbar-thumb { background: rgba(44, 44, 44, 0.22); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(44, 44, 44, 0.35); }
 
-/* Auto-scroll */
 @keyframes autoScroll {
   0%   { transform: translateY(0); }
   100% { transform: translateY(var(--scroll-distance, -50%)); }
@@ -46,23 +49,78 @@ html, body {
   animation-play-state: paused;
 }
 
-/* Live dot pulse */
 @keyframes livePulse {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+  50%       { opacity: 0.45; }
 }
 .live-dot { animation: livePulse 2s ease-in-out infinite; }
 
-/* Mono font for prices/codes */
 .font-mono-data {
   font-family: 'JetBrains Mono', monospace;
   font-weight: 500;
 }
 
-/* Design token utilities */
+.font-display {
+  font-family: 'Syne', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+}
+
 .text-ink { color: var(--color-ink); }
 .text-muted { color: var(--color-muted); }
 .bg-surface { background-color: var(--color-surface); }
 .bg-panel { background-color: var(--color-panel); }
+.bg-card { background-color: var(--color-card); }
 .border-default { border-color: var(--color-border); }
+.border-strong { border-color: var(--color-border-strong); }
+.text-accent { color: var(--color-accent); }
+.bg-accent { background-color: var(--color-accent); }
 
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-full font-semibold text-sm text-white transition-colors;
+    background-color: var(--color-accent);
+  }
+  .btn-primary:hover { background-color: var(--color-accent-dark); }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-full font-semibold text-sm transition-colors border;
+    background-color: var(--color-sand);
+    border-color: var(--color-ink);
+    color: var(--color-ink);
+  }
+  .btn-secondary:hover { filter: brightness(0.97); }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full font-semibold text-sm transition-colors border bg-transparent;
+    border-color: var(--color-border-strong);
+    color: var(--color-ink);
+  }
+  .btn-ghost:hover { background-color: rgba(44, 44, 44, 0.04); }
+
+  .card {
+    @apply rounded-3xl border bg-card overflow-hidden;
+    border-color: var(--color-border-strong);
+  }
+
+  .input-field {
+    @apply w-full rounded-full border bg-card px-4 py-2.5 text-sm text-ink transition-colors focus:outline-none;
+    border-color: var(--color-border-strong);
+  }
+  .input-field:focus { border-color: var(--color-accent); }
+
+  .chip {
+    @apply px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors;
+    border-color: var(--color-border-strong);
+    color: var(--color-muted);
+    background: var(--color-card);
+  }
+  .chip-active {
+    @apply chip text-white;
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  .section-label {
+    @apply font-display text-xs font-bold uppercase tracking-[0.22em] text-muted;
+  }
+}

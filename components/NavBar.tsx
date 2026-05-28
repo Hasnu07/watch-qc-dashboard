@@ -13,10 +13,10 @@ export default function NavBar() {
     return (
       <Link
         href={href}
-        className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all tracking-wide ${
+        className={`px-3 py-1 text-sm font-medium tracking-wide transition-colors ${
           active
-            ? 'bg-indigo-600 text-white shadow-sm'
-            : 'text-slate-400 hover:text-white hover:bg-white/10'
+            ? 'text-accent border-b-2 border-accent pb-0.5'
+            : 'text-muted hover:text-ink'
         }`}
         title={subtitle}
       >
@@ -26,29 +26,28 @@ export default function NavBar() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#2c313a] border-b border-white/10 shadow-md">
-      <div className="flex items-center justify-between px-4 py-3 max-w-screen-2xl mx-auto sm:px-6">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-sm">
-            W
+    <nav className="sticky top-0 z-50 bg-surface/95 backdrop-blur-sm border-b border-default">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-8 py-4">
+        <div className="flex flex-col items-center gap-3 sm:gap-4">
+          <div className="flex items-center justify-between w-full">
+            <div className="w-20 sm:hidden" />
+            <Link href="/dashboard" className="font-display text-lg sm:text-xl font-bold tracking-[0.18em] text-ink uppercase text-center leading-tight">
+              Watch QC
+            </Link>
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-semibold uppercase tracking-wider ${
+              connected ? 'border-accent/40 text-accent bg-accent/5' : 'border-default text-muted bg-card'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-accent live-dot' : 'bg-muted'}`} />
+              <span className="hidden sm:inline">{connected ? 'Live' : 'Poll'}</span>
+            </div>
           </div>
-          <div className="flex flex-col leading-none">
-            <span className="text-base font-black text-white tracking-tight sm:text-lg">Watch QC</span>
+
+          <div className="flex items-center gap-1 sm:gap-3 flex-wrap justify-center">
+            {navLink('/', 'Team Tasks', 'Assign ad-hoc tasks to team members')}
+            {navLink('/dashboard', 'Pipeline', 'Watch inventory & pipeline tasks')}
+            {navLink('/history', 'History', 'Completed task history')}
+            {navLink('/settings', 'Settings', 'Integrations & team')}
           </div>
-        </div>
-
-        <div className="flex items-center gap-0.5 sm:gap-1">
-          {navLink('/', 'Team Tasks', 'Assign ad-hoc tasks to team members')}
-          {navLink('/dashboard', 'Pipeline', 'Watch inventory & pipeline tasks')}
-          {navLink('/history', 'History', 'Completed task history')}
-          {navLink('/settings', 'Settings', 'Integrations & team')}
-        </div>
-
-        <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full border text-xs font-bold ${
-          connected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-        }`}>
-          <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400 live-dot' : 'bg-amber-400'}`} />
-          <span className="hidden sm:inline">{connected ? 'Live' : 'Polling'}</span>
         </div>
       </div>
     </nav>

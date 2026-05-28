@@ -46,28 +46,28 @@ export default function ImportInboxPanel({ onImported }: Props) {
   if (items.length === 0) return null
 
   return (
-    <div className="mb-4 rounded-xl border-2 border-amber-200 bg-amber-50 overflow-hidden">
+    <div className="mb-4 rounded-3xl border border-default bg-sand/30 overflow-hidden">
       <button type="button" onClick={() => setOpen(o => !o)}
-        className="w-full px-4 py-3 flex items-center justify-between text-left">
-        <span className="text-sm font-black text-amber-900">📥 Import inbox · {items.length} need review</span>
-        <span className="text-amber-600 text-xs">{open ? '▾' : '▸'}</span>
+        className="w-full px-5 py-4 flex items-center justify-between text-left">
+        <span className="font-display text-sm font-bold uppercase tracking-widest text-ink">Import inbox · {items.length} need review</span>
+        <span className="text-muted text-xs">{open ? '▾' : '▸'}</span>
       </button>
       {open && (
-        <div className="border-t border-amber-200 divide-y divide-amber-100 max-h-48 overflow-y-auto">
+        <div className="border-t border-default divide-y divide-default max-h-48 overflow-y-auto">
           {items.map(item => (
-            <div key={item.id} className="px-4 py-3 text-xs">
+            <div key={item.id} className="px-5 py-4 text-xs">
               <div className="flex items-center gap-2 mb-1">
-                <span className="font-bold text-amber-800 uppercase">{item.skip_reason}</span>
-                <span className="text-amber-600">{new Date(item.created_at).toLocaleString()}</span>
+                <span className="font-semibold text-accent uppercase tracking-wide">{item.skip_reason}</span>
+                <span className="text-muted">{new Date(item.created_at).toLocaleString()}</span>
               </div>
-              <p className="text-amber-900 line-clamp-2 font-mono mb-2">{item.message_text.slice(0, 200)}</p>
+              <p className="text-ink line-clamp-2 font-mono mb-3 opacity-80">{item.message_text.slice(0, 200)}</p>
               <div className="flex gap-2">
                 <button type="button" disabled={loading} onClick={() => act(item.id, 'import', item.skip_reason === 'duplicate')}
-                  className="px-3 py-1 rounded-lg bg-emerald-600 text-white font-bold disabled:opacity-50">
+                  className="btn-primary text-xs disabled:opacity-50">
                   Import{item.skip_reason === 'duplicate' ? ' anyway' : ''}
                 </button>
                 <button type="button" disabled={loading} onClick={() => act(item.id, 'dismiss')}
-                  className="px-3 py-1 rounded-lg border border-amber-300 text-amber-800 font-bold">
+                  className="btn-ghost text-xs">
                   Dismiss
                 </button>
               </div>
