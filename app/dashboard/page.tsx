@@ -432,8 +432,13 @@ export default function DashboardPage() {
         {/* RIGHT — Tasks */}
         <div className={`flex-col w-full md:w-[42%] overflow-hidden ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
           <div className="flex items-center justify-between px-4 py-4 border-b border-default bg-white sm:px-6 sm:py-5">
-            <div>
-              <h2 className="text-xl font-black text-ink sm:text-2xl">Watch Tasks</h2>
+            <div className="flex items-center gap-2 min-w-0">
+              <button type="button" onClick={() => setActiveTab('inventory')}
+                className="md:hidden flex-shrink-0 w-9 h-9 rounded-full bg-panel border border-default text-ink font-bold text-lg leading-none">
+                ←
+              </button>
+              <div className="min-w-0">
+                <h2 className="text-xl font-black text-ink sm:text-2xl">Watch Tasks</h2>
               {focusedWatch ? (
                 <p className="text-indigo-600 text-xs mt-0.5 font-bold sm:text-sm truncate max-w-[240px] sm:max-w-none">
                   → #{focusedWatch.stock_no || focusedWatch.id} {focusedWatch.brand} {focusedWatch.model}
@@ -443,6 +448,7 @@ export default function DashboardPage() {
                   {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                 </p>
               )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button type="button" onClick={toggleAutoScroll}

@@ -639,6 +639,38 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
 
   const totalPending = filteredTasks.filter(t => !t.is_completed && !t.is_locked).length
 
+  const clearMyTasksFilter = () => {
+    setMyTasksOnly(false)
+    localStorage.setItem('qc_my_tasks_filter', '0')
+  }
+
+  const taskToolbar = (
+    <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="flex-1 min-w-[140px] px-4 py-2.5 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <span className="text-slate-500 text-sm font-medium">
+          {totalPending === 0 && !myTasksOnly ? '🎉 All tasks complete!' : `${totalPending} pending · ${watchGroups.length} watch${watchGroups.length !== 1 ? 'es' : ''}`}
+        </span>
+      </div>
+      <label className="flex items-center gap-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2.5 cursor-pointer">
+        <input type="checkbox" checked={myTasksOnly} onChange={e => {
+          setMyTasksOnly(e.target.checked)
+          localStorage.setItem('qc_my_tasks_filter', e.target.checked ? '1' : '0')
+        }} />
+        My tasks
+      </label>
+      <input type="text" value={myName} onChange={e => {
+        setMyName(e.target.value)
+        localStorage.setItem('qc_my_name', e.target.value)
+      }} placeholder="Your name" className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-28 focus:outline-none focus:border-indigo-400" />
+      <select value={sort} onChange={e => setSort(e.target.value as SortMode)}
+        className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-600 font-medium shadow-sm focus:outline-none focus:border-indigo-400 cursor-pointer">
+        <option value="new">🕐 New first</option>
+        <option value="pending">⚡ Most pending</option>
+        <option value="name">🔤 Name A–Z</option>
+      </select>
+    </div>
+  )
+
   if (loading) return <div className={`flex items-center justify-center h-40 text-slate-400 ${className}`}>Loading tasks…</div>
   if (tasks.length === 0) return (
     <div className={`flex flex-col items-center justify-center h-48 text-slate-400 gap-3 px-6 text-center ${className}`}>
@@ -648,58 +680,38 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
     </div>
   )
 
-  if (filteredTasks.length === 0) return (
-    <div className={`flex flex-col items-center justify-center h-48 text-slate-400 gap-3 px-6 text-center ${className}`}>
-      <span className="text-4xl">👤</span>
-      <p className="font-semibold text-lg text-slate-600">No tasks assigned to you</p>
-      <p className="text-sm">Turn off &quot;My tasks&quot; or set your name below</p>
-    </div>
-  )
-
   return (
     <div className={className}>
       <div className="p-4">
-        {/* Top bar */}
-        <div className="flex items-center gap-3 mb-4 flex-wrap">
-          <div className="flex-1 min-w-[140px] px-4 py-2.5 bg-white rounded-xl border border-slate-200 shadow-sm">
-            <span className="text-slate-500 text-sm font-medium">
-              {totalPending === 0 ? '🎉 All tasks complete!' : `${totalPending} pending · ${watchGroups.length} watch${watchGroups.length !== 1 ? 'es' : ''}`}
-            </span>
-          </div>
-          <label className="flex items-center gap-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2.5 cursor-pointer">
-            <input type="checkbox" checked={myTasksOnly} onChange={e => {
-              setMyTasksOnly(e.target.checked)
-              localStorage.setItem('qc_my_tasks_filter', e.target.checked ? '1' : '0')
-            }} />
-            My tasks
-          </label>
-          <input type="text" value={myName} onChange={e => {
-            setMyName(e.target.value)
-            localStorage.setItem('qc_my_name', e.target.value)
-          }} placeholder="Your name" className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-28 focus:outline-none focus:border-indigo-400" />
-          <select value={sort} onChange={e => setSort(e.target.value as SortMode)}
-            className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-600 font-medium shadow-sm focus:outline-none focus:border-indigo-400 cursor-pointer">
-            <option value="new">🕐 New first</option>
-            <option value="pending">⚡ Most pending</option>
-            <option value="name">🔤 Name A–Z</option>
-          </select>
-        </div>
+        {taskToolbar}
 
-        {watchGroups.map(({ watchId, watchName, tasks: watchTasks }) => (
-          <WatchAccordion
-            key={watchId}
-            watchId={watchId}
-            watchName={watchName}
-            tasks={watchTasks}
-            teamMembers={teamMembers}
-            expanded={expandedWatchId === watchId}
-            onToggle={() => setExpandedWatchId(prev => prev === watchId ? null : watchId)}
-            onComplete={completeTask}
-            onUncomplete={uncompleteTask}
-            onAssign={assignTask}
-            onRefresh={fetchTasks}
-          />
-        ))}
+        {filteredTasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-3 px-6 text-center">
+            <span className="text-4xl">👤</span>
+            <p className="font-semibold text-lg text-slate-600">No tasks assigned to you</p>
+            <p className="text-sm">Turn off &quot;My tasks&quot; above, or set your name to match assignee names.</p>
+            <button type="button" onClick={clearMyTasksFilter}
+              className="mt-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700">
+              Show all tasks
+            </button>
+          </div>
+        ) : (
+          watchGroups.map(({ watchId, watchName, tasks: watchTasks }) => (
+            <WatchAccordion
+              key={watchId}
+              watchId={watchId}
+              watchName={watchName}
+              tasks={watchTasks}
+              teamMembers={teamMembers}
+              expanded={expandedWatchId === watchId}
+              onToggle={() => setExpandedWatchId(prev => prev === watchId ? null : watchId)}
+              onComplete={completeTask}
+              onUncomplete={uncompleteTask}
+              onAssign={assignTask}
+              onRefresh={fetchTasks}
+            />
+          ))
+        )}
       </div>
     </div>
   )
