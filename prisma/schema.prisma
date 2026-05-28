@@ -80,10 +80,38 @@ model Watch {
   transit_tracking_number String?
   received_date           DateTime?
   created_at              DateTime   @default(now())
+  updated_at              DateTime   @updatedAt
+  linked_buy_watch_id     Int?
+  linked_buy_watch        Watch?     @relation("BuySellLink", fields: [linked_buy_watch_id], references: [id], onDelete: SetNull)
+  linked_sell_watches     Watch[]    @relation("BuySellLink")
+  fob_url                 String?
   payments                WatchPayment[]
   logistics_cost          Float?
   logistics_cost_currency String?
   watch_tasks             WatchTask[]
+  activities              WatchActivity[]
+}
+
+model WatchActivity {
+  id         Int      @id @default(autoincrement())
+  watch_id   Int
+  watch      Watch    @relation(fields: [watch_id], references: [id], onDelete: Cascade)
+  action     String
+  detail     String?
+  actor      String?
+  created_at DateTime @default(now())
+}
+
+model ImportInbox {
+  id           Int      @id @default(autoincrement())
+  source       String   @default("webhook")
+  message_text String
+  image_url    String?
+  skip_reason  String
+  parsed_json  Json?
+  status       String   @default("pending")
+  watch_id     Int?
+  created_at   DateTime @default(now())
 }
 
 model WatchPayment {

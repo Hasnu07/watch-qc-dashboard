@@ -17,6 +17,7 @@ export interface InventoryRecord {
   image_url: string | null
   category: string | null
   currency: string
+  fob_url: string | null
 }
 
 let cache: Map<string, InventoryRecord> | null = null
@@ -134,6 +135,7 @@ function loadInventoryMap(): Map<string, InventoryRecord> {
       image_url: pick(row, idx, 'Website Photo', 'Photo', 'PRODUCT PHOTO', 'Checkout Image') || null,
       category: pick(row, idx, 'Category') || null,
       currency: 'GBP',
+      fob_url: pick(row, idx, 'detail_url') || null,
     }
 
     const existing = map.get(stock_no)
@@ -198,6 +200,8 @@ export function enrichFromInventory<T extends {
     out.website_price = inv.website_price
   }
 
+  if (inv.fob_url) (out as T & { fob_url?: string }).fob_url = inv.fob_url
+
   return out
 }
 
@@ -220,5 +224,6 @@ export function inventoryLookupForApi(stockNo: string) {
     image_url: inv.image_url,
     category: inv.category,
     currency: inv.currency,
+    fob_url: inv.fob_url,
   }
 }

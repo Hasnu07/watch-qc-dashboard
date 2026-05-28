@@ -6,6 +6,8 @@ import { SseProvider } from '@/components/SseProvider'
 export const metadata: Metadata = {
   title: 'QC Dashboard — Watch Trading',
   description: 'Quality Control Dashboard for Watch Trading Business',
+  manifest: '/manifest.json',
+  appleWebApp: { capable: true, title: 'Watch QC' },
 }
 
 export const viewport: Viewport = {

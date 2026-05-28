@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       include: {
         watch: {
           select: {
-            id: true, name: true, brand: true, model: true, ref_no: true,
+            id: true, name: true, brand: true, model: true, ref_no: true, stock_no: true, fob_url: true,
             payment_status: true, website_price: true, b2b_price: true,
             logistics_cost: true, logistics_cost_currency: true,
           },

@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
-    const result = await importWatchFromMessage(caption, imageUrl)
+    const result = await importWatchFromMessage(caption, imageUrl, { source: 'webhook' })
     if (!result.imported) {
       if (result.skipped === 'empty') {
         logHit({ ...baseHit, outcome: `SKIPPED: no parseable text (msgType="${msgType}", hasImage=${!!imageUrl})` })

@@ -4,6 +4,7 @@ import { emitWatchEvent } from '@/lib/events'
 import { createWatchTasks } from '@/lib/watch-tasks'
 import { createWatchSellTasks } from '@/lib/sell-tasks'
 import { getVisibleWatches } from '@/lib/watch-visibility'
+import { enrichWatchMetrics, computePipelineStats } from '@/lib/watch-metrics'
 
 export async function GET() {
   try {
@@ -11,7 +12,11 @@ export async function GET() {
 
     const buyIds = watches.filter(w => w.watch_type !== 'SELL').map(w => w.id)
     const sellIds = watches.filter(w => w.watch_type === 'SELL').map(w => w.id)
-    const [buyTasks, sellTasks] = await Promise.all([
+    const linkedBuyIds = watches
+      .filter(w => w.watch_type === 'SELL' && w.linked_buy_watch_id)
+      .map(w => w.linked_buy_watch_id as number)
+
+    const [buyTasks, sellTasks, linkedBuys] = await Promise.all([
       buyIds.length
         ? prisma.watchTask.findMany({
             where: { watch_id: { in: buyIds }, phase: { not: 'SELL' } },
@@ -24,8 +29,20 @@ export async function GET() {
             select: { watch_id: true, department: true, is_completed: true },
           })
         : Promise.resolve([]),
+      linkedBuyIds.length
+        ? prisma.watch.findMany({
+            where: { id: { in: linkedBuyIds } },
+            select: { id: true, purchase_price: true },
+          })
+        : Promise.resolve([]),
     ])
     const tasks = [...buyTasks, ...sellTasks]
+    const buyPriceById = new Map(linkedBuys.map(b => [b.id, Number(b.purchase_price || 0)]))
+    for (const w of watches) {
+      if (w.watch_type !== 'SELL' && w.purchase_price) {
+        buyPriceById.set(w.id, Number(w.purchase_price))
+      }
+    }
 
     type Summary = Record<'LOGISTICS' | 'ACCOUNTING' | 'SALES', { total: number; completed: number }>
     const blank = (): Summary => ({
@@ -42,8 +59,19 @@ export async function GET() {
       if (t.is_completed) s[dept].completed++
     }
 
-    const enriched = watches.map(w => ({ ...w, task_summary: byWatch.get(w.id) ?? blank() }))
-    return NextResponse.json(enriched)
+    const enriched = watches.map(w => {
+      const withSummary = { ...w, task_summary: byWatch.get(w.id) ?? blank() }
+      return enrichWatchMetrics(withSummary, buyPriceById)
+    })
+
+    const stats = computePipelineStats(enriched)
+
+    let pendingImports = 0
+    try {
+      pendingImports = await prisma.importInbox.count({ where: { status: 'pending' } })
+    } catch { /* table may not exist yet */ }
+
+    return NextResponse.json({ watches: enriched, stats, pending_imports: pendingImports })
   } catch (err) {
     console.error(err)
     return NextResponse.json({ error: 'Failed to fetch watches' }, { status: 500 })
@@ -74,7 +102,6 @@ export async function POST(req: NextRequest) {
     const nameParts = [brand, model].filter(Boolean)
     const name = nameParts.length > 0 ? nameParts.join(' ') : (ref_no || 'Unnamed Watch')
 
-    // Calculate USD total_amount if not provided
     const pp = purchase_price ? parseFloat(purchase_price) : null
     const cr = convert_rate ? parseFloat(convert_rate) : null
     const computedTotal = total_amount
@@ -83,9 +110,17 @@ export async function POST(req: NextRequest) {
         ? (currency === 'USD' || !cr ? pp : +(pp * cr).toFixed(2))
         : null
 
-    // Set received_date if location is IN_STOCK
     const locStatus = location_status || 'INCOMING'
     const receivedDate = locStatus === 'IN_STOCK' ? new Date() : null
+
+    let linkedBuyWatchId: number | null = null
+    if (watch_type === 'SELL' && stock_no) {
+      const source = await prisma.watch.findFirst({
+        where: { stock_no, watch_type: { not: 'SELL' } },
+        orderBy: { created_at: 'desc' },
+      })
+      if (source) linkedBuyWatchId = source.id
+    }
 
     const watch = await prisma.watch.create({
       data: {
@@ -119,11 +154,11 @@ export async function POST(req: NextRequest) {
         transit_carrier: transit_carrier || null,
         transit_tracking_number: transit_tracking_number || null,
         received_date: receivedDate,
+        linked_buy_watch_id: linkedBuyWatchId,
       },
     })
 
     emitWatchEvent({ type: 'new_watch', watchId: watch.id })
-    // Create tasks based on type — BUY gets buy tasks, SELL gets sell tasks immediately
     if (watch.watch_type === 'SELL') {
       createWatchSellTasks(watch.id, watch.name).catch(console.error)
     } else {

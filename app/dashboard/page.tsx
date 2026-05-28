@@ -10,7 +10,10 @@ import WatchSellTaskPanel from '@/components/WatchSellTaskPanel'
 import AutoScrollList from '@/components/AutoScrollList'
 import ConfirmRemoveModal from '@/components/ConfirmRemoveModal'
 import InventoryToolbar, { type InventoryFilters } from '@/components/InventoryToolbar'
+import ImportInboxPanel from '@/components/ImportInboxPanel'
+import CommandPalette from '@/components/CommandPalette'
 import SkeletonCard from '@/components/SkeletonCard'
+import { formatCurrency } from '@/lib/utils'
 import { useSseStatus } from '@/components/SseProvider'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { DEPT_ORDER, DEPT_CONFIG, type Department } from '@/lib/ui-constants'
@@ -57,6 +60,19 @@ interface Watch {
   watch_type?: 'BUY' | 'SELL'
   sold_to?: string | null
   task_summary?: TaskSummary
+  margin?: number | null
+  is_stale?: boolean
+  stale_reason?: string | null
+  linked_buy_watch_id?: number | null
+  fob_url?: string | null
+  created_at?: string
+}
+
+interface PipelineStats {
+  total_watches: number
+  total_pipeline_value: number
+  stale_count: number
+  avg_sell_margin: number | null
 }
 
 function hasIncompleteDept(watch: Watch, dept: Department): boolean {
@@ -93,11 +109,18 @@ export default function DashboardPage() {
     search: '', watchType: 'all', payment: 'all', location: 'all',
   })
   const [quickStock, setQuickStock] = useState('')
+  const [pipelineStats, setPipelineStats] = useState<PipelineStats | null>(null)
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
+  const [undoRemove, setUndoRemove] = useState<{ id: number; watch: Watch; timer: ReturnType<typeof setTimeout> } | null>(null)
 
   const fetchWatches = useCallback(async () => {
     try {
       const res = await fetch('/api/watches')
-      if (res.ok) setWatches(await res.json())
+      if (res.ok) {
+        const data = await res.json()
+        setWatches(Array.isArray(data) ? data : (data.watches || []))
+        if (data.stats) setPipelineStats(data.stats)
+      }
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }, [])
@@ -118,6 +141,7 @@ export default function DashboardPage() {
   useKeyboardShortcuts({
     onSearch: () => document.querySelector<HTMLInputElement>('input[type="search"]')?.focus(),
     onNewWatch: () => { setAddWatchStock(''); setShowAddWatch(true) },
+    onCommandPalette: () => setShowCommandPalette(true),
   })
 
   const filteredWatches = useMemo(() => {
@@ -137,14 +161,31 @@ export default function DashboardPage() {
   const focusedWatch = focusedWatchId ? watches.find(w => w.id === focusedWatchId) : null
 
   const handleRemove = async (id: number) => {
+    const watch = watches.find(w => w.id === id)
+    if (!watch) return
     setRemoveTarget(null)
+    if (undoRemove) {
+      clearTimeout(undoRemove.timer)
+      setUndoRemove(null)
+    }
     setWatches(prev => prev.filter(w => w.id !== id))
     if (selectedWatch?.id === id) setSelectedWatch(null)
     if (focusedWatchId === id) setFocusedWatchId(null)
-    try {
-      const res = await fetch(`/api/watches/${id}`, { method: 'DELETE' })
-      if (!res.ok) fetchWatches()
-    } catch { fetchWatches() }
+    const timer = setTimeout(async () => {
+      setUndoRemove(null)
+      try {
+        const res = await fetch(`/api/watches/${id}`, { method: 'DELETE' })
+        if (!res.ok) fetchWatches()
+      } catch { fetchWatches() }
+    }, 8000)
+    setUndoRemove({ id, watch, timer })
+  }
+
+  const undoRemoveAction = () => {
+    if (!undoRemove) return
+    clearTimeout(undoRemove.timer)
+    setWatches(prev => [...prev, undoRemove.watch])
+    setUndoRemove(null)
   }
 
   const handleOpenTasks = (watch: Watch) => {
@@ -224,6 +265,14 @@ export default function DashboardPage() {
                   <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-emerald-500 live-dot' : 'bg-amber-400'}`} />
                   {sseConnected ? 'Live' : 'Polling'}
                 </div>
+                <button onClick={() => setShowCommandPalette(true)} title="Command palette (⌘K)"
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full font-bold text-sm">
+                  ⌘K
+                </button>
+                <a href="/api/watches/export" download
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full font-bold text-sm">
+                  ↓ CSV
+                </a>
                 <button onClick={() => setShowPasteMessage(true)} title="Paste WhatsApp message"
                   className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-bold text-sm">
                   <span>📋</span><span className="hidden sm:inline">Paste</span>
@@ -235,6 +284,29 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
+
+            {pipelineStats && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                <div className="rounded-xl bg-white border border-default px-3 py-2">
+                  <div className="text-[9px] font-bold uppercase text-muted tracking-wider">Pipeline value</div>
+                  <div className="text-sm font-black text-ink">{formatCurrency(pipelineStats.total_pipeline_value)}</div>
+                </div>
+                <div className="rounded-xl bg-white border border-default px-3 py-2">
+                  <div className="text-[9px] font-bold uppercase text-muted tracking-wider">Stale</div>
+                  <div className={`text-sm font-black ${pipelineStats.stale_count ? 'text-amber-700' : 'text-ink'}`}>{pipelineStats.stale_count}</div>
+                </div>
+                <div className="rounded-xl bg-white border border-default px-3 py-2">
+                  <div className="text-[9px] font-bold uppercase text-muted tracking-wider">Avg sell margin</div>
+                  <div className="text-sm font-black text-ink">{pipelineStats.avg_sell_margin != null ? formatCurrency(pipelineStats.avg_sell_margin) : '—'}</div>
+                </div>
+                <div className="rounded-xl bg-white border border-default px-3 py-2">
+                  <div className="text-[9px] font-bold uppercase text-muted tracking-wider">On pipeline</div>
+                  <div className="text-sm font-black text-ink">{pipelineStats.total_watches}</div>
+                </div>
+              </div>
+            )}
+
+            <ImportInboxPanel onImported={fetchWatches} />
 
             {/* Stock-first quick entry */}
             <div className="flex gap-2 mb-3">
@@ -456,6 +528,25 @@ export default function DashboardPage() {
       {removeTarget && (
         <ConfirmRemoveModal watchName={removeTarget.name} stockNo={removeTarget.stock_no}
           onCancel={() => setRemoveTarget(null)} onConfirm={() => handleRemove(removeTarget.id)} />
+      )}
+      {showCommandPalette && (
+        <CommandPalette
+          watches={watches}
+          onClose={() => setShowCommandPalette(false)}
+          onSelectStock={openAddWithStock}
+          onPaste={() => setShowPasteMessage(true)}
+          onAddWatch={() => { setAddWatchStock(''); setShowAddWatch(true) }}
+          onOpenWatch={(id) => {
+            const w = watches.find(x => x.id === id)
+            if (w) setSelectedWatch(w)
+          }}
+        />
+      )}
+      {undoRemove && (
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-4 py-3 bg-slate-900 text-white rounded-xl shadow-lg text-sm">
+          <span>Removed #{undoRemove.watch.stock_no || undoRemove.watch.id}</span>
+          <button type="button" onClick={undoRemoveAction} className="font-bold text-indigo-300 hover:text-indigo-200">Undo</button>
+        </div>
       )}
     </div>
   )

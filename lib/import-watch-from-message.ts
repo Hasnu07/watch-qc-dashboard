@@ -1,32 +1,108 @@
 import { prisma } from './prisma'
 import { emitWatchEvent } from './events'
-import { createWatchTasks } from './watch-tasks'
+import { createWatchTasks, checkAndUnlockLocation } from './watch-tasks'
 import { createWatchSellTasks } from './sell-tasks'
 import { parseWhatsAppWatch, type ParsedWatch } from './parse-whatsapp-watch'
-import { enrichFromInventory } from './inventory-csv'
+import { enrichFromInventory, lookupInventoryByStockNo } from './inventory-csv'
+import { logWatchActivity } from './watch-activity'
+import { saveImportInbox } from './import-inbox'
+import { hashMessage } from './message-hash'
+
+export interface ImportOptions {
+  source?: 'webhook' | 'paste' | 'inbox'
+  force?: boolean
+  inboxId?: number
+}
 
 export interface ImportResult {
   imported: boolean
-  skipped?: 'not_a_transaction' | 'empty'
+  skipped?: 'not_a_transaction' | 'empty' | 'duplicate'
   watch?: Awaited<ReturnType<typeof prisma.watch.create>>
   parsed?: ParsedWatch
   watchType?: 'BUY' | 'SELL'
   inventory_matched?: boolean
+  existing_watch_id?: number
+  duplicate?: boolean
 }
 
-// Shared between the WhatsApp webhook and the manual "Paste Message" UI flow.
-// Returns the created watch, or a reason it was skipped — never throws.
-export async function importWatchFromMessage(text: string, imageUrl?: string): Promise<ImportResult> {
+async function findDuplicateWatch(stockNo: string | null | undefined, watchType: string, messageHash: string) {
+  if (stockNo) {
+    const byStock = await prisma.watch.findFirst({
+      where: { stock_no: stockNo, watch_type: watchType },
+      orderBy: { created_at: 'desc' },
+    })
+    if (byStock) return byStock
+  }
+  try {
+    const dupActivity = await prisma.watchActivity.findFirst({
+      where: {
+        action: 'imported',
+        detail: { contains: messageHash },
+        created_at: { gte: new Date(Date.now() - 48 * 60 * 60 * 1000) },
+      },
+    })
+    if (dupActivity) {
+      return prisma.watch.findUnique({ where: { id: dupActivity.watch_id } })
+    }
+  } catch {
+    // WatchActivity table may not exist yet during migration
+  }
+  return null
+}
+
+export async function importWatchFromMessage(
+  text: string,
+  imageUrl?: string,
+  opts: ImportOptions = {},
+): Promise<ImportResult> {
   const trimmed = (text || '').trim()
-  if (!trimmed) return { imported: false, skipped: 'empty' }
+  if (!trimmed) {
+    if (opts.source === 'webhook') {
+      await saveImportInbox({ message_text: text || '', image_url: imageUrl, skip_reason: 'empty', source: opts.source })
+    }
+    return { imported: false, skipped: 'empty' }
+  }
 
   const parsed: ParsedWatch = parseWhatsAppWatch(trimmed)
 
   if (parsed.should_import === false) {
+    if (opts.source === 'webhook' || opts.source === 'paste') {
+      await saveImportInbox({
+        source: opts.source,
+        message_text: trimmed,
+        image_url: imageUrl,
+        skip_reason: 'not_a_transaction',
+        parsed,
+      })
+    }
     return { imported: false, skipped: 'not_a_transaction', parsed }
   }
 
   const watchType: 'BUY' | 'SELL' = parsed.type === 'SELL' ? 'SELL' : 'BUY'
+  const msgHash = hashMessage(trimmed)
+
+  if (!opts.force) {
+    const duplicate = await findDuplicateWatch(parsed.stock_no, watchType, msgHash)
+    if (duplicate) {
+      await saveImportInbox({
+        source: opts.source || 'webhook',
+        message_text: trimmed,
+        image_url: imageUrl,
+        skip_reason: 'duplicate',
+        parsed,
+        watch_id: duplicate.id,
+      })
+      return {
+        imported: false,
+        skipped: 'duplicate',
+        parsed,
+        existing_watch_id: duplicate.id,
+        duplicate: true,
+      }
+    }
+  }
+
+  const inv = parsed.stock_no ? lookupInventoryByStockNo(parsed.stock_no) : null
 
   const enriched = enrichFromInventory(
     {
@@ -66,6 +142,8 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
   let boughtFrom = enriched.bought_from || null
   let websitePrice = watchType === 'SELL' && price > 0 ? price : (enriched.website_price ?? 0)
   let locationTo = enriched.location_to || parsed.location_to || null
+  let linkedBuyWatchId: number | null = null
+  let fobUrl: string | null = (enriched as { fob_url?: string }).fob_url || inv?.fob_url || null
 
   if (watchType === 'SELL' && parsed.stock_no) {
     const source = await prisma.watch.findFirst({
@@ -73,6 +151,7 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
       orderBy: { created_at: 'desc' },
     })
     if (source) {
+      linkedBuyWatchId = source.id
       brand = brand || source.brand
       model = model || source.model
       ref_no = ref_no || source.ref_no
@@ -81,6 +160,7 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
       case_material = case_material || source.case_material
       watch_date = watch_date || source.watch_date
       resolvedImageUrl = resolvedImageUrl || source.image_url
+      fobUrl = fobUrl || source.fob_url
     }
   }
 
@@ -118,15 +198,36 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
       location_status: locationStatus,
       location_from: parsed.location_from || null,
       location_to: locationTo,
+      linked_buy_watch_id: linkedBuyWatchId,
+      fob_url: fobUrl,
     },
   })
 
+  await logWatchActivity(
+    watch.id,
+    'imported',
+    `${watchType} via ${opts.source || 'message'} · hash:${msgHash}${enriched.inventory_matched ? ' · CSV matched' : ''}${linkedBuyWatchId ? ` · linked buy #${linkedBuyWatchId}` : ''}`,
+  )
+
   if (watchType === 'SELL') {
     createWatchSellTasks(watch.id, watch.name).catch(console.error)
+    if (linkedBuyWatchId) {
+      logWatchActivity(linkedBuyWatchId, 'sell_linked', `Sell watch #${watch.id} created for stock #${parsed.stock_no}`).catch(console.error)
+    }
   } else {
     createWatchTasks(watch.id, watch.name).catch(console.error)
   }
+
+  if (paymentStatus === 'PAID' || paymentStatus === 'PARTIAL') {
+    checkAndUnlockLocation(watch.id).catch(console.error)
+  }
+
   emitWatchEvent({ type: 'new_watch', watchId: watch.id })
+
+  if (opts.inboxId) {
+    const { markImportInboxImported } = await import('./import-inbox')
+    await markImportInboxImported(opts.inboxId, watch.id)
+  }
 
   return { imported: true, watch, parsed, watchType, inventory_matched: enriched.inventory_matched }
 }

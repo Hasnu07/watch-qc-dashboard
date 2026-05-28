@@ -10,6 +10,7 @@ interface TeamMember { id: number; name: string; department: string }
 
 interface WatchInfo {
   id: number; name: string; brand: string | null; model: string | null; ref_no: string | null
+  stock_no: string | null; fob_url: string | null
   payment_status: PaymentStatus; website_price: string | number; b2b_price: string | number
   logistics_cost: number | null; logistics_cost_currency: string | null
 }
@@ -29,6 +30,7 @@ const DEPT_ORDER: Department[] = ['ACCOUNTING', 'SALES', 'LOGISTICS']
 
 const TASK_LABELS: Record<string, string> = {
   ACCOUNTING_MARK_PAYMENT: 'Mark Payment Status',
+  ACCOUNTING_ADD_STOCK_FOB: 'Add Stock No in FOB',
   SALES_SET_PRICE: 'Set Price', SALES_UPLOAD_DRIVE: 'Upload to Drive',
   SALES_UPLOAD_STOCK_GROUP: 'Upload Photos To Whatsapp Stock Photos', SALES_UPDATE_B2B: 'Research B2B Price',
   SALES_GET_B2C_PRICES: 'Get B2C Prices from Josh',
@@ -63,7 +65,7 @@ const LOC_LABELS: Record<LocationStatus, string> = {
   INCOMING: '📬 Incoming', IN_TRANSIT: '🚚 In Transit', IN_STOCK: '✅ In Stock',
 }
 
-const SIMPLE_TASKS = ['SALES_UPLOAD_DRIVE', 'SALES_UPLOAD_STOCK_GROUP', 'SALES_UPDATE_B2B']
+const SIMPLE_TASKS = ['SALES_UPLOAD_DRIVE', 'SALES_UPLOAD_STOCK_GROUP', 'SALES_UPDATE_B2B', 'ACCOUNTING_ADD_STOCK_FOB']
 
 // ── Assignee picker ────────────────────────────────────────────────────────
 
@@ -222,6 +224,17 @@ function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: Task
         {/* Payment badge */}
         {task.task_type === 'ACCOUNTING_MARK_PAYMENT' && (
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${PAY_COLORS[task.watch.payment_status]}`}>{PAY_LABELS[task.watch.payment_status]}</span>
+        )}
+
+        {task.task_type === 'ACCOUNTING_ADD_STOCK_FOB' && task.watch.fob_url && (
+          <a href={task.watch.fob_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+            className="text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+            Open FOB ↗
+          </a>
+        )}
+
+        {task.task_type === 'ACCOUNTING_ADD_STOCK_FOB' && task.watch.stock_no && (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 bg-slate-50 text-slate-600 border-slate-200 font-mono">#{task.watch.stock_no}</span>
         )}
 
         {/* Assignee picker */}
@@ -512,6 +525,14 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<SortMode>('new')
   const [expandedWatchId, setExpandedWatchId] = useState<number | null>(null)
+  const [myTasksOnly, setMyTasksOnly] = useState(false)
+  const [myName, setMyName] = useState('')
+
+  useEffect(() => {
+    const stored = localStorage.getItem('qc_my_name') || ''
+    setMyName(stored)
+    setMyTasksOnly(localStorage.getItem('qc_my_tasks_filter') === '1')
+  }, [])
 
   useEffect(() => {
     if (focusedWatchId != null) {
@@ -598,8 +619,12 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
   }, [])
 
   // Group by watch
+  const filteredTasks = myTasksOnly && myName
+    ? tasks.filter(t => t.assigned_to === myName)
+    : tasks
+
   const byWatch = new Map<number, { watchId: number; watchName: string; tasks: WatchTask[] }>()
-  for (const task of tasks) {
+  for (const task of filteredTasks) {
     if (!byWatch.has(task.watch_id)) {
       const wName = [task.watch.brand, task.watch.model].filter(Boolean).join(' ') || task.watch.name
       byWatch.set(task.watch_id, { watchId: task.watch_id, watchName: wName, tasks: [] })
@@ -612,7 +637,7 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
   else if (sort === 'pending') watchGroups = watchGroups.sort((a, b) => b.tasks.filter(t => !t.is_completed && !t.is_locked).length - a.tasks.filter(t => !t.is_completed && !t.is_locked).length)
   else watchGroups = watchGroups.sort((a, b) => a.watchName.localeCompare(b.watchName))
 
-  const totalPending = tasks.filter(t => !t.is_completed && !t.is_locked).length
+  const totalPending = filteredTasks.filter(t => !t.is_completed && !t.is_locked).length
 
   if (loading) return <div className={`flex items-center justify-center h-40 text-slate-400 ${className}`}>Loading tasks…</div>
   if (tasks.length === 0) return (
@@ -623,16 +648,35 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
     </div>
   )
 
+  if (filteredTasks.length === 0) return (
+    <div className={`flex flex-col items-center justify-center h-48 text-slate-400 gap-3 px-6 text-center ${className}`}>
+      <span className="text-4xl">👤</span>
+      <p className="font-semibold text-lg text-slate-600">No tasks assigned to you</p>
+      <p className="text-sm">Turn off &quot;My tasks&quot; or set your name below</p>
+    </div>
+  )
+
   return (
     <div className={className}>
       <div className="p-4">
         {/* Top bar */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 px-4 py-2.5 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-3 mb-4 flex-wrap">
+          <div className="flex-1 min-w-[140px] px-4 py-2.5 bg-white rounded-xl border border-slate-200 shadow-sm">
             <span className="text-slate-500 text-sm font-medium">
               {totalPending === 0 ? '🎉 All tasks complete!' : `${totalPending} pending · ${watchGroups.length} watch${watchGroups.length !== 1 ? 'es' : ''}`}
             </span>
           </div>
+          <label className="flex items-center gap-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2.5 cursor-pointer">
+            <input type="checkbox" checked={myTasksOnly} onChange={e => {
+              setMyTasksOnly(e.target.checked)
+              localStorage.setItem('qc_my_tasks_filter', e.target.checked ? '1' : '0')
+            }} />
+            My tasks
+          </label>
+          <input type="text" value={myName} onChange={e => {
+            setMyName(e.target.value)
+            localStorage.setItem('qc_my_name', e.target.value)
+          }} placeholder="Your name" className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm w-28 focus:outline-none focus:border-indigo-400" />
           <select value={sort} onChange={e => setSort(e.target.value as SortMode)}
             className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-600 font-medium shadow-sm focus:outline-none focus:border-indigo-400 cursor-pointer">
             <option value="new">🕐 New first</option>

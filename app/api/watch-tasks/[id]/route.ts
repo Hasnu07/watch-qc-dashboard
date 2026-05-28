@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { emitWatchTaskEvent } from '@/lib/events'
 import { sendTaskCompletedNotification, TASK_LABELS, checkAndUnlockLocation } from '@/lib/watch-tasks'
+import { logWatchActivity } from '@/lib/watch-activity'
 
 export async function PATCH(
   req: NextRequest,
@@ -87,6 +88,7 @@ export async function PATCH(
       })
       const watchName = [task.watch.brand, task.watch.model].filter(Boolean).join(' ') || task.watch.name
       const taskLabel = TASK_LABELS[task.task_type] ?? task.task_type
+      logWatchActivity(task.watch_id, 'task_completed', taskLabel, body.completed_by || null).catch(console.error)
       sendTaskCompletedNotification(
         task.department as 'ACCOUNTING' | 'SALES' | 'LOGISTICS',
         watchName,

@@ -67,7 +67,15 @@ interface Props {
   onUpdated: () => void
 }
 
-type Tab = 'details' | 'payment' | 'location'
+type Tab = 'details' | 'payment' | 'location' | 'activity'
+
+interface WatchActivity {
+  id: number
+  action: string
+  detail: string | null
+  actor: string | null
+  created_at: string
+}
 
 export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdated }: Props) {
   const [tab, setTab] = useState<Tab>('details')
@@ -85,6 +93,22 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
   })
   const [addingPayment, setAddingPayment] = useState(false)
   const [paymentError, setPaymentError] = useState('')
+
+  const [activities, setActivities] = useState<WatchActivity[]>([])
+  const [loadingActivities, setLoadingActivities] = useState(false)
+
+  const fetchActivities = useCallback(async () => {
+    setLoadingActivities(true)
+    try {
+      const res = await fetch(`/api/watches/${watch.id}/activity`)
+      if (res.ok) setActivities(await res.json())
+    } catch (err) { console.error(err) }
+    finally { setLoadingActivities(false) }
+  }, [watch.id])
+
+  useEffect(() => {
+    if (tab === 'activity') fetchActivities()
+  }, [tab, fetchActivities])
 
   const fetchPayments = useCallback(async () => {
     setLoadingPayments(true)
@@ -231,6 +255,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
     { id: 'details', label: '📋 Details' },
     { id: 'payment', label: '💳 Payment' },
     { id: 'location', label: '📦 Location' },
+    { id: 'activity', label: '🕐 Timeline' },
   ]
 
   return (
@@ -527,6 +552,32 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                 <div className="mt-3 flex items-center gap-2 text-emerald-700 text-sm bg-emerald-50 rounded-xl px-3 py-2 border border-emerald-200">
                   <span>✅</span>
                   <span>Received on {new Date(watch.received_date).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ─── ACTIVITY TAB ─── */}
+          {tab === 'activity' && (
+            <div>
+              {loadingActivities ? (
+                <p className="text-sm text-slate-400 text-center py-8">Loading timeline…</p>
+              ) : activities.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-8">No activity recorded yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {activities.map(a => (
+                    <div key={a.id} className="flex gap-3 border-l-2 border-indigo-200 pl-3 py-1">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-800">{a.action.replace(/_/g, ' ')}</p>
+                        {a.detail && <p className="text-xs text-slate-500 mt-0.5">{a.detail}</p>}
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {new Date(a.created_at).toLocaleString()}
+                          {a.actor && <> · {a.actor}</>}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

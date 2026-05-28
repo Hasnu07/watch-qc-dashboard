@@ -14,12 +14,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Provide text or imageUrl' }, { status: 400 })
     }
 
-    const result = await importWatchFromMessage(text, imageUrl)
+    const result = await importWatchFromMessage(text, imageUrl, {
+      source: 'paste',
+      force: !!body.force,
+    })
     if (!result.imported) {
       return NextResponse.json({
         imported: false,
         skipped: result.skipped,
         parsed: result.parsed,
+        existing_watch_id: result.existing_watch_id,
+        duplicate: result.duplicate,
       }, { status: 200 })
     }
     return NextResponse.json({

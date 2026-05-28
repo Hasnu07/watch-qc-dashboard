@@ -46,6 +46,11 @@ interface Watch {
   watch_type?: 'BUY' | 'SELL'
   sold_to?: string | null
   task_summary?: TaskSummary
+  margin?: number | null
+  is_stale?: boolean
+  stale_reason?: string | null
+  linked_buy_watch_id?: number | null
+  fob_url?: string | null
 }
 
 interface WatchCardProps {
@@ -152,6 +157,14 @@ export default function WatchCard({
           </div>
           <div className="flex flex-wrap gap-1 mt-1">
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${payCls}`}>{payLabel}</span>
+            {watch.is_stale && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-200" title={watch.stale_reason || undefined}>⏳ Stale</span>
+            )}
+            {isSell && watch.margin != null && (
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${watch.margin >= 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
+                {formatCurrency(watch.margin)}
+              </span>
+            )}
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${allDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : typeCfg.progressBg}`}>
               {allDone ? '✓ Done' : `${doneCount}/3 depts`}
             </span>
@@ -215,6 +228,12 @@ export default function WatchCard({
 
       <div className={`px-3 pt-2 pb-1.5 flex items-center gap-1.5 border-b ${typeCfg.headerBorder} ${typeCfg.headerBg}`}>
         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${payCls}`}>{payLabel}</span>
+        {watch.is_stale && (
+          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-200" title={watch.stale_reason || undefined}>⏳ Stale</span>
+        )}
+        {isSell && watch.linked_buy_watch_id && (
+          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">↔ Buy #{watch.linked_buy_watch_id}</span>
+        )}
         {isSell ? (
           <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border ml-auto bg-orange-100 text-orange-800 border-orange-200">Sale</span>
         ) : (
@@ -269,6 +288,11 @@ export default function WatchCard({
         )}
         {isSell && watch.sold_to && <p className="text-muted text-xs">👤 {watch.sold_to}</p>}
         {!isSell && watch.bought_from && <p className="text-muted text-xs">📍 {watch.bought_from}</p>}
+        {isSell && watch.margin != null && (
+          <p className={`text-xs font-bold ${watch.margin >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+            Margin: {formatCurrency(watch.margin)}
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-2 mt-auto">
           <div className={`rounded-xl p-2.5 border ${typeCfg.pricePrimaryBg}`}>
             <div className={`text-[9px] font-black uppercase tracking-widest mb-0.5 ${typeCfg.pricePrimaryLabel}`}>{isSell ? 'Sale' : 'Website'}</div>
