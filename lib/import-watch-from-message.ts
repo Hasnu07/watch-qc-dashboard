@@ -3,6 +3,7 @@ import { emitWatchEvent } from './events'
 import { createWatchTasks } from './watch-tasks'
 import { createWatchSellTasks } from './sell-tasks'
 import { parseWhatsAppWatch, type ParsedWatch } from './parse-whatsapp-watch'
+import { enrichFromInventory } from './inventory-csv'
 
 export interface ImportResult {
   imported: boolean
@@ -10,6 +11,7 @@ export interface ImportResult {
   watch?: Awaited<ReturnType<typeof prisma.watch.create>>
   parsed?: ParsedWatch
   watchType?: 'BUY' | 'SELL'
+  inventory_matched?: boolean
 }
 
 // Shared between the WhatsApp webhook and the manual "Paste Message" UI flow.
@@ -25,19 +27,45 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
   }
 
   const watchType: 'BUY' | 'SELL' = parsed.type === 'SELL' ? 'SELL' : 'BUY'
-  const price = parsed.price ?? 0
-  const currency = parsed.currency || 'USD'
-  const paymentStatus = parsed.payment_status || 'NOT_PAID'
 
-  // SELL: copy details from the matching stock watch if we have one, but always create a new entry.
-  let brand = parsed.brand || null
-  let model = parsed.model || null
-  let ref_no = parsed.ref_no || null
-  let dial_colour = parsed.dial_colour || null
-  let bracelet = parsed.bracelet || null
-  let case_material = parsed.case_material || null
-  let watch_date = parsed.watch_date || null
-  let resolvedImageUrl = imageUrl || null
+  const enriched = enrichFromInventory(
+    {
+      brand: parsed.brand || null,
+      model: parsed.model || null,
+      ref_no: parsed.ref_no || null,
+      serial_no: parsed.serial_no || null,
+      bought_from: parsed.bought_from || null,
+      sold_to: parsed.sold_to || null,
+      price: parsed.price ?? 0,
+      currency: parsed.currency || 'USD',
+      payment_status: parsed.payment_status || 'NOT_PAID',
+      watch_date: parsed.watch_date || null,
+      dial_colour: parsed.dial_colour || null,
+      bracelet: parsed.bracelet || null,
+      case_material: parsed.case_material || null,
+      image_url: imageUrl || null,
+      location_to: parsed.location_to || null,
+      website_price: watchType === 'SELL' && (parsed.price ?? 0) > 0 ? parsed.price : 0,
+    },
+    parsed.stock_no,
+    { preferSoldPrice: watchType === 'SELL' },
+  )
+
+  let brand = enriched.brand || null
+  let model = enriched.model || null
+  let ref_no = enriched.ref_no || null
+  let dial_colour = enriched.dial_colour || null
+  let bracelet = enriched.bracelet || null
+  let case_material = enriched.case_material || null
+  let watch_date = enriched.watch_date || null
+  let resolvedImageUrl = enriched.image_url || null
+  const price = enriched.price ?? 0
+  const currency = enriched.currency || 'USD'
+  const paymentStatus = enriched.payment_status || 'NOT_PAID'
+  let soldTo = enriched.sold_to || null
+  let boughtFrom = enriched.bought_from || null
+  let websitePrice = watchType === 'SELL' && price > 0 ? price : (enriched.website_price ?? 0)
+  let locationTo = enriched.location_to || parsed.location_to || null
 
   if (watchType === 'SELL' && parsed.stock_no) {
     const source = await prisma.watch.findFirst({
@@ -60,8 +88,8 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
   const name = nameParts.length > 0
     ? nameParts.join(' ')
     : parsed.stock_no
-      ? `Stock #${parsed.stock_no}${parsed.sold_to ? ` → ${parsed.sold_to}` : ''}`
-      : parsed.ref_no || parsed.sold_to || trimmed.split('\n')[0]?.slice(0, 60) || 'WhatsApp Import'
+      ? `Stock #${parsed.stock_no}${soldTo ? ` → ${soldTo}` : ''}`
+      : parsed.ref_no || soldTo || trimmed.split('\n')[0]?.slice(0, 60) || 'WhatsApp Import'
 
   const locationStatus = parsed.location_status || (parsed.location_from ? 'INCOMING' : 'IN_STOCK')
 
@@ -71,8 +99,8 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
       model,
       ref_no,
       stock_no: parsed.stock_no || null,
-      bought_from: watchType === 'BUY' ? (parsed.bought_from || null) : null,
-      sold_to: watchType === 'SELL' ? (parsed.sold_to || null) : null,
+      bought_from: watchType === 'BUY' ? boughtFrom : null,
+      sold_to: watchType === 'SELL' ? soldTo : null,
       case_material,
       dial_colour,
       bracelet,
@@ -84,12 +112,12 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
       is_sold: false,
       name,
       image_url: resolvedImageUrl,
-      website_price: watchType === 'SELL' && price > 0 ? price : 0,
+      website_price: watchType === 'SELL' ? (price > 0 ? price : websitePrice) : websitePrice,
       b2b_price: 0,
       payment_status: paymentStatus,
       location_status: locationStatus,
       location_from: parsed.location_from || null,
-      location_to: parsed.location_to || null,
+      location_to: locationTo,
     },
   })
 
@@ -100,5 +128,5 @@ export async function importWatchFromMessage(text: string, imageUrl?: string): P
   }
   emitWatchEvent({ type: 'new_watch', watchId: watch.id })
 
-  return { imported: true, watch, parsed, watchType }
+  return { imported: true, watch, parsed, watchType, inventory_matched: enriched.inventory_matched }
 }

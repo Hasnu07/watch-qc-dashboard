@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       watch: result.watch,
       watch_type: result.watchType,
       parsed: result.parsed,
+      inventory_matched: result.inventory_matched,
     }, { status: 201 })
   } catch (err) {
     console.error('[import-from-message]', err)

@@ -74,6 +74,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
   const [watch, setWatch] = useState<WatchDetail>(initialWatch)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
+  const [stockLookupLoading, setStockLookupLoading] = useState(false)
 
   // Payment tab
   const [payments, setPayments] = useState<WatchPayment[]>([])
@@ -104,6 +105,46 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
   const flashMsg = (msg: string) => {
     setSaveMsg(msg)
     setTimeout(() => setSaveMsg(''), 2500)
+  }
+
+  const matchBrand = (raw: string | null | undefined) => {
+    if (!raw) return null
+    const hit = BRANDS.find(b => b.toLowerCase() === raw.toLowerCase())
+    return hit || raw
+  }
+
+  const lookupStockFromInventory = async (stockNo: string) => {
+    const trimmed = stockNo.replace(/^#/, '').trim()
+    if (!/^\d+$/.test(trimmed)) return
+    setStockLookupLoading(true)
+    try {
+      const res = await fetch(`/api/inventory/lookup?stock_no=${encodeURIComponent(trimmed)}`)
+      const data = await res.json()
+      if (!data.found) {
+        flashMsg('No inventory match for this stock #')
+        return
+      }
+      setWatch(prev => ({
+        ...prev,
+        brand: prev.brand || matchBrand(data.brand),
+        model: prev.model || data.model || null,
+        ref_no: prev.ref_no || data.ref_no || null,
+        serial_no: prev.serial_no || data.serial_no || null,
+        watch_date: prev.watch_date || (data.watch_date ? String(data.watch_date) : null),
+        bought_from: prev.bought_from || data.bought_from || null,
+        image_url: prev.image_url || data.image_url || null,
+        currency: prev.currency || data.currency || prev.currency,
+        purchase_price: prev.purchase_price || data.purchase_price || null,
+        website_price: prev.website_price || data.website_price || data.sold_price || prev.website_price,
+        location_to: prev.location_to || data.category || null,
+        payment_status: prev.payment_status || data.payment_status || prev.payment_status,
+      }))
+      flashMsg('✓ Filled from inventory CSV')
+    } catch {
+      flashMsg('Inventory lookup failed')
+    } finally {
+      setStockLookupLoading(false)
+    }
   }
 
   const saveDetails = async () => {
@@ -254,7 +295,16 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
               </div>
               <div>
                 <label className={labelCls}>Stock No.</label>
-                <input type="text" value={watch.stock_no || ''} onChange={e => setW('stock_no', e.target.value || null)} placeholder="e.g. STK-001" className={inputCls} />
+                <input
+                  type="text"
+                  value={watch.stock_no || ''}
+                  onChange={e => setW('stock_no', e.target.value || null)}
+                  onBlur={e => lookupStockFromInventory(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') lookupStockFromInventory(watch.stock_no || '') }}
+                  placeholder="e.g. 1377"
+                  className={inputCls}
+                />
+                {stockLookupLoading && <p className="text-xs text-slate-400 mt-1">Looking up inventory…</p>}
               </div>
               <div>
                 <label className={labelCls}>Watch Date / Year</label>

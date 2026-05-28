@@ -18,6 +18,7 @@ interface ParsedPreview {
   price?: number | null
   currency?: string | null
   payment_status?: string | null
+  inventory_matched?: boolean
 }
 
 export default function PasteMessageModal({ onClose, onImported }: Props) {
@@ -46,7 +47,7 @@ export default function PasteMessageModal({ onClose, onImported }: Props) {
         setPreview(data.parsed || null)
         return
       }
-      setPreview({ ...data.parsed, type: data.watch_type })
+      setPreview({ ...data.parsed, type: data.watch_type, inventory_matched: data.inventory_matched })
       // Auto-close after a moment so the user can see what was imported
       setTimeout(() => { onImported(); onClose() }, 1200)
     } catch {
@@ -114,7 +115,10 @@ export default function PasteMessageModal({ onClose, onImported }: Props) {
           )}
           {preview && !skipped && !error && (
             <div className="px-4 py-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl text-sm text-emerald-800">
-              <p className="font-bold mb-2">✓ Imported as {preview.type === 'SELL' ? '🏷️ Sell' : '🛒 Buy'} watch</p>
+              <p className="font-bold mb-2">
+                ✓ Imported as {preview.type === 'SELL' ? '🏷️ Sell' : '🛒 Buy'} watch
+                {preview.inventory_matched && <span className="ml-2 text-emerald-600 font-semibold">· CSV matched</span>}
+              </p>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                 {preview.brand && <span><b>Brand:</b> {preview.brand}</span>}
                 {preview.model && <span><b>Model:</b> {preview.model}</span>}

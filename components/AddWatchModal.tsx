@@ -68,8 +68,10 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
   const [location, setLocation] = useState<LocationForm>(emptyLocation)
   const [loading, setLoading] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
+  const [stockLookupLoading, setStockLookupLoading] = useState(false)
   const [error, setError] = useState('')
   const [aiMsg, setAiMsg] = useState('')
+  const [inventoryMsg, setInventoryMsg] = useState('')
 
   const setW = (key: keyof WatchForm, val: string) => setWatch(prev => ({ ...prev, [key]: val }))
   const setP = (key: keyof PaymentForm, val: string | boolean) => setPayment(prev => ({ ...prev, [key]: val }))
@@ -87,6 +89,57 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
     if (r) return +(p * r).toFixed(2)
     return null
   })()
+
+  const matchBrand = (raw: string | null | undefined) => {
+    if (!raw) return ''
+    const hit = BRANDS.find(b => b.toLowerCase() === raw.toLowerCase())
+    return hit || raw
+  }
+
+  const lookupStockFromInventory = async (stockNo: string) => {
+    const trimmed = stockNo.replace(/^#/, '').trim()
+    if (!/^\d+$/.test(trimmed)) return
+    setStockLookupLoading(true)
+    setInventoryMsg('')
+    try {
+      const res = await fetch(`/api/inventory/lookup?stock_no=${encodeURIComponent(trimmed)}`)
+      const data = await res.json()
+      if (!data.found) {
+        setInventoryMsg('No match in inventory CSV')
+        setTimeout(() => setInventoryMsg(''), 3000)
+        return
+      }
+      setWatch(prev => ({
+        ...prev,
+        brand: prev.brand || matchBrand(data.brand),
+        model: prev.model || data.model || '',
+        ref_no: prev.ref_no || data.ref_no || '',
+        serial_no: prev.serial_no || data.serial_no || '',
+        watch_date: prev.watch_date || (data.watch_date ? String(data.watch_date) : ''),
+        bought_from: prev.bought_from || data.bought_from || '',
+        sold_to: prev.sold_to || data.sold_to || '',
+        image_url: prev.image_url || data.image_url || '',
+        currency: data.purchase_price && !prev.purchase_price ? (data.currency || 'GBP') : prev.currency,
+        purchase_price: prev.purchase_price || (data.purchase_price ? String(data.purchase_price) : ''),
+        website_price: prev.website_price || (
+          isSell && data.sold_price ? String(data.sold_price)
+            : data.website_price ? String(data.website_price) : ''
+        ),
+      }))
+      if (data.payment_status) {
+        setP('payment_status', data.payment_status)
+      }
+      if (data.category) {
+        setL('location_to', location.location_to || data.category)
+      }
+      setInventoryMsg('✓ Filled from inventory CSV')
+      setTimeout(() => setInventoryMsg(''), 3000)
+    } catch {
+      setInventoryMsg('Inventory lookup failed')
+    } finally {
+      setStockLookupLoading(false)
+    }
+  }
 
   const handleAIFill = async () => {
     if (!watch.brand) { setAiMsg('Select a brand first.'); return }
@@ -289,6 +342,9 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                     <label className={labelCls}>Brand</label>
                     <select value={watch.brand} onChange={e => setW('brand', e.target.value)} className={inputCls}>
                       <option value="">Select brand...</option>
+                      {watch.brand && !BRANDS.includes(watch.brand) && (
+                        <option value={watch.brand}>{watch.brand}</option>
+                      )}
                       {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                   </div>
@@ -306,7 +362,20 @@ export default function AddWatchModal({ onClose, onAdded }: Props) {
                   </div>
                   <div>
                     <label className={labelCls}>Stock No.</label>
-                    <input type="text" value={watch.stock_no} onChange={e => setW('stock_no', e.target.value)} placeholder="e.g. STK-001" className={inputCls} />
+                    <input
+                      type="text"
+                      value={watch.stock_no}
+                      onChange={e => setW('stock_no', e.target.value)}
+                      onBlur={e => lookupStockFromInventory(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') lookupStockFromInventory(watch.stock_no) }}
+                      placeholder="e.g. 1377"
+                      className={inputCls}
+                    />
+                    {(stockLookupLoading || inventoryMsg) && (
+                      <p className={`text-xs mt-1 ${inventoryMsg.startsWith('✓') ? 'text-green-600' : 'text-slate-400'}`}>
+                        {stockLookupLoading ? 'Looking up inventory…' : inventoryMsg}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className={labelCls}>Watch Date / Year</label>
