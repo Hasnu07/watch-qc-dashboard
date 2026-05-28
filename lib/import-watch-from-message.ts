@@ -16,11 +16,11 @@ export interface ImportResult {
 // Returns the created watch, or a reason it was skipped — never throws.
 export async function importWatchFromMessage(text: string, imageUrl?: string): Promise<ImportResult> {
   const trimmed = (text || '').trim()
-  if (!trimmed && !imageUrl) return { imported: false, skipped: 'empty' }
+  if (!trimmed) return { imported: false, skipped: 'empty' }
 
-  const parsed: ParsedWatch = trimmed ? parseWhatsAppWatch(trimmed) : {}
+  const parsed: ParsedWatch = parseWhatsAppWatch(trimmed)
 
-  if (trimmed && parsed.should_import === false) {
+  if (parsed.should_import === false) {
     return { imported: false, skipped: 'not_a_transaction', parsed }
   }
 

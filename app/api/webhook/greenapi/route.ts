@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { importWatchFromMessage } from '@/lib/import-watch-from-message'
 import { trackGroup, logHit, type WebhookHit } from '@/lib/webhook-activity'
+import { extractWebhookMessage, matchesStockGroup } from '@/lib/webhook-extract'
 
 // Hardcoded fallback — the webhook works even if settings are never configured.
 // Settings in the DB can still override these if needed.
@@ -24,45 +25,14 @@ export async function POST(req: NextRequest) {
     }
 
     type SenderData = { chatId?: string; chatName?: string; sender?: string; senderName?: string }
-    type FileMessageData = {
-      downloadUrl?: string
-      caption?: string
-      captionText?: string   // some GreenAPI versions use this instead of caption
-      text?: string          // another alternate field
-      fileName?: string
-    }
-    type MessageData = {
-      typeMessage?: string
-      fileMessageData?: FileMessageData
-      videoMessageData?: FileMessageData  // same shape, different key
-      textMessageData?: { textMessage?: string }
-      extendedTextMessageData?: { text?: string; description?: string }
-    }
 
     const senderData = (body.senderData as SenderData | undefined) || {}
-    const msg = (body.messageData as MessageData | undefined) || {}
+    const msg = (body.messageData as Parameters<typeof extractWebhookMessage>[0] | undefined) || {}
     const chatId: string = senderData.chatId || ''
     const chatName: string = senderData.chatName || ''
     const isGroup = chatId.endsWith('@g.us')
-    const msgType: string = msg.typeMessage || ''
 
-    // Support imageMessage and videoMessage (both can carry a caption + downloadUrl)
-    const file: FileMessageData = msg.fileMessageData || msg.videoMessageData || {}
-    const imageUrl: string = ['imageMessage', 'videoMessage'].includes(msgType)
-      ? (file.downloadUrl || '')
-      : ''
-
-    // Robustly extract caption/text from every location GreenAPI may use
-    // Different GreenAPI versions and message types put the text in different fields
-    const caption: string = (
-      file.caption ||
-      file.captionText ||
-      file.text ||
-      msg.textMessageData?.textMessage ||
-      msg.extendedTextMessageData?.text ||
-      msg.extendedTextMessageData?.description ||
-      ''
-    ).trim()
+    const { caption, imageUrl, msgType } = extractWebhookMessage(msg)
 
     if (isGroup && chatName) trackGroup(chatId, chatName)
 
@@ -89,10 +59,7 @@ export async function POST(req: NextRequest) {
     const effectiveId   = settingsId   || DEFAULT_GROUP_ID
     const effectiveName = settingsName || DEFAULT_GROUP_NAME
 
-    // Match by ID (preferred) OR by name (case-insensitive fallback)
-    const matches =
-      chatId === effectiveId ||
-      chatName.trim().toLowerCase() === effectiveName.toLowerCase()
+    const matches = matchesStockGroup(chatId, chatName, effectiveId, effectiveName)
 
     if (!matches) {
       logHit({ ...baseHit, outcome: `IGNORED: wrong group (got "${chatName}" / "${chatId}", effective_id="${effectiveId}", effective_name="${effectiveName}")` })
@@ -102,9 +69,9 @@ export async function POST(req: NextRequest) {
     const result = await importWatchFromMessage(caption, imageUrl)
     if (!result.imported) {
       if (result.skipped === 'empty') {
-        logHit({ ...baseHit, outcome: `SKIPPED: no text and no image (msgType="${msgType}")` })
+        logHit({ ...baseHit, outcome: `SKIPPED: no parseable text (msgType="${msgType}", hasImage=${!!imageUrl})` })
       } else {
-        logHit({ ...baseHit, outcome: 'SKIPPED: AI flagged as non-transaction' })
+        logHit({ ...baseHit, outcome: `SKIPPED: not a watch transaction (msgType="${msgType}")` })
       }
       return NextResponse.json({ ok: true, skipped: result.skipped })
     }
