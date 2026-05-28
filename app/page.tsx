@@ -34,9 +34,9 @@ const REMINDER_OPTIONS = [
 ]
 
 const DEPT_COLORS: Record<Department, string> = {
-  ACCOUNTING: 'bg-amber-500',
-  SALES: 'bg-emerald-500',
-  LOGISTICS: 'bg-cyan-500',
+  ACCOUNTING: 'bg-ink',
+  SALES: 'bg-accent',
+  LOGISTICS: 'bg-muted',
 }
 
 function formatTime(iso: string) {
@@ -60,17 +60,17 @@ function PersonGrid({ members, selected, onSelect, label }: {
 }) {
   return (
     <div>
-      <label className="text-[10px] text-[#777587] block mb-2 font-black uppercase tracking-widest">{label}</label>
+      <label className="section-label block mb-2">{label}</label>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {members.map(m => (
           <button
             key={m.id}
             type="button"
             onClick={() => onSelect(String(m.id))}
-            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all text-left ${
+            className={`flex items-center gap-2 px-3 py-2.5 rounded-2xl border text-sm font-semibold transition-all text-left ${
               selected === String(m.id)
-                ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                : 'bg-[#f0f3ff] border-[#c7c4d8] text-[#464555] hover:border-indigo-300 hover:bg-indigo-50'
+                ? 'chip-active'
+                : 'chip hover:border-accent/40 hover:text-ink'
             }`}
           >
             <Avatar member={m} selected={selected === String(m.id)} />
@@ -86,7 +86,7 @@ function ReminderBadge({ minutes }: { minutes: number | null }) {
   if (!minutes) return null
   const label = minutes === 60 ? '60 min' : minutes === 180 ? '3 hrs' : minutes === 1440 ? '24 hrs' : `${minutes}m`
   return (
-    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-300 border border-violet-500/30 font-semibold">
+    <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full bg-sand/50 text-ink border border-default font-semibold">
       ⏰ {label}
     </span>
   )
@@ -224,15 +224,15 @@ export default function AdminTasksPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
 
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-2xl font-black text-[#171c25] sm:text-3xl">📌 Team Tasks</h1>
-              <p className="text-[#777587] text-sm mt-0.5">Ad-hoc assignments — separate from watch pipeline tasks</p>
-              <p className="text-[#464555] text-sm mt-1">Assign custom tasks between team members with optional WhatsApp reminders.</p>
+              <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink tracking-wide">Team Tasks</h1>
+              <p className="text-muted text-sm mt-1">Ad-hoc assignments — separate from watch pipeline tasks</p>
+              <p className="text-muted text-sm mt-1 opacity-80">Assign custom tasks between team members with optional WhatsApp reminders.</p>
             </div>
             <button
               onClick={() => setShowForm(v => !v)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-semibold text-sm shadow-sm transition-all"
+              className="btn-primary"
             >
               <span className="text-lg leading-none">{showForm ? '×' : '+'}</span>
               {showForm ? 'Cancel' : 'Assign Task'}
@@ -240,8 +240,8 @@ export default function AdminTasksPage() {
           </div>
 
           {showForm && (
-          <section className="bg-white rounded-2xl border-2 border-[#c7c4d8] p-5 mb-6 shadow-[0_2px_8px_rgba(15,23,42,0.06)]">
-            <h2 className="text-base font-black text-[#171c25] mb-5">Assign New Task</h2>
+          <section className="card p-6 mb-8">
+            <h2 className="font-display text-base font-semibold text-ink mb-5 tracking-wide">Assign New Task</h2>
             <form onSubmit={assignTask} className="flex flex-col gap-5">
 
               <PersonGrid
@@ -251,10 +251,10 @@ export default function AdminTasksPage() {
                 label="Assigned By (Who is giving the task)"
               />
 
-              <div className="flex items-center gap-3 text-[#c7c4d8]">
-                <div className="flex-1 h-px bg-[#dee2ef]" />
+              <div className="flex items-center gap-3 text-muted">
+                <div className="flex-1 h-px bg-border-strong" />
                 <span className="text-lg">↓</span>
-                <div className="flex-1 h-px bg-[#dee2ef]" />
+                <div className="flex-1 h-px bg-border-strong" />
               </div>
 
               <PersonGrid
@@ -265,44 +265,35 @@ export default function AdminTasksPage() {
               />
 
               <div>
-                <label className="text-[10px] text-[#777587] block mb-2 font-black uppercase tracking-widest">Task Description</label>
+                <label className="section-label block mb-2">Task Description</label>
                 <textarea
                   value={form.message_text}
                   onChange={e => setForm(f => ({ ...f, message_text: e.target.value }))}
                   placeholder="Describe the task..."
                   rows={3}
-                  className="w-full bg-[#f9f9ff] border-2 border-[#dee2ef] rounded-xl px-4 py-3 text-[#171c25] placeholder-[#c7c4d8] text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition-colors resize-none"
+                  className="input-field rounded-2xl resize-none"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] text-[#777587] block mb-2 font-black uppercase tracking-widest">Reminder Interval</label>
+                <label className="section-label block mb-2">Reminder Interval</label>
                 <div className="flex flex-wrap gap-2">
                   {REMINDER_OPTIONS.map(opt => (
                     <button
                       key={opt.value}
                       type="button"
                       onClick={() => setForm(f => ({ ...f, reminder_interval_minutes: opt.value }))}
-                      className={`px-3 py-1.5 rounded-full border text-sm font-semibold transition-all ${
-                        form.reminder_interval_minutes === opt.value
-                          ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                          : 'bg-[#f0f3ff] border-[#c7c4d8] text-[#464555] hover:border-indigo-300 hover:bg-indigo-50'
-                      }`}
+                      className={form.reminder_interval_minutes === opt.value ? 'chip-active' : 'chip hover:border-accent/40'}
                     >
                       {opt.label}
                     </button>
                   ))}
-                  {/* Custom time button */}
                   <button
                     type="button"
                     onClick={() => setForm(f => ({ ...f, reminder_interval_minutes: 'custom' }))}
-                    className={`px-3 py-1.5 rounded-full border text-sm font-semibold transition-all ${
-                      !['60','180','1440',''].includes(form.reminder_interval_minutes)
-                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                        : 'bg-[#f0f3ff] border-[#c7c4d8] text-[#464555] hover:border-indigo-300 hover:bg-indigo-50'
-                    }`}
+                    className={!['60','180','1440',''].includes(form.reminder_interval_minutes) ? 'chip-active' : 'chip hover:border-accent/40'}
                   >
-                    ⏱ Custom
+                    Custom
                   </button>
                 </div>
                 {/* Custom minutes input — shown when Custom is selected */}
@@ -318,11 +309,11 @@ export default function AdminTasksPage() {
                         const v = e.target.value.replace(/\D/g, '')
                         setForm(f => ({ ...f, reminder_interval_minutes: v || 'custom' }))
                       }}
-                      className="w-28 bg-[#f9f9ff] border-2 border-indigo-300 rounded-xl px-3 py-1.5 text-[#171c25] text-sm font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100 transition-colors"
+                      className="w-28 input-field py-1.5"
                     />
-                    <span className="text-sm text-[#777587] font-medium">minutes</span>
+                    <span className="text-sm text-muted font-medium">minutes</span>
                     {form.reminder_interval_minutes && form.reminder_interval_minutes !== 'custom' && (
-                      <span className="text-xs text-indigo-600 font-semibold">
+                      <span className="text-xs text-accent font-semibold">
                         = {Number(form.reminder_interval_minutes) >= 60
                           ? `${(Number(form.reminder_interval_minutes)/60).toFixed(1).replace(/\.0$/,'')} hr${Number(form.reminder_interval_minutes) >= 120 ? 's' : ''}`
                           : `${form.reminder_interval_minutes} min`}
@@ -332,30 +323,22 @@ export default function AdminTasksPage() {
                 )}
               </div>
 
-              <button
-                type="submit"
-                disabled={!canSubmit}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-bold text-sm transition-all disabled:opacity-40 shadow-sm"
-              >
-                {submitting ? 'Assigning…' : '+ Assign Task'}
+              <button type="submit" disabled={!canSubmit} className="btn-primary w-full py-3 disabled:opacity-40">
+                {submitting ? 'Assigning…' : 'Assign Task'}
               </button>
             </form>
           </section>
           )}
 
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-6">
             {([['all', 'All', tasks.length], ['pending', 'Pending', pendingCount], ['done', 'Done', doneCount]] as const).map(([val, label, count]) => (
               <button
                 key={val}
                 onClick={() => setFilter(val)}
-                className={`px-4 py-2 rounded-full text-sm font-bold border transition-all flex items-center gap-1.5 ${
-                  filter === val
-                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                    : 'bg-white border-[#c7c4d8] text-[#464555] hover:border-indigo-300 hover:bg-indigo-50'
-                }`}
+                className={`${filter === val ? 'chip-active' : 'chip hover:border-accent/40'} flex items-center gap-1.5`}
               >
                 {label}
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-black ${filter === val ? 'bg-white/20 text-white' : 'bg-[#eaeefb] text-[#464555]'}`}>
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${filter === val ? 'bg-white/20 text-white' : 'bg-panel text-muted'}`}>
                   {count}
                 </span>
               </button>
@@ -363,25 +346,24 @@ export default function AdminTasksPage() {
           </div>
 
           {loading ? (
-            <div className="text-center py-12 text-[#777587] font-medium">Loading tasks…</div>
+            <div className="text-center py-12 text-muted font-medium">Loading tasks…</div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-12 text-[#777587]">
-              <div className="text-4xl mb-3">📋</div>
-              <p className="font-semibold text-[#464555]">No {filter !== 'all' ? filter : ''} tasks yet</p>
+            <div className="text-center py-12 text-muted">
+              <p className="font-semibold text-ink">No {filter !== 'all' ? filter : ''} tasks yet</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
               {filtered.map(task => (
-                <div key={task.id} className={`bg-white rounded-2xl border-2 shadow-[0_1px_4px_rgba(15,23,42,0.05)] transition-all hover:shadow-[0_4px_12px_rgba(15,23,42,0.08)] ${task.is_completed ? 'border-emerald-200' : 'border-[#c7c4d8]'}`}>
+                <div key={task.id} className={`card transition-colors ${task.is_completed ? 'opacity-80' : ''}`}>
                   <div className="p-4">
                     <div className="flex items-start gap-3">
 
                       <button
                         onClick={() => toggleComplete(task)}
-                        className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                        className={`mt-0.5 w-6 h-6 rounded-lg border flex-shrink-0 flex items-center justify-center transition-all ${
                           task.is_completed
-                            ? 'bg-emerald-500 border-emerald-500 text-white'
-                            : 'border-[#c7c4d8] hover:border-emerald-400 bg-white'
+                            ? 'bg-accent border-accent text-white'
+                            : 'border-default hover:border-accent bg-card'
                         }`}
                       >
                         {task.is_completed && (
@@ -393,7 +375,7 @@ export default function AdminTasksPage() {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-2">
-                          <p className={`text-sm font-semibold leading-snug ${task.is_completed ? 'line-through text-[#c7c4d8]' : 'text-[#171c25]'}`}>
+                          <p className={`text-sm font-semibold leading-snug ${task.is_completed ? 'line-through text-muted' : 'text-ink'}`}>
                             {task.message_text}
                           </p>
                           {!task.is_completed && (
@@ -402,14 +384,10 @@ export default function AdminTasksPage() {
                                 onClick={() => ringTask(task.id)}
                                 disabled={ringing[task.id] === 'sending'}
                                 title="Ring assignee on WhatsApp"
-                                className={`flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-bold transition-all ${
-                                  ringing[task.id] === 'sent'
-                                    ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                                    : ringing[task.id] === 'error'
-                                    ? 'bg-red-50 border-red-300 text-red-600'
-                                    : ringing[task.id] === 'sending'
-                                    ? 'bg-amber-50 border-amber-300 text-amber-600 animate-pulse'
-                                    : 'bg-[#f0f3ff] border-[#c7c4d8] text-[#464555] hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700'
+                                className={`btn-ghost text-xs py-1 px-2.5 ${
+                                  ringing[task.id] === 'sent' ? 'border-accent/40 text-accent bg-accent/5' :
+                                  ringing[task.id] === 'error' ? 'text-muted' :
+                                  ringing[task.id] === 'sending' ? 'animate-pulse' : ''
                                 }`}
                               >
                                 {ringing[task.id] === 'sent' ? <>✅ <span>Sent!</span></> :
@@ -420,11 +398,7 @@ export default function AdminTasksPage() {
                               <button
                                 onClick={() => ncOpen === task.id ? closeNcForm() : openNcForm(task.id)}
                                 title="Report task not completed"
-                                className={`flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-bold transition-all ${
-                                  ncOpen === task.id
-                                    ? 'bg-red-100 border-red-400 text-red-700'
-                                    : 'bg-[#f0f3ff] border-[#c7c4d8] text-[#464555] hover:bg-red-50 hover:border-red-300 hover:text-red-600'
-                                }`}
+                                className={`btn-ghost text-xs py-1 px-2.5 ${ncOpen === task.id ? 'border-accent/50 text-accent' : ''}`}
                               >
                                 ⚠️ <span>Not Done</span>
                               </button>
@@ -437,34 +411,34 @@ export default function AdminTasksPage() {
                             <>
                               <div className="flex items-center gap-1.5">
                                 <Avatar member={task.assigned_by} size="sm" />
-                                <span className="text-xs font-semibold text-[#777587]">{task.assigned_by.name}</span>
+                                <span className="text-xs font-semibold text-muted">{task.assigned_by.name}</span>
                               </div>
-                              <span className="text-[#c7c4d8] text-xs">→</span>
+                              <span className="text-muted text-xs">→</span>
                             </>
                           )}
                           <div className="flex items-center gap-1.5">
                             <Avatar member={task.team_member} size="sm" />
-                            <span className="text-xs font-semibold text-[#464555]">{task.team_member.name}</span>
+                            <span className="text-xs font-semibold text-ink">{task.team_member.name}</span>
                           </div>
                           <ReminderBadge minutes={task.reminder_interval_minutes} />
-                          <span className="text-xs text-[#777587] ml-auto">{formatTime(task.created_at)}</span>
+                          <span className="text-xs text-muted ml-auto">{formatTime(task.created_at)}</span>
                         </div>
 
                         {task.is_completed && task.completed_at && (
-                          <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5 border border-emerald-200">
+                          <div className="flex items-center gap-1.5 text-xs text-accent bg-accent/5 rounded-full px-3 py-1.5 border border-accent/20">
                             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                             </svg>
                             <span className="font-semibold">Completed by {task.team_member.name}</span>
-                            <span className="text-emerald-500">· {formatTime(task.completed_at)}</span>
+                            <span className="text-accent/70">· {formatTime(task.completed_at)}</span>
                             {task.estimated_minutes && (
-                              <span className="ml-1 text-emerald-400">· ~{task.estimated_minutes} min</span>
+                              <span className="ml-1 text-muted">· ~{task.estimated_minutes} min</span>
                             )}
                           </div>
                         )}
 
                         {!task.is_completed && task.estimated_minutes && (
-                          <div className="flex items-center gap-1 text-xs text-[#777587] mt-1.5">
+                          <div className="flex items-center gap-1 text-xs text-muted mt-1.5">
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -477,46 +451,34 @@ export default function AdminTasksPage() {
 
                   {/* Not Completed inline reason form */}
                   {ncOpen === task.id && (
-                    <div className="px-4 pb-4 border-t border-red-100 bg-red-50/60 rounded-b-2xl">
-                      <div className="pt-3">
-                        <p className="text-xs font-black text-red-600 uppercase tracking-widest mb-1">⚠️ Why wasn&apos;t this task completed?</p>
+                    <div className="px-4 pb-4 border-t border-default bg-panel/50 rounded-b-3xl">
+                      <div className="pt-4">
+                        <p className="section-label mb-2">Why wasn&apos;t this task completed?</p>
                         {task.assigned_by && (
-                          <p className="text-xs text-[#777587] mb-2">
-                            Your reason will be sent to <span className="font-semibold text-[#171c25]">{task.assigned_by.name}</span> via WhatsApp.
+                          <p className="text-xs text-muted mb-2">
+                            Your reason will be sent to <span className="font-semibold text-ink">{task.assigned_by.name}</span> via WhatsApp.
                           </p>
                         )}
                         <textarea
                           value={ncReason}
                           onChange={e => setNcReason(e.target.value)}
-                          placeholder={`Task not completed because...`}
+                          placeholder="Task not completed because..."
                           rows={3}
                           disabled={ncStatus === 'sending' || ncStatus === 'sent'}
-                          className="w-full bg-white border-2 border-red-200 rounded-xl px-3 py-2.5 text-[#171c25] placeholder-[#c7c4d8] text-sm focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-colors resize-none disabled:opacity-50"
+                          className="input-field rounded-2xl resize-none disabled:opacity-50"
                         />
-                        <div className="flex gap-2 mt-2">
+                        <div className="flex gap-2 mt-3">
                           <button
                             onClick={() => submitNotCompleted(task.id)}
                             disabled={!ncReason.trim() || ncStatus === 'sending' || ncStatus === 'sent'}
-                            className={`flex-1 py-2 rounded-full text-xs font-black transition-all ${
-                              ncStatus === 'sent'
-                                ? 'bg-emerald-500 text-white border border-emerald-500'
-                                : ncStatus === 'error'
-                                ? 'bg-red-500 text-white border border-red-500'
-                                : ncStatus === 'sending'
-                                ? 'bg-orange-400 text-white border border-orange-400 animate-pulse'
-                                : 'bg-red-600 hover:bg-red-700 text-white border border-red-600 disabled:opacity-40'
-                            }`}
+                            className={`flex-1 btn-primary text-xs disabled:opacity-40 ${ncStatus === 'sending' ? 'animate-pulse' : ''}`}
                           >
-                            {ncStatus === 'sent' ? '✅ Sent to ' + (task.assigned_by?.name ?? 'assigner') + '!' :
-                             ncStatus === 'error' ? '❌ Failed — try again' :
-                             ncStatus === 'sending' ? '⏳ Sending…' :
-                             `📤 Send to ${task.assigned_by?.name ?? 'assigner'}`}
+                            {ncStatus === 'sent' ? 'Sent to ' + (task.assigned_by?.name ?? 'assigner') :
+                             ncStatus === 'error' ? 'Failed — try again' :
+                             ncStatus === 'sending' ? 'Sending…' :
+                             `Send to ${task.assigned_by?.name ?? 'assigner'}`}
                           </button>
-                          <button
-                            onClick={closeNcForm}
-                            disabled={ncStatus === 'sending'}
-                            className="px-4 py-2 rounded-full text-xs font-bold border border-[#c7c4d8] bg-white text-[#464555] hover:border-slate-300 transition-all disabled:opacity-40"
-                          >
+                          <button onClick={closeNcForm} disabled={ncStatus === 'sending'} className="btn-ghost text-xs disabled:opacity-40">
                             Cancel
                           </button>
                         </div>

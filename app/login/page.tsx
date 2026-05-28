@@ -23,7 +23,6 @@ export default function LoginPage() {
         body: JSON.stringify({ username, password }),
       })
       if (res.ok) {
-        // Honor the ?next= param so the user returns to where they were heading
         const params = new URLSearchParams(window.location.search)
         const next = params.get('next')
         const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
@@ -41,38 +40,35 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center p-4 bg-indigo-50">
-      <div className="w-full max-w-sm">
-
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg mx-auto mb-4">
-            <Image src="/watch-logo.svg" alt="Watch QC" width={64} height={64} className="w-full h-full" priority />
+    <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-10">
+          <div className="w-20 h-20 rounded-full overflow-hidden border border-default mx-auto mb-5 bg-card">
+            <Image src="/watch-logo.svg" alt="Watch QC" width={80} height={80} className="w-full h-full p-3" priority />
           </div>
-          <h1 className="text-2xl font-black text-slate-900">Watch QC</h1>
-          <p className="text-slate-500 text-sm mt-1">Admin access required</p>
+          <h1 className="font-display text-3xl font-bold tracking-[0.15em] text-ink uppercase">Watch QC</h1>
+          <p className="text-muted text-sm mt-2">Admin access required</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm p-6">
-          <h2 className="text-lg font-black text-slate-900 mb-5">Sign in to continue</h2>
+        <div className="card p-8">
+          <h2 className="font-display text-lg font-semibold text-ink mb-6 tracking-wide">Sign in</h2>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div>
-              <label className="text-sm text-slate-500 block mb-1.5 font-medium">Username</label>
+              <label className="section-label block mb-2">Username</label>
               <input
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 placeholder="Enter username"
                 autoComplete="username"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 text-base focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition-colors"
+                className="input-field"
                 required
               />
             </div>
 
             <div>
-              <label className="text-sm text-slate-500 block mb-1.5 font-medium">Password</label>
+              <label className="section-label block mb-2">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -80,13 +76,13 @@ export default function LoginPage() {
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Enter password"
                   autoComplete="current-password"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-12 text-slate-900 placeholder-slate-400 text-base focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition-colors"
+                  className="input-field pr-12"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors p-1"
                 >
                   {showPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,17 +99,13 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 font-medium">
-                ✗ {error}
+              <div className="rounded-2xl px-4 py-3 text-sm text-accent font-medium border border-accent/30 bg-accent/5">
+                {error}
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-base transition-colors disabled:opacity-50 shadow-sm mt-1"
-            >
-              {loading ? 'Signing in…' : 'Sign In'}
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-base disabled:opacity-50 mt-1">
+              {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
         </div>

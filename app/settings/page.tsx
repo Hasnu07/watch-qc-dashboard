@@ -75,9 +75,9 @@ interface TestResult {
 }
 
 const DEPT_CONFIG = {
-  LOGISTICS: { label: 'Logistics', icon: '📦', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-  ACCOUNTING: { label: 'Accounting', icon: '💰', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
-  SALES: { label: 'Sales', icon: '🤝', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
+  LOGISTICS: { label: 'Logistics', icon: '📦', color: 'text-ink', bg: 'bg-panel', border: 'border-default' },
+  ACCOUNTING: { label: 'Accounting', icon: '💰', color: 'text-ink', bg: 'bg-panel', border: 'border-default' },
+  SALES: { label: 'Sales', icon: '🤝', color: 'text-ink', bg: 'bg-panel', border: 'border-default' },
 } as const
 
 const DEPT_ORDER: Department[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
@@ -249,19 +249,18 @@ export default function SettingsPage() {
     } catch (err) { console.error(err) }
   }
 
-  const inputClass = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 text-base focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-colors'
+  const inputClass = 'input-field'
 
   const membersByDept = (dept: Department) => members.filter(m => m.department === dept)
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 flex-1 overflow-y-auto sm:px-6 sm:py-8">
-      <div className="mb-8 flex items-start justify-between">
+    <div className="max-w-3xl mx-auto px-4 py-8 flex-1 overflow-y-auto sm:px-8 sm:py-10">
+      <div className="mb-10 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 mb-1 sm:text-3xl">⚙️ Settings</h1>
-          <p className="text-slate-500 font-medium text-sm sm:text-base">Configure integrations and manage your team</p>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink tracking-wide mb-1">Settings</h1>
+          <p className="text-muted text-sm sm:text-base">Configure integrations and manage your team</p>
         </div>
-        <button onClick={logout}
-          className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-sm font-semibold border border-slate-200 hover:border-red-200 transition-colors">
+        <button onClick={logout} className="btn-ghost text-sm hover:text-accent flex items-center gap-1.5">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
@@ -271,13 +270,13 @@ export default function SettingsPage() {
 
       <div className="flex flex-wrap gap-2 mb-6">
         {([
-          ['integrations', '💬 Integrations'],
-          ['tasks', '📋 Task templates'],
-          ['team', '👥 Team'],
-          ['webhook', '🔗 Webhook'],
+          ['integrations', 'Integrations'],
+          ['tasks', 'Task templates'],
+          ['team', 'Team'],
+          ['webhook', 'Webhook'],
         ] as const).map(([id, label]) => (
           <button key={id} type="button" onClick={() => setSettingsTab(id)}
-            className={`px-4 py-2 rounded-full text-sm font-bold border transition-colors ${settingsTab === id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}>
+            className={settingsTab === id ? 'chip-active' : 'chip hover:border-accent/40'}>
             {label}
           </button>
         ))}
@@ -286,54 +285,53 @@ export default function SettingsPage() {
       {(settingsTab === 'integrations') && (
       <>
       {/* GreenAPI */}
-      <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 mb-6 shadow-sm">
-        <h2 className="text-xl font-black text-slate-900 mb-1 flex items-center gap-2">💬 WhatsApp Integration</h2>
-        <p className="text-slate-500 text-sm mb-5">GreenAPI credentials and auto-message schedule</p>
+      <section className="card p-6 mb-6">
+        <h2 className="font-display text-lg font-semibold text-ink mb-1 tracking-wide">WhatsApp Integration</h2>
+        <p className="text-muted text-sm mb-5">GreenAPI credentials and auto-message schedule</p>
         <div className="flex flex-col gap-4">
           <div>
-            <label className="text-sm text-slate-500 block mb-1.5">GreenAPI Instance ID</label>
+            <label className="section-label block mb-2">GreenAPI Instance ID</label>
             <input type="text" value={settings.greenapi_instance_id}
               onChange={e => setSettings({ ...settings, greenapi_instance_id: e.target.value })}
               placeholder="e.g. 7107574780" className={inputClass} />
           </div>
           <div>
-            <label className="text-sm text-slate-500 block mb-1.5">GreenAPI API Token</label>
+            <label className="section-label block mb-2">GreenAPI API Token</label>
             <input type="password" value={settings.greenapi_api_token}
               onChange={e => setSettings({ ...settings, greenapi_api_token: e.target.value })}
               placeholder="Your API token..." className={inputClass} />
           </div>
           <div>
-            <label className="text-sm text-slate-500 block mb-1.5">GreenAPI API URL</label>
+            <label className="section-label block mb-2">GreenAPI API URL</label>
             <input type="text" value={settings.greenapi_api_url}
               onChange={e => setSettings({ ...settings, greenapi_api_url: e.target.value })}
               placeholder="e.g. https://7107.api.greenapi.com" className={inputClass} />
-            <p className="text-slate-400 text-xs mt-1.5">
+            <p className="text-muted text-xs mt-1.5">
               Found in your GreenAPI dashboard under Instance settings (apiUrl field).
             </p>
           </div>
 
           {/* Test button */}
           <div className="pt-1">
-            <button onClick={testWhatsApp} disabled={testing}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex items-center gap-2">
+            <button onClick={testWhatsApp} disabled={testing} className="btn-secondary disabled:opacity-50 flex items-center gap-2">
               {testing ? (
                 <><span className="animate-spin inline-block">⟳</span> Sending test…</>
               ) : (
                 <>📤 Send Test Message</>
               )}
             </button>
-            <p className="text-slate-400 text-xs mt-1.5">Sends a test WhatsApp to all team members using the saved credentials.</p>
+            <p className="text-muted text-xs mt-1.5">Sends a test WhatsApp to all team members using the saved credentials.</p>
 
             {testError && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-                ✗ {testError}
+              <div className="mt-3 p-3 bg-accent/5 border border-accent/20 rounded-2xl text-sm text-accent">
+                {testError}
               </div>
             )}
             {testResult && (
-              <div className={`mt-3 p-3 rounded-xl border text-sm ${
+              <div className={`mt-3 p-3 rounded-2xl border text-sm ${
                 testResult.successCount === testResult.total
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  : 'bg-amber-50 border-amber-200 text-amber-800'
+                  ? 'bg-accent/5 border-accent/20 text-accent'
+                  : 'bg-sand/40 border-default text-ink'
               }`}>
                 <p className="font-bold mb-1.5">
                   {testResult.successCount === testResult.total
@@ -354,7 +352,7 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="text-sm text-slate-500 block mb-1.5">Reminder Interval</label>
+            <label className="section-label block mb-2">Reminder Interval</label>
             <select value={settings.reminder_interval_minutes}
               onChange={e => setSettings({ ...settings, reminder_interval_minutes: e.target.value })}
               className={inputClass}>
@@ -363,7 +361,7 @@ export default function SettingsPage() {
               <option value="360">Every 6 hours</option>
               <option value="1440">Every 24 hours</option>
             </select>
-            <p className="text-slate-400 text-xs mt-1.5">
+            <p className="text-muted text-xs mt-1.5">
               Sends pending task reminders to each department at this interval (only when there are incomplete tasks).
             </p>
           </div>
@@ -371,42 +369,42 @@ export default function SettingsPage() {
       </section>
 
       {/* WhatsApp Auto-Import */}
-      <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 mb-6 shadow-sm">
-        <h2 className="text-xl font-black text-slate-900 mb-1 flex items-center gap-2">📲 WhatsApp Auto-Import</h2>
-        <p className="text-slate-500 text-sm mb-5">
+      <section className="card p-6 mb-6">
+        <h2 className="font-display text-lg font-semibold text-ink mb-1 tracking-wide">WhatsApp Auto-Import</h2>
+        <p className="text-muted text-sm mb-5">
           Every message posted in this group — image or text-only — is automatically added to the dashboard. The AI reads
           the text to detect brand/model/ref/stock no., and figures out whether it&apos;s a buy (&ldquo;Seller: …&rdquo;) or sale
           (&ldquo;Sold to: …&rdquo;). If a picture is attached it&apos;s saved on the watch; otherwise the watch is created without one.
         </p>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="text-sm text-slate-500 block mb-1.5">Group ID <span className="text-emerald-600 font-semibold">(preferred)</span></label>
+            <label className="section-label block mb-2">Group ID <span className="text-accent normal-case tracking-normal">(preferred)</span></label>
             <input type="text" value={settings.whatsapp_stock_group_id}
               onChange={e => setSettings({ ...settings, whatsapp_stock_group_id: e.target.value })}
               placeholder="120363420701421193@g.us" className={inputClass} />
-            <p className="text-slate-400 text-xs mt-1.5">
+            <p className="text-muted text-xs mt-1.5">
               Stable identifier — survives group renames and name collisions. Accept either bare ID (<code className="font-mono">120363…</code>) or full form (<code className="font-mono">120363…@g.us</code>). If set, this is used instead of the name.
             </p>
           </div>
           <div>
-            <label className="text-sm text-slate-500 block mb-1.5">Group Name <span className="text-slate-400">(fallback if ID empty)</span></label>
+            <label className="section-label block mb-2">Group Name <span className="text-muted normal-case tracking-normal">(fallback if ID empty)</span></label>
             <input type="text" value={settings.whatsapp_stock_group_name}
               onChange={e => setSettings({ ...settings, whatsapp_stock_group_name: e.target.value })}
               placeholder="e.g. Purosangue team BUY AND SELL" className={inputClass} />
-            <p className="text-slate-400 text-xs mt-1.5">
+            <p className="text-muted text-xs mt-1.5">
               Used only when no Group ID is set. Must match the display name exactly.
             </p>
           </div>
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-slate-500 font-bold uppercase tracking-wide">Recently seen groups</span>
+              <span className="section-label">Recently seen groups</span>
               <button type="button" onClick={fetchRecentGroups} disabled={loadingGroups}
-                className="text-xs px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors disabled:opacity-50">
+                className="btn-ghost text-xs py-1 px-2 disabled:opacity-50">
                 {loadingGroups ? '...' : '↻ Refresh'}
               </button>
             </div>
             {recentGroups.length === 0 ? (
-              <p className="text-xs text-slate-400 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
+              <p className="text-xs text-muted bg-panel rounded-2xl px-3 py-2 border border-default">
                 No groups seen yet. Post any message in the target group and refresh — it&apos;ll show here so you can copy the exact name.
               </p>
             ) : (
@@ -416,13 +414,13 @@ export default function SettingsPage() {
                   return (
                     <button key={g.chatId} type="button"
                       onClick={() => setSettings({ ...settings, whatsapp_stock_group_id: g.chatId, whatsapp_stock_group_name: g.chatName })}
-                      className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
+                      className={`text-left px-3 py-2 rounded-2xl border text-sm transition-colors ${
                         isSelected
-                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                          : 'bg-slate-50 border-slate-100 hover:bg-slate-100 text-slate-700'
+                          ? 'bg-accent/10 border-accent/30 text-accent'
+                          : 'bg-panel border-default hover:border-accent/30 text-ink'
                       }`}>
                       <div className="font-medium">{g.chatName} {isSelected && <span className="text-[10px] ml-1">✓ active</span>}</div>
-                      <div className="text-[10px] text-slate-400 font-mono">{g.chatId}</div>
+                      <div className="text-[10px] text-muted font-mono">{g.chatId}</div>
                     </button>
                   )
                 })}
@@ -431,16 +429,16 @@ export default function SettingsPage() {
           </div>
 
           {/* Recent webhook activity — diagnostic panel */}
-          <div className="border-t border-slate-100 pt-4 mt-2">
+          <div className="border-t border-default pt-4 mt-2">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-slate-500 font-bold uppercase tracking-wide">Recent webhook activity</span>
+              <span className="section-label">Recent webhook activity</span>
               <button type="button" onClick={fetchRecentHits} disabled={loadingHits}
-                className="text-xs px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors disabled:opacity-50">
+                className="btn-ghost text-xs py-1 px-2 disabled:opacity-50">
                 {loadingHits ? '...' : '↻ Refresh'}
               </button>
             </div>
             {recentHits.length === 0 ? (
-              <p className="text-xs text-slate-400 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
+              <p className="text-xs text-muted bg-panel rounded-2xl px-3 py-2 border border-default">
                 Nothing logged yet. If you just sent a message in the group and see nothing here after Refresh, the webhook URL probably isn&apos;t configured in your GreenAPI dashboard. Set it to <code className="font-mono text-[10px]">/api/webhook/greenapi</code> on this domain.
               </p>
             ) : (
@@ -449,20 +447,20 @@ export default function SettingsPage() {
                   const isOk = h.outcome.startsWith('✓')
                   const isErr = h.outcome.startsWith('ERROR')
                   return (
-                    <div key={i} className={`px-3 py-2 rounded-lg border text-xs ${
-                      isOk ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                      : isErr ? 'bg-red-50 border-red-200 text-red-800'
-                      : 'bg-slate-50 border-slate-100 text-slate-700'
+                    <div key={i} className={`px-3 py-2 rounded-2xl border text-xs ${
+                      isOk ? 'bg-accent/5 border-accent/20 text-accent'
+                      : isErr ? 'bg-panel border-default text-ink'
+                      : 'bg-panel border-default text-muted'
                     }`}>
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-semibold truncate">{h.outcome}</span>
-                        <span className="text-[10px] text-slate-400 flex-shrink-0 font-mono">{new Date(h.ts).toLocaleTimeString()}</span>
+                        <span className="text-[10px] text-muted flex-shrink-0 font-mono">{new Date(h.ts).toLocaleTimeString()}</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                      <div className="text-[10px] text-muted mt-0.5 font-mono">
                         {h.chatName || '(no name)'} · {h.msgType || 'no type'}{h.hasImage ? ' · 📷' : ''}
                       </div>
                       {h.caption && (
-                        <div className="text-[10px] text-slate-500 mt-0.5 truncate italic">&ldquo;{h.caption.slice(0, 100)}&rdquo;</div>
+                        <div className="text-[10px] text-muted mt-0.5 truncate italic">&ldquo;{h.caption.slice(0, 100)}&rdquo;</div>
                       )}
                     </div>
                   )
@@ -478,9 +476,9 @@ export default function SettingsPage() {
       {(settingsTab === 'tasks') && (
       <>
       {/* Task Assignment Defaults */}
-      <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 mb-6 shadow-sm">
-        <h2 className="text-xl font-black text-slate-900 mb-1 flex items-center gap-2">📋 Task Assignment Defaults</h2>
-        <p className="text-slate-500 text-sm mb-5">Who is auto-assigned to each task when a new watch is added or Auto Assign is clicked.</p>
+      <section className="card p-6 mb-6">
+        <h2 className="font-display text-lg font-semibold text-ink mb-1 tracking-wide">Task Assignment Defaults</h2>
+        <p className="text-muted text-sm mb-5">Who is auto-assigned to each task when a new watch is added or Auto Assign is clicked.</p>
         <div className="flex flex-col gap-5">
           {TASK_DEFAULT_ROWS.map(({ dept, items }) => {
             const cfg = DEPT_CONFIG[dept]
@@ -493,11 +491,11 @@ export default function SettingsPage() {
                 <div className="flex flex-col gap-2 pl-1">
                   {items.map(({ key, label }) => (
                     <div key={key} className="flex items-center gap-3">
-                      <span className="text-slate-600 text-sm w-44 flex-shrink-0">{label}</span>
+                      <span className="text-muted text-sm w-44 flex-shrink-0">{label}</span>
                       <select
                         value={taskDefaults[key] || ''}
                         onChange={e => setTaskDefaults(prev => ({ ...prev, [key]: e.target.value }))}
-                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                        className="input-field flex-1 py-2 text-sm"
                       >
                         <option value="">— Not set —</option>
                         {members.map(m => (
@@ -514,40 +512,35 @@ export default function SettingsPage() {
       </section>
 
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={saveSettings} disabled={saving}
-          className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-base transition-colors disabled:opacity-50">
+        <button onClick={saveSettings} disabled={saving} className="btn-primary px-8 py-3 disabled:opacity-50">
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
         {savedMsg && (
-          <span className={`text-sm font-medium ${savedMsg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
+          <span className={`text-sm font-medium ${savedMsg.startsWith('Error') ? 'text-accent' : 'text-accent'}`}>
             {savedMsg}
           </span>
         )}
       </div>
 
       {/* Task Management */}
-      <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 mb-6 shadow-sm">
-        <h2 className="text-xl font-black text-slate-900 mb-1 flex items-center gap-2">📝 Task Management</h2>
-        <p className="text-slate-500 text-sm mb-5">Configure tasks created when a watch is added (Buy) or sold (Sell). Set who each task is assigned to by default.</p>
+      <section className="card p-6 mb-6">
+        <h2 className="font-display text-lg font-semibold text-ink mb-1 tracking-wide">Task Management</h2>
+        <p className="text-muted text-sm mb-5">Configure tasks created when a watch is added (Buy) or sold (Sell).</p>
 
-        {/* Buy Tasks */}
         <div className="mb-6">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg mb-3 border bg-indigo-50 border-indigo-200">
-            <span>🛒</span>
-            <span className="text-sm font-bold uppercase tracking-wide text-indigo-700">Buy Tasks</span>
-            <span className="ml-auto text-xs text-indigo-500">{templates.filter(t => t.phase === 'BUY').length} tasks</span>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-2xl mb-3 border bg-panel border-default">
+            <span className="text-sm font-semibold uppercase tracking-wide text-ink">Buy Tasks</span>
+            <span className="ml-auto text-xs text-muted">{templates.filter(t => t.phase === 'BUY').length} tasks</span>
           </div>
           <div className="flex flex-col gap-2 mb-3">
             {templates.filter(t => t.phase === 'BUY').map(t => (
-              <div key={t.id} className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-500 text-xs w-20 flex-shrink-0">{
-                  t.department === 'ACCOUNTING' ? '💰' : t.department === 'SALES' ? '🤝' : '📦'
-                } {t.department}</span>
-                <span className="text-slate-800 text-sm flex-1 min-w-0">{t.label}</span>
+              <div key={t.id} className="flex items-center gap-2 px-3 py-2 bg-panel rounded-2xl border border-default">
+                <span className="text-muted text-xs w-20 flex-shrink-0">{t.department}</span>
+                <span className="text-ink text-sm flex-1 min-w-0">{t.label}</span>
                 <select
                   value={t.default_assignee || ''}
                   onChange={e => updateTemplateAssignee(t.id, e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-700 focus:outline-none focus:border-blue-400 w-28 flex-shrink-0"
+                  className="input-field py-1 text-xs w-28 flex-shrink-0"
                 >
                   <option value="">No assignee</option>
                   {members.map(m => (
@@ -555,52 +548,49 @@ export default function SettingsPage() {
                   ))}
                 </select>
                 {t.is_builtin
-                  ? <span className="text-[10px] text-slate-400 border border-slate-200 rounded-full px-2 py-0.5 flex-shrink-0">Built-in</span>
-                  : <button onClick={() => deleteTemplate(t.id)} className="text-slate-300 hover:text-red-500 text-sm transition-colors flex-shrink-0">✕</button>
+                  ? <span className="text-[10px] text-muted border border-default rounded-full px-2 py-0.5 flex-shrink-0">Built-in</span>
+                  : <button onClick={() => deleteTemplate(t.id)} className="text-muted hover:text-accent text-sm transition-colors flex-shrink-0">✕</button>
                 }
               </div>
             ))}
           </div>
           <div className="flex gap-2 flex-wrap sm:flex-nowrap">
             <select value={newBuyTask.department} onChange={e => setNewBuyTask(p => ({ ...p, department: e.target.value }))}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-400">
-              <option value="ACCOUNTING">💰 Accounting</option>
-              <option value="SALES">🤝 Sales</option>
-              <option value="LOGISTICS">📦 Logistics</option>
+              className="input-field py-2 text-sm w-auto">
+              <option value="ACCOUNTING">Accounting</option>
+              <option value="SALES">Sales</option>
+              <option value="LOGISTICS">Logistics</option>
             </select>
             <input type="text" value={newBuyTask.label} onChange={e => setNewBuyTask(p => ({ ...p, label: e.target.value }))}
               placeholder="Task name..." onKeyDown={e => e.key === 'Enter' && addTemplate('BUY')}
-              className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-400" />
+              className="input-field flex-1 min-w-0 py-2 text-sm" />
             <select value={newBuyTask.default_assignee} onChange={e => setNewBuyTask(p => ({ ...p, default_assignee: e.target.value }))}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-400">
+              className="input-field py-2 text-sm w-auto">
               <option value="">No assignee</option>
               {members.map(m => (
                 <option key={m.id} value={m.name}>{m.name}</option>
               ))}
             </select>
             <button onClick={() => addTemplate('BUY')} disabled={!newBuyTask.label.trim() || addingTemplate}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Add</button>
+              className="btn-primary px-4 py-2 text-sm disabled:opacity-50">Add</button>
           </div>
         </div>
 
         {/* Sell Tasks */}
         <div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg mb-3 border bg-orange-50 border-orange-200">
-            <span>🏷️</span>
-            <span className="text-sm font-bold uppercase tracking-wide text-orange-700">Sell Tasks</span>
-            <span className="ml-auto text-xs text-orange-500">{templates.filter(t => t.phase === 'SELL').length} tasks</span>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-2xl mb-3 border bg-accent/5 border-accent/20">
+            <span className="text-sm font-semibold uppercase tracking-wide text-accent">Sell Tasks</span>
+            <span className="ml-auto text-xs text-muted">{templates.filter(t => t.phase === 'SELL').length} tasks</span>
           </div>
           <div className="flex flex-col gap-2 mb-3">
             {templates.filter(t => t.phase === 'SELL').map(t => (
-              <div key={t.id} className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-500 text-xs w-20 flex-shrink-0">{
-                  t.department === 'ACCOUNTING' ? '💰' : t.department === 'SALES' ? '🤝' : '📦'
-                } {t.department}</span>
-                <span className="text-slate-800 text-sm flex-1 min-w-0">{t.label}</span>
+              <div key={t.id} className="flex items-center gap-2 px-3 py-2 bg-panel rounded-2xl border border-default">
+                <span className="text-muted text-xs w-20 flex-shrink-0">{t.department}</span>
+                <span className="text-ink text-sm flex-1 min-w-0">{t.label}</span>
                 <select
                   value={t.default_assignee || ''}
                   onChange={e => updateTemplateAssignee(t.id, e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-700 focus:outline-none focus:border-orange-400 w-28 flex-shrink-0"
+                  className="input-field py-1 text-xs w-28 flex-shrink-0"
                 >
                   <option value="">No assignee</option>
                   {members.map(m => (
@@ -608,31 +598,31 @@ export default function SettingsPage() {
                   ))}
                 </select>
                 {t.is_builtin
-                  ? <span className="text-[10px] text-slate-400 border border-slate-200 rounded-full px-2 py-0.5 flex-shrink-0">Built-in</span>
-                  : <button onClick={() => deleteTemplate(t.id)} className="text-slate-300 hover:text-red-500 text-sm transition-colors flex-shrink-0">✕</button>
+                  ? <span className="text-[10px] text-muted border border-default rounded-full px-2 py-0.5 flex-shrink-0">Built-in</span>
+                  : <button onClick={() => deleteTemplate(t.id)} className="text-muted hover:text-accent text-sm transition-colors flex-shrink-0">✕</button>
                 }
               </div>
             ))}
           </div>
           <div className="flex gap-2 flex-wrap sm:flex-nowrap">
             <select value={newSellTask.department} onChange={e => setNewSellTask(p => ({ ...p, department: e.target.value }))}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-400">
-              <option value="ACCOUNTING">💰 Accounting</option>
-              <option value="SALES">🤝 Sales</option>
-              <option value="LOGISTICS">📦 Logistics</option>
+              className="input-field py-2 text-sm w-auto">
+              <option value="ACCOUNTING">Accounting</option>
+              <option value="SALES">Sales</option>
+              <option value="LOGISTICS">Logistics</option>
             </select>
             <input type="text" value={newSellTask.label} onChange={e => setNewSellTask(p => ({ ...p, label: e.target.value }))}
               placeholder="Task name..." onKeyDown={e => e.key === 'Enter' && addTemplate('SELL')}
-              className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-900 text-sm focus:outline-none focus:border-blue-400" />
+              className="input-field flex-1 min-w-0 py-2 text-sm" />
             <select value={newSellTask.default_assignee} onChange={e => setNewSellTask(p => ({ ...p, default_assignee: e.target.value }))}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-400">
+              className="input-field py-2 text-sm w-auto">
               <option value="">No assignee</option>
               {members.map(m => (
                 <option key={m.id} value={m.name}>{m.name}</option>
               ))}
             </select>
             <button onClick={() => addTemplate('SELL')} disabled={!newSellTask.label.trim() || addingTemplate}
-              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Add</button>
+              className="btn-primary px-4 py-2 text-sm disabled:opacity-50">Add</button>
           </div>
         </div>
       </section>
@@ -642,14 +632,14 @@ export default function SettingsPage() {
       {(settingsTab === 'team') && (
       <>
       {/* Team Members grouped by department */}
-      <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
+      <section className="card p-6">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">👥 Team Members</h2>
-          <span className="text-slate-400 text-sm bg-slate-100 px-3 py-1 rounded-full">
+          <h2 className="font-display text-lg font-semibold text-ink tracking-wide">Team Members</h2>
+          <span className="text-muted text-sm bg-panel px-3 py-1 rounded-full border border-default">
             {members.length} total
           </span>
         </div>
-        <p className="text-slate-400 text-sm mb-5">
+        <p className="text-muted text-sm mb-5">
           Grouped by department. WhatsApp format: 92XXXXXXXXXX
         </p>
 
@@ -662,41 +652,37 @@ export default function SettingsPage() {
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg mb-2 border ${cfg.bg} ${cfg.border}`}>
                 <span>{cfg.icon}</span>
                 <span className={`text-sm font-bold uppercase tracking-wide ${cfg.color}`}>{cfg.label}</span>
-                <span className="text-slate-400 text-xs ml-auto">{deptMembers.length} member{deptMembers.length !== 1 ? 's' : ''}</span>
+                <span className="text-muted text-xs ml-auto">{deptMembers.length} member{deptMembers.length !== 1 ? 's' : ''}</span>
               </div>
 
               {deptMembers.length === 0 ? (
-                <div className="text-slate-400 text-sm text-center py-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="text-muted text-sm text-center py-4 bg-panel rounded-2xl border border-default">
                   No members in {cfg.label} yet
                 </div>
               ) : (
                 <div className="space-y-2">
                   {deptMembers.map(member => (
                     <div key={member.id}
-                      className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
+                      className="flex items-center justify-between bg-panel rounded-2xl px-4 py-3 border border-default">
                       <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 ${
-                          dept === 'LOGISTICS' ? 'bg-blue-500' : dept === 'ACCOUNTING' ? 'bg-amber-500' : 'bg-green-500'
-                        }`}>
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-card font-bold flex-shrink-0 bg-ink">
                           {member.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-slate-900 font-medium text-base">{member.name}</p>
-                          <p className="text-slate-400 text-sm">+{member.whatsapp_number}</p>
+                          <p className="text-ink font-medium text-base">{member.name}</p>
+                          <p className="text-muted text-sm">+{member.whatsapp_number}</p>
                         </div>
                       </div>
 
                       {deleteConfirm === member.id ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-500 text-sm">Remove?</span>
-                          <button onClick={() => deleteMember(member.id)}
-                            className="px-3 py-1 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors">Yes</button>
-                          <button onClick={() => setDeleteConfirm(null)}
-                            className="px-3 py-1 rounded-lg bg-slate-100 text-slate-600 text-sm hover:bg-slate-200 transition-colors">No</button>
+                          <span className="text-muted text-sm">Remove?</span>
+                          <button onClick={() => deleteMember(member.id)} className="btn-primary text-xs py-1 px-3">Yes</button>
+                          <button onClick={() => setDeleteConfirm(null)} className="btn-ghost text-xs py-1 px-3">No</button>
                         </div>
                       ) : (
                         <button onClick={() => setDeleteConfirm(member.id)}
-                          className="text-slate-300 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50">
+                          className="text-muted hover:text-accent transition-colors p-2 rounded-full hover:bg-panel">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -712,8 +698,8 @@ export default function SettingsPage() {
         })}
 
         {/* Add member form */}
-        <form onSubmit={addMember} className="border-t border-slate-200 pt-5 mt-2">
-          <p className="text-slate-500 text-sm mb-3 font-medium">Add new member</p>
+        <form onSubmit={addMember} className="border-t border-default pt-6 mt-4">
+          <p className="text-muted text-sm mb-3 font-medium">Add new member</p>
 
           {/* Department selector */}
           <div className="flex gap-2 mb-3">
@@ -723,10 +709,10 @@ export default function SettingsPage() {
               return (
                 <button key={dept} type="button"
                   onClick={() => setNewMember({ ...newMember, department: dept })}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border text-sm font-semibold transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-2xl border text-sm font-semibold transition-all ${
                     active
                       ? `${cfg.bg} ${cfg.border} ${cfg.color}`
-                      : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'
+                      : 'bg-panel border-default text-muted hover:text-ink'
                   }`}>
                   <span>{cfg.icon}</span> {cfg.label}
                 </button>
@@ -738,18 +724,17 @@ export default function SettingsPage() {
             <input type="text" value={newMember.name}
               onChange={e => setNewMember({ ...newMember, name: e.target.value })}
               placeholder="Full name"
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 placeholder-slate-400 text-base focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100" />
+              className="input-field flex-1" />
             <input type="text" value={newMember.whatsapp_number}
               onChange={e => setNewMember({ ...newMember, whatsapp_number: e.target.value })}
               placeholder="923001234567"
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 placeholder-slate-400 text-base focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100" />
-            <button type="submit" disabled={addingMember}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-base transition-colors disabled:opacity-50 whitespace-nowrap">
+              className="input-field flex-1" />
+            <button type="submit" disabled={addingMember} className="btn-primary whitespace-nowrap disabled:opacity-50">
               {addingMember ? '...' : 'Add'}
             </button>
           </div>
           {memberError && (
-            <p className="text-red-600 text-sm mt-2 bg-red-50 rounded-lg px-3 py-2 border border-red-100">{memberError}</p>
+            <p className="text-accent text-sm mt-2 bg-accent/5 rounded-2xl px-3 py-2 border border-accent/20">{memberError}</p>
           )}
         </form>
       </section>
@@ -758,11 +743,10 @@ export default function SettingsPage() {
 
       {(settingsTab === 'webhook') && (
       <>
-      {/* Webhook info */}
-      <section className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
-        <h2 className="text-xl font-black text-slate-900 mb-1 flex items-center gap-2">🔗 Webhook URL</h2>
-        <p className="text-slate-400 text-sm mb-4">Set this in GreenAPI → Instance settings → Webhooks</p>
-        <div className="bg-slate-50 rounded-xl px-4 py-3 font-mono text-sm text-blue-600 border border-slate-200 select-all">
+      <section className="card p-6">
+        <h2 className="font-display text-lg font-semibold text-ink mb-1 tracking-wide">Webhook URL</h2>
+        <p className="text-muted text-sm mb-4">Set this in GreenAPI → Instance settings → Webhooks</p>
+        <div className="bg-panel rounded-2xl px-4 py-3 font-mono text-sm text-accent border border-default select-all">
           {typeof window !== 'undefined' ? window.location.origin : 'https://your-app.onrender.com'}/api/webhook/greenapi
         </div>
       </section>
