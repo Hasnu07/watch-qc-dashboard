@@ -252,6 +252,7 @@ export default function DashboardPage() {
     )
 
   const leftWidthClass = showTasksPanel ? 'w-full md:w-[58%]' : 'w-full'
+  const leftPanelHeightClass = inventoryTvScroll ? 'h-[calc(100dvh-5.25rem)] max-h-[calc(100dvh-5.25rem)]' : 'h-full max-h-full'
   const tasksPanelClass = tasksPinned && showTasksPanel
     ? 'fixed right-0 top-[5.25rem] z-30 w-full md:w-[42%] h-[calc(100dvh-5.25rem)] border-l border-default bg-surface shadow-[-8px_0_24px_rgba(44,44,44,0.06)]'
     : 'relative w-full md:w-[42%] h-full min-h-0'
@@ -278,9 +279,9 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="flex flex-1 overflow-hidden min-h-0">
+      <div className="flex flex-1 overflow-hidden min-h-0 h-full">
         {/* LEFT — Inventory */}
-        <div className={`flex flex-col ${leftWidthClass} border-r border-default overflow-hidden min-h-0 ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`flex flex-col flex-1 min-h-0 ${leftWidthClass} ${leftPanelHeightClass} border-r border-default overflow-hidden ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
           <div className={`px-4 border-b border-default bg-card sm:px-8 flex-shrink-0 ${inventoryTvScroll ? 'py-3' : 'py-5 sm:py-6'}`}>
             <div className={`flex items-center justify-between gap-3 ${inventoryTvScroll ? '' : 'mb-4'}`}>
               <div>
@@ -388,8 +389,9 @@ export default function DashboardPage() {
 
           <AutoScrollViewport
             enabled={inventoryTvScroll}
-            className="flex-1 min-h-0 p-4 sm:p-8 space-y-10"
-            speedPxPerSec={40}
+            className=""
+            innerClassName="p-4 sm:p-8 space-y-10"
+            speedPxPerSec={45}
             pauseMs={2500}
           >
             {loading ? (

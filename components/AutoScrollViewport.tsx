@@ -1,10 +1,11 @@
 'use client'
 
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState } from 'react'
 
 interface AutoScrollViewportProps {
   children: React.ReactNode
   className?: string
+  innerClassName?: string
   enabled?: boolean
   speedPxPerSec?: number
   pauseMs?: number
@@ -13,8 +14,9 @@ interface AutoScrollViewportProps {
 export default function AutoScrollViewport({
   children,
   className = '',
+  innerClassName = '',
   enabled = false,
-  speedPxPerSec = 36,
+  speedPxPerSec = 40,
   pauseMs = 2500,
 }: AutoScrollViewportProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -25,29 +27,22 @@ export default function AutoScrollViewport({
   const directionRef = useRef<1 | -1>(1)
   const pauseUntilRef = useRef(0)
   const pausedRef = useRef(false)
-  const canScrollRef = useRef(false)
-  const [canScroll, setCanScroll] = useState(false)
+  const [shouldScroll, setShouldScroll] = useState(false)
 
-  const measure = useCallback(() => {
+  const measure = () => {
     const container = containerRef.current
     const single = singleRef.current
-    if (!container || !single) return 0
-    const max = single.scrollHeight - container.clientHeight
-    const scrollable = max > 8
-    if (scrollable !== canScrollRef.current) {
-      canScrollRef.current = scrollable
-      setCanScroll(scrollable)
-    }
-    return max
-  }, [])
+    if (!container || !single) return
+    setShouldScroll(single.scrollHeight > container.clientHeight + 4)
+  }
 
   useEffect(() => {
     measure()
     const t1 = setTimeout(measure, 100)
-    const t2 = setTimeout(measure, 600)
+    const t2 = setTimeout(measure, 500)
     const t3 = setTimeout(measure, 1500)
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
-  }, [children, measure])
+  }, [children, enabled])
 
   useEffect(() => {
     const container = containerRef.current
@@ -57,10 +52,10 @@ export default function AutoScrollViewport({
     ro.observe(container)
     ro.observe(single)
     return () => ro.disconnect()
-  }, [children, measure])
+  }, [children, enabled])
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || !shouldScroll) {
       posRef.current = 0
       directionRef.current = 1
       pauseUntilRef.current = 0
@@ -71,11 +66,11 @@ export default function AutoScrollViewport({
 
     posRef.current = 0
     directionRef.current = 1
-    pauseUntilRef.current = 0
-    if (contentRef.current) contentRef.current.style.transform = ''
+    pauseUntilRef.current = performance.now() + 800
 
     const content = contentRef.current
-    if (!content) return
+    const container = containerRef.current
+    if (!content || !container) return
 
     let lastTime: number | null = null
 
@@ -84,8 +79,11 @@ export default function AutoScrollViewport({
       const delta = ts - lastTime
       lastTime = ts
 
-      const maxScroll = measure()
-      if (maxScroll > 8 && !pausedRef.current && ts >= pauseUntilRef.current) {
+      const maxScroll = container.scrollHeight > 0
+        ? singleRef.current!.scrollHeight - container.clientHeight
+        : 0
+
+      if (maxScroll > 4 && !pausedRef.current && ts >= pauseUntilRef.current) {
         posRef.current += directionRef.current * (speedPxPerSec * delta) / 1000
 
         if (posRef.current >= maxScroll) {
@@ -108,27 +106,21 @@ export default function AutoScrollViewport({
     return () => {
       if (animRef.current != null) cancelAnimationFrame(animRef.current)
     }
-  }, [enabled, speedPxPerSec, pauseMs, measure])
-
-  if (!enabled) {
-    return (
-      <div ref={containerRef} className={`overflow-y-auto min-h-0 ${className}`}>
-        {children}
-      </div>
-    )
-  }
+  }, [enabled, shouldScroll, speedPxPerSec, pauseMs])
 
   return (
     <div
       ref={containerRef}
-      className={`overflow-hidden relative min-h-0 ${className}`}
+      className={`relative min-h-0 h-0 flex-1 ${enabled ? 'overflow-hidden' : 'overflow-y-auto'} ${className}`}
       onMouseEnter={() => { pausedRef.current = true }}
       onMouseLeave={() => { pausedRef.current = false }}
     >
-      <div ref={contentRef} className="will-change-transform">
-        <div ref={singleRef}>{children}</div>
+      <div ref={contentRef} className={enabled ? 'will-change-transform' : undefined}>
+        <div ref={singleRef} className={innerClassName}>
+          {children}
+        </div>
       </div>
-      {!canScroll && (
+      {enabled && !shouldScroll && (
         <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] font-semibold px-3 py-1 rounded-full bg-card/90 border border-default text-muted">
           Add more watches to scroll
         </div>
