@@ -243,7 +243,6 @@ export default function DashboardPage() {
   }
 
   const toggleShowTasksPanel = () => {
-    if (tasksPinned) return
     const next = !showTasksPanel
     setShowTasksPanel(next)
     localStorage.setItem('qc-show-tasks', next ? '1' : '0')
@@ -312,7 +311,7 @@ export default function DashboardPage() {
                 </div>
                 {inventoryTvScroll ? (
                   <>
-                    {showTasksPanel && !tasksPinned && (
+                    {showTasksPanel && (
                       <button type="button" onClick={toggleShowTasksPanel} title="Hide tasks panel"
                         className="hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border text-muted border-default bg-panel hover:text-ink">
                         Hide tasks
@@ -529,12 +528,10 @@ export default function DashboardPage() {
                 className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${autoScroll ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
                 {autoScroll ? 'Task scroll on' : 'Task scroll'}
               </button>
-              {!tasksPinned && (
-                <button type="button" onClick={toggleShowTasksPanel} title="Hide tasks panel"
-                  className="hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border text-muted border-default bg-panel hover:text-ink">
-                  Hide
-                </button>
-              )}
+              <button type="button" onClick={toggleShowTasksPanel} title="Hide tasks panel"
+                className="hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border text-muted border-default bg-panel hover:text-ink">
+                Hide
+              </button>
             </div>
           </div>
 
