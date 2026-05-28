@@ -362,8 +362,19 @@ export default function SettingsPage() {
               <option value="1440">Every 24 hours</option>
             </select>
             <p className="text-muted text-xs mt-1.5">
-              Sends pending task reminders to each department at this interval (only when there are incomplete tasks).
+              Sends pending task reminders to each assignee at this interval (only when there are incomplete tasks).
             </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-default pt-5 mt-1">
+            <button type="button" onClick={saveSettings} disabled={saving} className="btn-primary px-8 py-3 disabled:opacity-50">
+              {saving ? 'Saving…' : 'Confirm'}
+            </button>
+            {savedMsg && (
+              <span className={`text-sm font-medium ${savedMsg.startsWith('Error') ? 'text-accent' : 'text-accent'}`}>
+                {savedMsg}
+              </span>
+            )}
           </div>
         </div>
       </section>
@@ -468,6 +479,17 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-default mt-6 pt-5">
+          <button type="button" onClick={saveSettings} disabled={saving} className="btn-primary px-8 py-3 disabled:opacity-50">
+            {saving ? 'Saving…' : 'Confirm'}
+          </button>
+          {savedMsg && (
+            <span className={`text-sm font-medium ${savedMsg.startsWith('Error') ? 'text-accent' : 'text-accent'}`}>
+              {savedMsg}
+            </span>
+          )}
         </div>
       </section>
       </>
