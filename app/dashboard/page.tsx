@@ -561,7 +561,7 @@ export default function DashboardPage() {
         </div>
         )}
 
-        {!showTasksPanel && (
+        {!showTasksPanel && !inventoryTvScroll && (
           <button type="button" onClick={toggleShowTasksPanel}
             className="hidden md:flex fixed right-6 top-24 z-40 items-center gap-2 px-4 py-2.5 rounded-full border-2 border-sell bg-card text-sm font-semibold text-accent shadow-lg hover:bg-accent/5 transition-colors">
             Show tasks
