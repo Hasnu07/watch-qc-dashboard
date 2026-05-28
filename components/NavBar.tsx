@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -28,8 +29,8 @@ export default function NavBar() {
 
         {/* Logo */}
         <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 via-violet-500 to-pink-500 flex items-center justify-center text-white font-black text-sm shadow-[0_0_24px_rgba(0,212,255,0.35)] sm:w-9 sm:h-9 sm:text-base">
-            W
+          <div className="w-8 h-8 rounded-xl overflow-hidden shadow-[0_0_24px_rgba(0,212,255,0.35)] sm:w-9 sm:h-9">
+            <Image src="/watch-logo.svg" alt="Watch QC" width={36} height={36} className="w-full h-full" priority />
           </div>
           <div className="flex flex-col leading-none">
             <span className="text-base font-black tracking-tight text-gradient-cyan sm:text-lg">Watch QC</span>

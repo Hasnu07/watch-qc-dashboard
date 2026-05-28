@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -45,8 +46,8 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black text-3xl shadow-lg mx-auto mb-4">
-            W
+          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg mx-auto mb-4">
+            <Image src="/watch-logo.svg" alt="Watch QC" width={64} height={64} className="w-full h-full" priority />
           </div>
           <h1 className="text-2xl font-black text-slate-900">Watch QC</h1>
           <p className="text-slate-500 text-sm mt-1">Admin access required</p>
