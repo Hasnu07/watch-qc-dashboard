@@ -106,7 +106,6 @@ export default function DashboardPage() {
   const [deptFilter, setDeptFilter] = useState<Department | null>(null)
   const [autoScroll, setAutoScroll] = useState(false)
   const [inventoryTvScroll, setInventoryTvScroll] = useState(false)
-  const [tasksPinned, setTasksPinned] = useState(true)
   const [showTasksPanel, setShowTasksPanel] = useState(true)
   const [compactMode, setCompactMode] = useState(false)
   const [filters, setFilters] = useState<InventoryFilters>({
@@ -140,7 +139,6 @@ export default function DashboardPage() {
   useEffect(() => {
     setAutoScroll(localStorage.getItem('qc-autoscroll') === '1')
     setInventoryTvScroll(localStorage.getItem('qc-inventory-tv-scroll') === '1')
-    setTasksPinned(localStorage.getItem('qc-tasks-pinned') !== '0')
     setShowTasksPanel(localStorage.getItem('qc-show-tasks') !== '0')
     setCompactMode(localStorage.getItem('qc-compact-cards') === '1' || window.innerWidth < 768)
   }, [])
@@ -226,11 +224,9 @@ export default function DashboardPage() {
     localStorage.setItem('qc-inventory-tv-scroll', next ? '1' : '0')
   }
 
-  const toggleTasksPinned = () => {
-    const next = !tasksPinned
-    setTasksPinned(next)
-    localStorage.setItem('qc-tasks-pinned', next ? '1' : '0')
-    if (next) setShowTasksPanel(true)
+  const exitTvMode = () => {
+    setInventoryTvScroll(false)
+    localStorage.setItem('qc-inventory-tv-scroll', '0')
   }
 
   const toggleShowTasksPanel = () => {
@@ -251,11 +247,15 @@ export default function DashboardPage() {
       <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
     )
 
-  const leftWidthClass = showTasksPanel ? 'w-full md:w-[58%]' : 'w-full'
-  const leftPanelHeightClass = inventoryTvScroll ? 'h-[calc(100dvh-5.25rem)] max-h-[calc(100dvh-5.25rem)]' : 'h-full max-h-full'
-  const tasksPanelClass = tasksPinned && showTasksPanel
-    ? 'fixed right-0 top-[5.25rem] z-30 w-full md:w-[42%] h-[calc(100dvh-5.25rem)] border-l border-default bg-surface shadow-[-8px_0_24px_rgba(44,44,44,0.06)]'
-    : 'relative w-full md:w-[42%] h-full min-h-0'
+  const leftWidthClass = showTasksPanel
+    ? 'w-full md:w-[58%] md:max-w-[58%] shrink-0'
+    : 'w-full flex-1 min-w-0'
+  const panelHeightClass = inventoryTvScroll
+    ? 'h-[calc(100dvh-5.25rem)] max-h-[calc(100dvh-5.25rem)]'
+    : 'h-full max-h-full'
+  const inventoryGridClass = inventoryTvScroll
+    ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4'
+    : 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3'
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden pb-14 md:pb-0">
@@ -281,7 +281,7 @@ export default function DashboardPage() {
 
       <div className="flex flex-1 overflow-hidden min-h-0 h-full">
         {/* LEFT — Inventory */}
-        <div className={`flex flex-col flex-1 min-h-0 ${leftWidthClass} ${leftPanelHeightClass} border-r border-default overflow-hidden ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`flex flex-col min-h-0 ${leftWidthClass} ${panelHeightClass} border-r border-default overflow-hidden ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
           <div className={`px-4 border-b border-default bg-card sm:px-8 flex-shrink-0 ${inventoryTvScroll ? 'py-3' : 'py-5 sm:py-6'}`}>
             <div className={`flex items-center justify-between gap-3 ${inventoryTvScroll ? '' : 'mb-4'}`}>
               <div>
@@ -291,29 +291,46 @@ export default function DashboardPage() {
                   {inventoryTvScroll && <span className="text-accent font-semibold"> · TV mode</span>}
                 </p>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                 <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${sseConnected ? 'text-accent border-accent/30 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-accent live-dot' : 'bg-muted'}`} />
                   {sseConnected ? 'Live' : 'Polling'}
                 </div>
-                {!inventoryTvScroll && (
+                {inventoryTvScroll ? (
+                  <>
+                    {showTasksPanel && (
+                      <button type="button" onClick={toggleShowTasksPanel} title="Hide tasks panel"
+                        className="hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border text-muted border-default bg-panel hover:text-ink">
+                        Hide tasks
+                      </button>
+                    )}
+                    {!showTasksPanel && (
+                      <button type="button" onClick={toggleShowTasksPanel} title="Show tasks panel"
+                        className="hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border text-accent border-accent/40 bg-accent/5">
+                        Show tasks
+                      </button>
+                    )}
+                    <button type="button" onClick={exitTvMode} title="Exit TV display mode"
+                      className="inline-flex text-[11px] font-semibold px-4 py-1.5 rounded-full border border-ink/20 bg-ink text-card hover:opacity-90 transition-opacity">
+                      Exit TV mode
+                    </button>
+                  </>
+                ) : (
                   <>
                     <button onClick={() => setShowCommandPalette(true)} title="Command palette (⌘K)" className="btn-ghost hidden sm:inline-flex text-xs">⌘K</button>
                     <a href="/api/watches/export" download className="btn-ghost hidden sm:inline-flex text-xs">Export</a>
                     <button onClick={() => setShowPasteMessage(true)} title="Paste WhatsApp message" className="btn-secondary text-xs sm:text-sm">
                       <span className="hidden sm:inline">Paste</span><span className="sm:hidden">📋</span>
                     </button>
+                    <button type="button" onClick={toggleInventoryTvScroll} title="Auto-scroll inventory for TV display"
+                      className="inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border text-muted border-default bg-panel hover:text-ink transition-colors">
+                      TV scroll
+                    </button>
+                    <button onClick={() => { setAddWatchStock(''); setShowAddWatch(true) }} className="btn-primary text-xs sm:text-sm">
+                      <span className="text-lg leading-none">+</span>
+                      <span className="hidden sm:inline">Add Watch</span>
+                    </button>
                   </>
-                )}
-                <button type="button" onClick={toggleInventoryTvScroll} title="Auto-scroll inventory for TV display"
-                  className={`inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${inventoryTvScroll ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
-                  {inventoryTvScroll ? 'TV scroll on' : 'TV scroll'}
-                </button>
-                {!inventoryTvScroll && (
-                  <button onClick={() => { setAddWatchStock(''); setShowAddWatch(true) }} className="btn-primary text-xs sm:text-sm">
-                    <span className="text-lg leading-none">+</span>
-                    <span className="hidden sm:inline">Add Watch</span>
-                  </button>
                 )}
               </div>
             </div>
@@ -426,7 +443,7 @@ export default function DashboardPage() {
                       No buy watches match — paste a purchase message or add stock #
                     </p>
                   ) : (
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+                    <div className={inventoryGridClass}>
                       {buyWatches.map(watch => (
                         <WatchCard key={watch.id} watch={watch} compact={compactMode}
                           highlighted={focusedWatchId === watch.id}
@@ -449,7 +466,7 @@ export default function DashboardPage() {
                       No sell watches match — paste a sold message
                     </p>
                   ) : (
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+                    <div className={inventoryGridClass}>
                       {sellWatches.map(watch => (
                         <WatchCard key={watch.id} watch={watch} compact={compactMode}
                           highlighted={focusedWatchId === watch.id}
@@ -467,9 +484,9 @@ export default function DashboardPage() {
           </AutoScrollViewport>
         </div>
 
-        {/* RIGHT — Tasks (pinned sidebar on desktop TV mode) */}
+        {/* RIGHT — Tasks sidebar (flex split, never overlaps inventory) */}
         {showTasksPanel && (
-        <div className={`flex-col overflow-hidden min-h-0 flex ${tasksPanelClass} ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`flex flex-col min-h-0 shrink-0 w-full md:w-[42%] md:max-w-[42%] ${panelHeightClass} border-l border-default bg-surface overflow-hidden ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
           <div className="flex items-center justify-between px-4 py-5 border-b border-default bg-card sm:px-8 flex-shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <button type="button" onClick={() => setActiveTab('inventory')}
@@ -490,10 +507,6 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <button type="button" onClick={toggleTasksPinned} title="Keep tasks visible while scrolling inventory"
-                className={`hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${tasksPinned ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
-                {tasksPinned ? 'Pinned' : 'Pin tasks'}
-              </button>
               <button type="button" onClick={toggleAutoScroll} title="Auto-scroll task list"
                 className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${autoScroll ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
                 {autoScroll ? 'Task scroll on' : 'Task scroll'}
