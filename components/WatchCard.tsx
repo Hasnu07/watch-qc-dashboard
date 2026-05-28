@@ -51,6 +51,7 @@ interface WatchCardProps {
   watch: Watch
   onCardClick: (watch: Watch) => void
   onRemove?: (id: number) => void
+  onOpenTasks?: (watch: Watch) => void
 }
 
 const STAGES: WatchStage[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
@@ -117,7 +118,7 @@ const TYPE_CFG = {
   },
 } as const
 
-export default function WatchCard({ watch, onCardClick, onRemove }: WatchCardProps) {
+export default function WatchCard({ watch, onCardClick, onRemove, onOpenTasks }: WatchCardProps) {
   const isSell = watch.watch_type === 'SELL'
   const typeCfg = isSell ? TYPE_CFG.SELL : TYPE_CFG.BUY
 
@@ -244,23 +245,38 @@ export default function WatchCard({ watch, onCardClick, onRemove }: WatchCardPro
 
       {/* Info */}
       <div className="p-4 flex flex-col gap-2.5 flex-1">
-        {watch.brand && (
-          <p className={`text-[10px] font-black uppercase tracking-widest mb-0 ${typeCfg.brandText}`}>{watch.brand}</p>
-        )}
-        <div>
-          <h3 className="text-[#171c25] font-bold text-base leading-tight">
-            {watch.model || watch.name}
-          </h3>
-          {(watch.ref_no || watch.stock_no || watch.watch_date) && (
-            <p className="text-[#777587] text-xs mt-0.5 font-mono-data">
-              {watch.ref_no && <>Ref. {watch.ref_no}</>}
-              {watch.ref_no && watch.stock_no && <span className="text-[#c7c4d8]"> · </span>}
-              {watch.stock_no && <span className="text-[#464555] font-bold">#{watch.stock_no}</span>}
-              {(watch.ref_no || watch.stock_no) && watch.watch_date && <span className="text-[#c7c4d8]"> · </span>}
-              {watch.watch_date && <>{watch.watch_date}</>}
-            </p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            {watch.brand && (
+              <p className={`text-[10px] font-black uppercase tracking-widest mb-0 ${typeCfg.brandText}`}>{watch.brand}</p>
+            )}
+            <h3 className="text-[#171c25] font-bold text-base leading-tight">
+              {watch.model || watch.name}
+            </h3>
+          </div>
+          {onOpenTasks && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenTasks(watch) }}
+              className={`flex-shrink-0 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border transition-colors ${
+                isSell
+                  ? 'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200'
+                  : 'bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200'
+              }`}
+            >
+              📋 Open Tasks
+            </button>
           )}
         </div>
+        {(watch.ref_no || watch.stock_no || watch.watch_date) && (
+          <p className="text-[#777587] text-xs mt-0.5 font-mono-data">
+            {watch.ref_no && <>Ref. {watch.ref_no}</>}
+            {watch.ref_no && watch.stock_no && <span className="text-[#c7c4d8]"> · </span>}
+            {watch.stock_no && <span className="text-[#464555] font-bold">#{watch.stock_no}</span>}
+            {(watch.ref_no || watch.stock_no) && watch.watch_date && <span className="text-[#c7c4d8]"> · </span>}
+            {watch.watch_date && <>{watch.watch_date}</>}
+          </p>
+        )}
 
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1">

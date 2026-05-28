@@ -403,15 +403,14 @@ function AccessoriesGroup({ tasks, teamMembers, onComplete, onUncomplete, onAssi
 
 interface WatchAccordionProps {
   watchId: number; watchName: string; tasks: WatchTask[]
-  teamMembers: TeamMember[]; defaultOpen: boolean
+  teamMembers: TeamMember[]; expanded: boolean; onToggle: () => void
   onComplete: (taskId: number, metadata?: Record<string, unknown>) => Promise<void>
   onUncomplete: (taskId: number) => Promise<void>
   onAssign: (taskId: number, name: string | null) => Promise<void>
   onRefresh: () => void
 }
 
-function WatchAccordion({ watchId, watchName, tasks, teamMembers, defaultOpen, onComplete, onUncomplete, onAssign, onRefresh }: WatchAccordionProps) {
-  const [expanded, setExpanded] = useState(defaultOpen)
+function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onToggle, onComplete, onUncomplete, onAssign, onRefresh }: WatchAccordionProps) {
   const [assigning, setAssigning] = useState(false)
   const [assignDone, setAssignDone] = useState(false)
 
@@ -437,10 +436,10 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, defaultOpen, o
   }
 
   return (
-    <div className={`rounded-2xl border overflow-hidden mb-3 shadow-sm ${allDone ? 'border-emerald-200' : 'border-slate-200'}`}>
+    <div id={`watch-tasks-${watchId}`} className={`rounded-2xl border overflow-hidden mb-3 shadow-sm scroll-mt-4 ${allDone ? 'border-emerald-200' : 'border-slate-200'}`}>
       {/* Header */}
       <div className={`flex items-center gap-2 px-4 py-3.5 ${allDone ? 'bg-emerald-50' : 'bg-white'}`}>
-        <button onClick={() => setExpanded(e => !e)} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
+        <button onClick={onToggle} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
           <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${allDone ? 'bg-emerald-500' : 'bg-indigo-500'}`} />
           <span className={`font-black text-base truncate ${allDone ? 'text-emerald-800' : 'text-slate-900'}`}>{watchName}</span>
         </button>
@@ -460,7 +459,7 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, defaultOpen, o
           : <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex-shrink-0">{pending} left</span>
         }
 
-        <button onClick={() => setExpanded(e => !e)} className="flex-shrink-0 pl-1">
+        <button onClick={onToggle} className="flex-shrink-0 pl-1">
           <span className={`text-slate-400 text-sm transition-transform duration-200 inline-block ${expanded ? 'rotate-180' : ''}`}>▾</span>
         </button>
       </div>
@@ -507,11 +506,21 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, defaultOpen, o
 
 type SortMode = 'new' | 'pending' | 'name'
 
-export default function WatchTaskPanel({ className }: { className?: string }) {
+export default function WatchTaskPanel({ className, focusedWatchId }: { className?: string; focusedWatchId?: number | null }) {
   const [tasks, setTasks] = useState<WatchTask[]>([])
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<SortMode>('new')
+  const [expandedWatchId, setExpandedWatchId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (focusedWatchId != null) {
+      setExpandedWatchId(focusedWatchId)
+      requestAnimationFrame(() => {
+        document.getElementById(`watch-tasks-${focusedWatchId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+  }, [focusedWatchId])
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -639,7 +648,8 @@ export default function WatchTaskPanel({ className }: { className?: string }) {
             watchName={watchName}
             tasks={watchTasks}
             teamMembers={teamMembers}
-            defaultOpen={watchTasks.some(t => !t.is_completed && !t.is_locked)}
+            expanded={expandedWatchId === watchId}
+            onToggle={() => setExpandedWatchId(prev => prev === watchId ? null : watchId)}
             onComplete={completeTask}
             onUncomplete={uncompleteTask}
             onAssign={assignTask}

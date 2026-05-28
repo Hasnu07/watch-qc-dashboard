@@ -23,11 +23,20 @@ const DEPT_CONFIG = {
 }
 const DEPT_ORDER = ['ACCOUNTING', 'SALES', 'LOGISTICS']
 
-export default function WatchSellTaskPanel({ className }: { className?: string }) {
+export default function WatchSellTaskPanel({ className, focusedWatchId }: { className?: string; focusedWatchId?: number | null }) {
   const [tasks, setTasks] = useState<WatchSellTask[]>([])
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
-  const [expandedWatches, setExpandedWatches] = useState<Set<number>>(new Set())
+  const [expandedWatchId, setExpandedWatchId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (focusedWatchId != null) {
+      setExpandedWatchId(focusedWatchId)
+      requestAnimationFrame(() => {
+        document.getElementById(`watch-sell-tasks-${focusedWatchId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+  }, [focusedWatchId])
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -35,10 +44,6 @@ export default function WatchSellTaskPanel({ className }: { className?: string }
       if (res.ok) {
         const data = await res.json()
         setTasks(data)
-        // Auto-expand watches with pending tasks
-        const watchesWithPending = new Set<number>()
-        data.forEach((t: WatchSellTask) => { if (!t.is_completed) watchesWithPending.add(t.watch_id) })
-        setExpandedWatches(watchesWithPending)
       }
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -131,7 +136,7 @@ export default function WatchSellTaskPanel({ className }: { className?: string }
         {watchGroups.map(({ watchId, watchName, tasks: watchTasks }) => {
           const pending = watchTasks.filter(t => !t.is_completed).length
           const allDone = pending === 0
-          const expanded = expandedWatches.has(watchId)
+          const expanded = expandedWatchId === watchId
 
           const deptTasks: Record<string, WatchSellTask[]> = { ACCOUNTING: [], SALES: [], LOGISTICS: [] }
           for (const t of watchTasks) {
@@ -139,15 +144,11 @@ export default function WatchSellTaskPanel({ className }: { className?: string }
           }
 
           return (
-            <div key={watchId} className={`rounded-2xl border overflow-hidden mb-3 shadow-sm ${allDone ? 'border-emerald-200' : 'border-orange-200'}`}>
+            <div id={`watch-sell-tasks-${watchId}`} key={watchId} className={`rounded-2xl border overflow-hidden mb-3 shadow-sm scroll-mt-4 ${allDone ? 'border-emerald-200' : 'border-orange-200'}`}>
               {/* Watch header */}
               <div
                 className={`flex items-center gap-2 px-4 py-3.5 cursor-pointer ${allDone ? 'bg-emerald-50' : 'bg-orange-50'}`}
-                onClick={() => setExpandedWatches(prev => {
-                  const next = new Set(prev)
-                  if (next.has(watchId)) next.delete(watchId); else next.add(watchId)
-                  return next
-                })}
+                onClick={() => setExpandedWatchId(prev => prev === watchId ? null : watchId)}
               >
                 <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${allDone ? 'bg-emerald-500' : 'bg-orange-500'}`} />
                 <span className={`font-black text-base flex-1 truncate ${allDone ? 'text-emerald-800' : 'text-orange-900'}`}>{watchName}</span>

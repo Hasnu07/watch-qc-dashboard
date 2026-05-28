@@ -70,6 +70,7 @@ export default function DashboardPage() {
   const [sseConnected, setSseConnected] = useState(false)
   const [activeTab, setActiveTab] = useState<'inventory' | 'tasks' | 'sell'>('inventory')
   const [taskTab, setTaskTab] = useState<'buy' | 'sell'>('buy')
+  const [focusedWatchId, setFocusedWatchId] = useState<number | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchWatches = useCallback(async () => {
@@ -112,12 +113,20 @@ export default function DashboardPage() {
   const handleRemove = async (id: number) => {
     setWatches(prev => prev.filter(w => w.id !== id))
     if (selectedWatch?.id === id) setSelectedWatch(null)
+    if (focusedWatchId === id) setFocusedWatchId(null)
     try {
       const res = await fetch(`/api/watches/${id}`, { method: 'DELETE' })
       if (!res.ok) fetchWatches()
     } catch {
       fetchWatches()
     }
+  }
+
+  const handleOpenTasks = (watch: Watch) => {
+    const isSell = watch.watch_type === 'SELL'
+    setFocusedWatchId(watch.id)
+    setTaskTab(isSell ? 'sell' : 'buy')
+    setActiveTab(isSell ? 'sell' : 'tasks')
   }
 
   const stageCounts = {
@@ -222,7 +231,7 @@ export default function DashboardPage() {
                   ) : (
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
                       {buyWatches.map(watch => (
-                        <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} onRemove={handleRemove} />
+                        <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} onRemove={handleRemove} onOpenTasks={handleOpenTasks} />
                       ))}
                     </div>
                   )}
@@ -240,7 +249,7 @@ export default function DashboardPage() {
                   ) : (
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3">
                       {sellWatches.map(watch => (
-                        <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} onRemove={handleRemove} />
+                        <WatchCard key={watch.id} watch={watch} onCardClick={(w) => setSelectedWatch(w)} onRemove={handleRemove} onOpenTasks={handleOpenTasks} />
                       ))}
                     </div>
                   )}
@@ -281,11 +290,11 @@ export default function DashboardPage() {
 
           {taskTab === 'buy' ? (
             <AutoScrollList className="flex-1" speedPxPerSec={40}>
-              <WatchTaskPanel />
+              <WatchTaskPanel focusedWatchId={taskTab === 'buy' ? focusedWatchId : null} />
             </AutoScrollList>
           ) : (
             <AutoScrollList className="flex-1" speedPxPerSec={40}>
-              <WatchSellTaskPanel />
+              <WatchSellTaskPanel focusedWatchId={taskTab === 'sell' ? focusedWatchId : null} />
             </AutoScrollList>
           )}
         </div>
