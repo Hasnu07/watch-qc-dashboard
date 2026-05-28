@@ -4,7 +4,7 @@ import { emitWatchEvent } from '@/lib/events'
 import { findWatchImageUrl } from '@/lib/watch-image-fetch'
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } },
 ) {
   try {
@@ -13,14 +13,19 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid watch id' }, { status: 400 })
     }
 
+    const body = await req.json().catch(() => ({}))
+    const force = !!(body as { force?: boolean }).force
+
     const watch = await prisma.watch.findUnique({ where: { id } })
     if (!watch) {
       return NextResponse.json({ error: 'Watch not found' }, { status: 404 })
     }
 
-    const found = await findWatchImageUrl(watch)
+    const found = await findWatchImageUrl(watch, { force })
     if (!found) {
-      return NextResponse.json({ error: 'No image found for this watch' }, { status: 404 })
+      return NextResponse.json({
+        error: 'No official brand image found. Add brand + reference, or paste an image URL manually.',
+      }, { status: 404 })
     }
 
     if (found.source === 'existing') {

@@ -83,6 +83,30 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
   const [stockLookupLoading, setStockLookupLoading] = useState(false)
+  const [fetchingImage, setFetchingImage] = useState(false)
+
+  async function fetchOfficialImage() {
+    setFetchingImage(true)
+    try {
+      const res = await fetch(`/api/watches/${watch.id}/fetch-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: true }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setSaveMsg(data.error || 'Could not find an official image')
+        return
+      }
+      setW('image_url', data.image_url || null)
+      setSaveMsg('Official image fetched')
+      onUpdated()
+    } catch {
+      setSaveMsg('Could not find an official image')
+    } finally {
+      setFetchingImage(false)
+    }
+  }
 
   // Payment tab
   const [payments, setPayments] = useState<WatchPayment[]>([])
@@ -381,7 +405,13 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
               </div>
               <div className="col-span-2">
                 <label className={labelCls}>Image URL</label>
-                <input type="url" value={watch.image_url || ''} onChange={e => setW('image_url', e.target.value || null)} placeholder="https://..." className={inputCls} />
+                <div className="flex gap-2">
+                  <input type="url" value={watch.image_url || ''} onChange={e => setW('image_url', e.target.value || null)} placeholder="https://..." className={`${inputCls} flex-1`} />
+                  <button type="button" onClick={fetchOfficialImage} disabled={fetchingImage || !watch.brand}
+                    className="btn-secondary whitespace-nowrap text-xs px-4 disabled:opacity-50">
+                    {fetchingImage ? 'Fetching…' : 'Fetch official'}
+                  </button>
+                </div>
               </div>
             </div>
           )}

@@ -1,7 +1,13 @@
 import { lookupInventoryByStockNo } from './inventory-csv'
 import { prisma } from './prisma'
+import { searchOfficialBrandImage } from './official-watch-images'
 
-export type ImageSource = 'inventory' | 'linked_buy' | 'sibling_watch' | 'web_search' | 'existing'
+export type ImageSource =
+  | 'inventory'
+  | 'linked_buy'
+  | 'sibling_watch'
+  | 'official_brand'
+  | 'existing'
 
 export type WatchImageLookup = {
   id: number
@@ -13,58 +19,11 @@ export type WatchImageLookup = {
   linked_buy_watch_id?: number | null
 }
 
-function buildSearchQuery(watch: WatchImageLookup): string | null {
-  const parts = [watch.brand, watch.model, watch.ref_no?.replace(/^ref\.?\s*/i, '')]
-    .map(p => (p || '').trim())
-    .filter(Boolean)
-  if (parts.length === 0) return null
-  return `${parts.join(' ')} watch`
-}
-
-async function searchWebImage(query: string): Promise<string | null> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 12000)
-
-  try {
-    const searchRes = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PurosangueQC/1.0)' },
-      signal: controller.signal,
-    })
-    if (!searchRes.ok) return null
-
-    const html = await searchRes.text()
-    const vqdMatch = html.match(/vqd=["']?([\d-]+)/)
-    if (!vqdMatch) return null
-
-    const imageRes = await fetch(
-      `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(query)}&vqd=${vqdMatch[1]}&f=,,,,,&p=1`,
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; PurosangueQC/1.0)',
-          Referer: 'https://duckduckgo.com/',
-        },
-        signal: controller.signal,
-      },
-    )
-    if (!imageRes.ok) return null
-
-    const data = (await imageRes.json()) as { results?: Array<{ image?: string }> }
-    for (const result of data.results || []) {
-      const url = result.image?.trim()
-      if (url && /^https?:\/\//i.test(url)) return url
-    }
-    return null
-  } catch {
-    return null
-  } finally {
-    clearTimeout(timeout)
-  }
-}
-
 export async function findWatchImageUrl(
   watch: WatchImageLookup,
+  opts?: { force?: boolean },
 ): Promise<{ url: string; source: ImageSource } | null> {
-  if (watch.image_url) {
+  if (watch.image_url && !opts?.force) {
     return { url: watch.image_url, source: 'existing' }
   }
 
@@ -100,10 +59,9 @@ export async function findWatchImageUrl(
     }
   }
 
-  const query = buildSearchQuery(watch)
-  if (query) {
-    const webUrl = await searchWebImage(query)
-    if (webUrl) return { url: webUrl, source: 'web_search' }
+  const officialUrl = await searchOfficialBrandImage(watch.brand, watch.ref_no, watch.model)
+  if (officialUrl) {
+    return { url: officialUrl, source: 'official_brand' }
   }
 
   return null
