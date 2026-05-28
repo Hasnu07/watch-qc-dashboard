@@ -3,21 +3,23 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// department must match the TaskDepartment enum — use 'as const' so TypeScript
+// infers the literal type instead of widening to 'string'.
 const DEFAULT_TASKS = [
-  { department: 'ACCOUNTING', task_type: 'ACCOUNTING_MARK_PAYMENT', phase: 'BUY', is_locked: false },
-  { department: 'ACCOUNTING', task_type: 'ACCOUNTING_ADD_STOCK_FOB', phase: 'BUY', is_locked: false },
-  { department: 'SALES',      task_type: 'SALES_SET_PRICE',          phase: 'BUY', is_locked: false },
-  { department: 'SALES',      task_type: 'SALES_UPLOAD_DRIVE',       phase: 'BUY', is_locked: false },
-  { department: 'SALES',      task_type: 'SALES_UPLOAD_STOCK_GROUP', phase: 'BUY', is_locked: false },
-  { department: 'SALES',      task_type: 'SALES_UPDATE_B2B',         phase: 'BUY', is_locked: false },
-  { department: 'SALES',      task_type: 'SALES_GET_B2C_PRICES',     phase: 'BUY', is_locked: false },
-  { department: 'LOGISTICS',  task_type: 'LOGISTICS_SET_LOCATION',   phase: 'BUY', is_locked: true  },
-  { department: 'LOGISTICS',  task_type: 'LOGISTICS_UPDATE_COST',    phase: 'BUY', is_locked: false },
-  { department: 'LOGISTICS',  task_type: 'LOGISTICS_ACCESSORIES_BOX',           phase: 'BUY', is_locked: false },
-  { department: 'LOGISTICS',  task_type: 'LOGISTICS_ACCESSORIES_PAPERS',        phase: 'BUY', is_locked: false },
-  { department: 'LOGISTICS',  task_type: 'LOGISTICS_ACCESSORIES_EXTRA_LINKS',   phase: 'BUY', is_locked: false },
-  { department: 'LOGISTICS',  task_type: 'LOGISTICS_ACCESSORIES_WARRANTY_CARD', phase: 'BUY', is_locked: false },
-  { department: 'LOGISTICS',  task_type: 'LOGISTICS_ACCESSORIES_HANG_TAG',      phase: 'BUY', is_locked: false },
+  { department: 'ACCOUNTING' as const, task_type: 'ACCOUNTING_MARK_PAYMENT',            phase: 'BUY', is_locked: false },
+  { department: 'ACCOUNTING' as const, task_type: 'ACCOUNTING_ADD_STOCK_FOB',            phase: 'BUY', is_locked: false },
+  { department: 'SALES'      as const, task_type: 'SALES_SET_PRICE',                     phase: 'BUY', is_locked: false },
+  { department: 'SALES'      as const, task_type: 'SALES_UPLOAD_DRIVE',                  phase: 'BUY', is_locked: false },
+  { department: 'SALES'      as const, task_type: 'SALES_UPLOAD_STOCK_GROUP',            phase: 'BUY', is_locked: false },
+  { department: 'SALES'      as const, task_type: 'SALES_UPDATE_B2B',                    phase: 'BUY', is_locked: false },
+  { department: 'SALES'      as const, task_type: 'SALES_GET_B2C_PRICES',                phase: 'BUY', is_locked: false },
+  { department: 'LOGISTICS'  as const, task_type: 'LOGISTICS_SET_LOCATION',              phase: 'BUY', is_locked: true  },
+  { department: 'LOGISTICS'  as const, task_type: 'LOGISTICS_UPDATE_COST',               phase: 'BUY', is_locked: false },
+  { department: 'LOGISTICS'  as const, task_type: 'LOGISTICS_ACCESSORIES_BOX',           phase: 'BUY', is_locked: false },
+  { department: 'LOGISTICS'  as const, task_type: 'LOGISTICS_ACCESSORIES_PAPERS',        phase: 'BUY', is_locked: false },
+  { department: 'LOGISTICS'  as const, task_type: 'LOGISTICS_ACCESSORIES_EXTRA_LINKS',   phase: 'BUY', is_locked: false },
+  { department: 'LOGISTICS'  as const, task_type: 'LOGISTICS_ACCESSORIES_WARRANTY_CARD', phase: 'BUY', is_locked: false },
+  { department: 'LOGISTICS'  as const, task_type: 'LOGISTICS_ACCESSORIES_HANG_TAG',      phase: 'BUY', is_locked: false },
 ]
 
 export async function POST() {
