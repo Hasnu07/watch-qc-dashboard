@@ -101,7 +101,11 @@ export default function WatchCard({
     setFetchingImage(true)
     setFetchError(null)
     try {
-      const res = await fetch(`/api/watches/${watch.id}/fetch-image`, { method: 'POST' })
+      const res = await fetch(`/api/watches/${watch.id}/fetch-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: !!watch.image_url }),
+      })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setFetchError(data.error || 'Could not find an image')
@@ -223,9 +227,16 @@ export default function WatchCard({
         </span>
       </div>
 
-      <div className="relative w-full aspect-[4/3] bg-panel overflow-hidden border-b border-default">
+      <div className="relative w-full aspect-[4/3] bg-panel overflow-hidden border-b border-default group/image">
         {watch.image_url ? (
-          <Image src={watch.image_url} alt={watch.name} fill className="object-contain p-4 group-hover:scale-[1.02] transition-transform duration-500" unoptimized />
+          <>
+            <Image src={watch.image_url} alt={watch.name} fill className="object-contain p-4 group-hover:scale-[1.02] transition-transform duration-500" unoptimized />
+            <button type="button" onClick={handleFetchImage} disabled={fetchingImage}
+              title="Refetch official image"
+              className="absolute bottom-3 right-3 text-[10px] font-semibold px-2.5 py-1 rounded-full border border-default bg-card/95 text-muted opacity-0 group-hover/image:opacity-100 hover:text-accent transition-opacity disabled:opacity-60">
+              {fetchingImage ? '…' : '↻ Refetch'}
+            </button>
+          </>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-muted px-4">
             <span className="text-4xl opacity-40">⌚</span>

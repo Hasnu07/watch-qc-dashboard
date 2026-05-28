@@ -28,7 +28,8 @@ const OFFICIAL_BRANDS: OfficialBrandConfig[] = [
   { key: 'a lange', domains: ['alange-soehne.com'], searchDomain: 'alange-soehne.com' },
 ]
 
-const BLOCKED_PATH_RE = /\/bg\/|background|luminescence|fav_icon|favicon|logo|icon|sprite|banner|thumbnail|error/i
+const BLOCKED_PATH_RE = /\/bg\/|background|luminescence|fav_icon|favicon|logo|icon|sprite|banner|thumbnail|error|editorial|campaign|hero|lookbook|lifestyle|boutique/i
+const LIFESTYLE_CDN_RE = /patek-res\.cloudinary\.com|cloudinary\.com.*\/(?:editorial|campaign|hero|lookbook)/i
 const PREFERRED_PATH_RE = /upright|watch\.png|face_white|product-shot|packshot|gallery\/1000|appdpfeaturedsetting|appdpmain/i
 
 export function matchOfficialBrand(brand: string | null | undefined): OfficialBrandConfig | null {
@@ -49,7 +50,12 @@ function refMatchesUrl(ref: string | null | undefined, url: string): boolean {
   return compact.includes(refCompact.slice(0, Math.min(refCompact.length, 10)))
 }
 
-export function scoreOfficialImage(url: string, ref: string | null | undefined, domains: string[]): number {
+export function scoreOfficialImage(
+  url: string,
+  ref: string | null | undefined,
+  domains: string[],
+  brandKey?: string,
+): number {
   const lower = url.toLowerCase()
   let score = 0
 
@@ -58,9 +64,12 @@ export function scoreOfficialImage(url: string, ref: string | null | undefined, 
   if (/\.webp(?:$|[?#])/i.test(lower)) score += 20
   if (/\.jpe?g(?:$|[?#])/i.test(lower)) score += 10
   if (PREFERRED_PATH_RE.test(lower)) score += 35
-  if (refMatchesUrl(ref, lower)) score += 25
+  if (/face_white\/\d+\//i.test(lower) && lower.includes('static.patek.com')) score += 45
+  if (refMatchesUrl(ref, lower)) score += 40
   if (BLOCKED_PATH_RE.test(lower)) score -= 120
+  if (LIFESTYLE_CDN_RE.test(lower)) score -= 150
   if (/transform\.appdpfeatured(case|dial|strap)/i.test(lower)) score -= 15
+  if (brandKey === 'patek' && ref && !refMatchesUrl(ref, lower)) score -= 80
 
   return score
 }
@@ -75,6 +84,9 @@ function buildOfficialQueries(
   const queries = new Set<string>()
 
   if (refText) {
+    if (brand.key === 'patek') {
+      queries.add(`site:static.patek.com ${refText.replace(/\//g, '_').replace(/-/g, '_')} face_white`)
+    }
     queries.add(`site:${brand.searchDomain} ${refText} png`)
     queries.add(`site:${brand.searchDomain} ${refText} watch png`)
     queries.add(`site:${brand.searchDomain} ${refText} watch`)
@@ -92,11 +104,17 @@ function pickBestCandidate(
   urls: string[],
   ref: string | null | undefined,
   domains: string[],
+  brandKey?: string,
 ): string | null {
   const scored = urls
-    .map(url => ({ url, score: scoreOfficialImage(url, ref, domains) }))
-    .filter(item => item.score >= 80)
-    .sort((a, b) => b.score - a.score)
+    .map(url => ({ url, score: scoreOfficialImage(url, ref, domains, brandKey) }))
+    .filter(item => item.score >= 90)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score
+      const aRef = refMatchesUrl(ref, a.url) ? 1 : 0
+      const bRef = refMatchesUrl(ref, b.url) ? 1 : 0
+      return bRef - aRef
+    })
   return scored[0]?.url || null
 }
 
@@ -172,6 +190,7 @@ async function searchWithProviders(
   queries: string[],
   ref: string | null | undefined,
   domains: string[],
+  brandKey: string,
   signal: AbortSignal,
 ): Promise<string | null> {
   const hasSerper = !!process.env.SERPER_API_KEY?.trim()
@@ -182,7 +201,7 @@ async function searchWithProviders(
   for (const query of queries) {
     for (const provider of providers) {
       const urls = await provider(query, signal)
-      const best = pickBestCandidate(urls, ref, domains)
+      const best = pickBestCandidate(urls, ref, domains, brandKey)
       if (best) return best
     }
   }
@@ -207,7 +226,7 @@ export async function searchOfficialBrandImage(
     const queries = buildOfficialQueries(brand, ref, model)
     if (queries.length === 0) return null
 
-    return await searchWithProviders(queries, ref, brand.domains, controller.signal)
+    return await searchWithProviders(queries, ref, brand.domains, brand.key, controller.signal)
   } catch {
     return null
   } finally {

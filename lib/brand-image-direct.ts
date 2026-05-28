@@ -113,6 +113,51 @@ async function resolveOmegaImage(
   return null
 }
 
+function patekRefToken(ref: string | null | undefined): string | null {
+  const raw = (ref || '').replace(/^ref\.?\s*/i, '').trim()
+  if (!raw) return null
+  return raw.replace(/\//g, '_').replace(/-/g, '_')
+}
+
+function patekFolderCandidates(ref: string | null | undefined): number[] {
+  const first = parseInt((ref || '').split(/[/_-]/)[0], 10)
+  const folders = new Set<number>([350, 300, 400, 250])
+  if (Number.isFinite(first)) folders.add(first)
+  return Array.from(folders)
+}
+
+function buildPatekCandidateUrls(ref: string | null | undefined): string[] {
+  const token = patekRefToken(ref)
+  if (!token) return []
+
+  const urls: string[] = []
+  for (const folder of patekFolderCandidates(ref)) {
+    for (const suffix of ['_1.png', '_1.jpg', '.png', '.jpg']) {
+      urls.push(`https://static.patek.com/images/articles/face_white/${folder}/${token}${suffix}`)
+    }
+  }
+  return urls
+}
+
+async function resolvePatekImage(ref: string | null | undefined, signal: AbortSignal): Promise<string | null> {
+  const urls = buildPatekCandidateUrls(ref)
+  const batchSize = 8
+
+  for (let i = 0; i < urls.length; i += batchSize) {
+    if (signal.aborted) return null
+    const batch = urls.slice(i, i + batchSize)
+    const results = await Promise.all(
+      batch.map(async url => ((await urlReturnsImage(url, signal)) ? url : null)),
+    )
+    const pngHit = results.find(url => url?.includes('.png'))
+    if (pngHit) return pngHit
+    const hit = results.find(Boolean)
+    if (hit) return hit
+  }
+
+  return null
+}
+
 export async function resolveDirectBrandImage(
   brandKey: string,
   ref: string | null | undefined,
@@ -120,6 +165,7 @@ export async function resolveDirectBrandImage(
   signal: AbortSignal,
 ): Promise<string | null> {
   if (brandKey === 'rolex') return resolveRolexImage(ref, signal)
+  if (brandKey === 'patek') return resolvePatekImage(ref, signal)
   if (brandKey === 'omega') return resolveOmegaImage(ref, model, signal)
   return null
 }
