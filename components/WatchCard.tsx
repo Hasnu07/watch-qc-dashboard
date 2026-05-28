@@ -127,12 +127,15 @@ export default function WatchCard({
   const payLabel = watch.payment_status === 'PAID' ? 'Paid' : watch.payment_status === 'PARTIAL' ? 'Partial' : 'Unpaid'
   const payVariant = watch.payment_status === 'PAID' ? 'ok' : watch.payment_status === 'PARTIAL' ? 'warn' : 'neutral'
 
-  const cardRing = highlighted ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface' : 'hover:border-accent/50'
+  const cardRing = highlighted
+    ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface'
+    : isSell ? 'hover:border-sell/80' : 'hover:border-buy/80'
+  const cardBorder = isSell ? 'border-2 border-sell' : 'border-2 border-buy'
 
   if (compact) {
     return (
       <div onClick={() => onCardClick(watch)}
-        className={`card cursor-pointer flex gap-3 p-3 transition-colors ${cardRing}`}>
+        className={`card cursor-pointer flex gap-3 p-3 transition-colors ${cardBorder} ${cardRing}`}>
         <div className="relative w-16 h-16 rounded-2xl bg-panel flex-shrink-0 overflow-hidden border border-default">
           {watch.image_url ? (
             <Image src={watch.image_url} alt={watch.name} fill className="object-contain p-1" unoptimized />
@@ -174,7 +177,7 @@ export default function WatchCard({
 
   return (
     <div onClick={() => onCardClick(watch)}
-      className={`card group flex flex-col cursor-pointer transition-colors ${cardRing}`}>
+      className={`card group flex flex-col cursor-pointer transition-colors ${cardBorder} ${cardRing}`}>
       <div className="px-4 py-3 flex items-center justify-between border-b border-default">
         <span className={`section-label ${isSell ? 'text-accent' : ''}`}>{isSell ? 'Sell' : 'Buy'}</span>
         {onRemoveRequest && (

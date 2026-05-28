@@ -8,6 +8,7 @@ import WatchDetailModal, { type WatchDetail } from '@/components/WatchDetailModa
 import WatchTaskPanel from '@/components/WatchTaskPanel'
 import WatchSellTaskPanel from '@/components/WatchSellTaskPanel'
 import AutoScrollList from '@/components/AutoScrollList'
+import AutoScrollViewport from '@/components/AutoScrollViewport'
 import ConfirmRemoveModal from '@/components/ConfirmRemoveModal'
 import InventoryToolbar, { type InventoryFilters } from '@/components/InventoryToolbar'
 import ImportInboxPanel from '@/components/ImportInboxPanel'
@@ -104,6 +105,9 @@ export default function DashboardPage() {
   const [focusedWatchId, setFocusedWatchId] = useState<number | null>(null)
   const [deptFilter, setDeptFilter] = useState<Department | null>(null)
   const [autoScroll, setAutoScroll] = useState(false)
+  const [inventoryTvScroll, setInventoryTvScroll] = useState(false)
+  const [tasksPinned, setTasksPinned] = useState(true)
+  const [showTasksPanel, setShowTasksPanel] = useState(true)
   const [compactMode, setCompactMode] = useState(false)
   const [filters, setFilters] = useState<InventoryFilters>({
     search: '', watchType: 'all', payment: 'all', location: 'all',
@@ -135,6 +139,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setAutoScroll(localStorage.getItem('qc-autoscroll') === '1')
+    setInventoryTvScroll(localStorage.getItem('qc-inventory-tv-scroll') === '1')
+    setTasksPinned(localStorage.getItem('qc-tasks-pinned') !== '0')
+    setShowTasksPanel(localStorage.getItem('qc-show-tasks') !== '0')
     setCompactMode(localStorage.getItem('qc-compact-cards') === '1' || window.innerWidth < 768)
   }, [])
 
@@ -213,6 +220,25 @@ export default function DashboardPage() {
     localStorage.setItem('qc-autoscroll', next ? '1' : '0')
   }
 
+  const toggleInventoryTvScroll = () => {
+    const next = !inventoryTvScroll
+    setInventoryTvScroll(next)
+    localStorage.setItem('qc-inventory-tv-scroll', next ? '1' : '0')
+  }
+
+  const toggleTasksPinned = () => {
+    const next = !tasksPinned
+    setTasksPinned(next)
+    localStorage.setItem('qc-tasks-pinned', next ? '1' : '0')
+    if (next) setShowTasksPanel(true)
+  }
+
+  const toggleShowTasksPanel = () => {
+    const next = !showTasksPanel
+    setShowTasksPanel(next)
+    localStorage.setItem('qc-show-tasks', next ? '1' : '0')
+  }
+
   const toggleCompact = (v: boolean) => {
     setCompactMode(v)
     localStorage.setItem('qc-compact-cards', v ? '1' : '0')
@@ -224,6 +250,11 @@ export default function DashboardPage() {
     ) : (
       <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
     )
+
+  const leftWidthClass = showTasksPanel ? 'w-full md:w-[58%]' : 'w-full'
+  const tasksPanelClass = tasksPinned && showTasksPanel
+    ? 'fixed right-0 top-[5.25rem] z-30 w-full md:w-[42%] h-[calc(100dvh-5.25rem)] border-l border-default bg-surface shadow-[-8px_0_24px_rgba(44,44,44,0.06)]'
+    : 'relative w-full md:w-[42%] h-full min-h-0'
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden pb-14 md:pb-0">
@@ -249,7 +280,7 @@ export default function DashboardPage() {
 
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* LEFT — Inventory */}
-        <div className={`flex-col w-full md:w-[58%] border-r border-default overflow-hidden ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`flex-col ${leftWidthClass} border-r border-default overflow-hidden min-h-0 ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
           <div className="px-4 py-5 border-b border-default bg-card sm:px-8 sm:py-6">
             <div className="flex items-center justify-between mb-4 gap-3">
               <div>
@@ -267,6 +298,10 @@ export default function DashboardPage() {
                 <a href="/api/watches/export" download className="btn-ghost hidden sm:inline-flex text-xs">Export</a>
                 <button onClick={() => setShowPasteMessage(true)} title="Paste WhatsApp message" className="btn-secondary text-xs sm:text-sm">
                   <span className="hidden sm:inline">Paste</span><span className="sm:hidden">📋</span>
+                </button>
+                <button type="button" onClick={toggleInventoryTvScroll} title="Auto-scroll inventory for TV display"
+                  className={`hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${inventoryTvScroll ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
+                  {inventoryTvScroll ? 'TV scroll on' : 'TV scroll'}
                 </button>
                 <button onClick={() => { setAddWatchStock(''); setShowAddWatch(true) }} className="btn-primary text-xs sm:text-sm">
                   <span className="text-lg leading-none">+</span>
@@ -340,7 +375,12 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-10">
+          <AutoScrollViewport
+            enabled={inventoryTvScroll}
+            className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-10 min-h-0"
+            speedPxPerSec={28}
+            pauseMs={3000}
+          >
             {loading ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                 {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
@@ -411,12 +451,13 @@ export default function DashboardPage() {
                 </section>
               </>
             )}
-          </div>
+          </AutoScrollViewport>
         </div>
 
-        {/* RIGHT — Tasks */}
-        <div className={`flex-col w-full md:w-[42%] overflow-hidden min-h-0 flex ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
-          <div className="flex items-center justify-between px-4 py-5 border-b border-default bg-card sm:px-8">
+        {/* RIGHT — Tasks (pinned sidebar on desktop TV mode) */}
+        {showTasksPanel && (
+        <div className={`flex-col overflow-hidden min-h-0 flex ${tasksPanelClass} ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
+          <div className="flex items-center justify-between px-4 py-5 border-b border-default bg-card sm:px-8 flex-shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <button type="button" onClick={() => setActiveTab('inventory')}
                 className="md:hidden flex-shrink-0 w-9 h-9 rounded-full bg-panel border border-default text-ink font-bold text-lg leading-none">
@@ -435,15 +476,23 @@ export default function DashboardPage() {
               )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={toggleAutoScroll}
-                className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border ${autoScroll ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
-                {autoScroll ? 'Auto-scroll on' : 'Auto-scroll'}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button type="button" onClick={toggleTasksPinned} title="Keep tasks visible while scrolling inventory"
+                className={`hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${tasksPinned ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
+                {tasksPinned ? 'Pinned' : 'Pin tasks'}
+              </button>
+              <button type="button" onClick={toggleAutoScroll} title="Auto-scroll task list"
+                className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${autoScroll ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
+                {autoScroll ? 'Task scroll on' : 'Task scroll'}
+              </button>
+              <button type="button" onClick={toggleShowTasksPanel} title="Hide tasks panel"
+                className="hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border text-muted border-default bg-panel hover:text-ink">
+                Hide
               </button>
             </div>
           </div>
 
-          <div className="flex border-b border-default bg-card px-4 gap-2 pt-2">
+          <div className="sticky top-0 z-20 flex border-b border-default bg-card/95 backdrop-blur-sm px-4 gap-2 pt-2 flex-shrink-0">
             <button onClick={() => { setTaskTab('buy'); setActiveTab('tasks') }}
               className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${taskTab === 'buy' ? 'border-accent text-accent' : 'border-transparent text-muted'}`}>
               Buy Tasks
@@ -464,6 +513,14 @@ export default function DashboardPage() {
             </TaskListWrapper>
           )}
         </div>
+        )}
+
+        {!showTasksPanel && (
+          <button type="button" onClick={toggleShowTasksPanel}
+            className="hidden md:flex fixed right-6 top-24 z-40 items-center gap-2 px-4 py-2.5 rounded-full border-2 border-sell bg-card text-sm font-semibold text-accent shadow-lg hover:bg-accent/5 transition-colors">
+            Show tasks
+          </button>
+        )}
       </div>
 
       {/* Mobile bottom nav */}
