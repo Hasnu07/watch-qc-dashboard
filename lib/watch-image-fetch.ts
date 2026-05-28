@@ -1,6 +1,6 @@
 import { lookupInventoryByStockNo } from './inventory-csv'
 import { prisma } from './prisma'
-import { searchOfficialBrandImage } from './official-watch-images'
+import { searchOfficialBrandImage, normalizeOfficialImageUrl } from './official-watch-images'
 
 export type ImageSource =
   | 'inventory'
@@ -25,6 +25,14 @@ export async function findWatchImageUrl(
 ): Promise<{ url: string; source: ImageSource } | null> {
   if (watch.image_url && !opts?.force) {
     return { url: watch.image_url, source: 'existing' }
+  }
+
+  if (opts?.force) {
+    const officialUrl = await searchOfficialBrandImage(watch.brand, watch.ref_no, watch.model)
+    if (officialUrl) {
+      return { url: normalizeOfficialImageUrl(officialUrl), source: 'official_brand' }
+    }
+    return null
   }
 
   if (watch.stock_no) {
@@ -61,7 +69,7 @@ export async function findWatchImageUrl(
 
   const officialUrl = await searchOfficialBrandImage(watch.brand, watch.ref_no, watch.model)
   if (officialUrl) {
-    return { url: officialUrl, source: 'official_brand' }
+    return { url: normalizeOfficialImageUrl(officialUrl), source: 'official_brand' }
   }
 
   return null

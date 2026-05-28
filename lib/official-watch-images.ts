@@ -50,6 +50,23 @@ function refMatchesUrl(ref: string | null | undefined, url: string): boolean {
   return compact.includes(refCompact.slice(0, Math.min(refCompact.length, 10)))
 }
 
+export function normalizeOfficialImageUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (
+      parsed.hostname.includes('content.rolex.com') ||
+      parsed.hostname.includes('static.patek.com') ||
+      parsed.hostname.includes('audemarspiguet.com')
+    ) {
+      parsed.search = ''
+      return parsed.toString()
+    }
+  } catch {
+    // keep original url
+  }
+  return url
+}
+
 export function scoreOfficialImage(
   url: string,
   ref: string | null | undefined,
@@ -113,7 +130,8 @@ function pickBestCandidate(
       if (b.score !== a.score) return b.score - a.score
       const aRef = refMatchesUrl(ref, a.url) ? 1 : 0
       const bRef = refMatchesUrl(ref, b.url) ? 1 : 0
-      return bRef - aRef
+      if (bRef !== aRef) return bRef - aRef
+      return a.url.localeCompare(b.url)
     })
   return scored[0]?.url || null
 }
@@ -198,14 +216,15 @@ async function searchWithProviders(
     ? [searchSerperImages, fetchDdgImages]
     : [fetchDdgImages, searchSerperImages]
 
+  const candidates = new Set<string>()
   for (const query of queries) {
     for (const provider of providers) {
       const urls = await provider(query, signal)
-      const best = pickBestCandidate(urls, ref, domains, brandKey)
-      if (best) return best
+      for (const url of urls) candidates.add(url)
     }
   }
-  return null
+
+  return pickBestCandidate(Array.from(candidates), ref, domains, brandKey)
 }
 
 export async function searchOfficialBrandImage(
@@ -226,7 +245,8 @@ export async function searchOfficialBrandImage(
     const queries = buildOfficialQueries(brand, ref, model)
     if (queries.length === 0) return null
 
-    return await searchWithProviders(queries, ref, brand.domains, brand.key, controller.signal)
+    const searched = await searchWithProviders(queries, ref, brand.domains, brand.key, controller.signal)
+    return searched ? normalizeOfficialImageUrl(searched) : null
   } catch {
     return null
   } finally {
