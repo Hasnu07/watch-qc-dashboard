@@ -107,7 +107,7 @@ export default function DashboardPage() {
   const [inventoryTvScroll, setInventoryTvScroll] = useState(false)
   const [tasksPinned, setTasksPinned] = useState(true)
   const [showTasksPanel, setShowTasksPanel] = useState(true)
-  const [compactMode, setCompactMode] = useState(true)
+  const [compactMode, setCompactMode] = useState(false)
   const [filters, setFilters] = useState<InventoryFilters>({
     search: '', watchType: 'all', payment: 'all', location: 'all',
   })
@@ -176,7 +176,7 @@ export default function DashboardPage() {
     const pinned = localStorage.getItem('qc-tasks-pinned') !== '0'
     setTasksPinned(pinned)
     setShowTasksPanel(pinned || localStorage.getItem('qc-show-tasks') !== '0')
-    setCompactMode(localStorage.getItem('qc-compact-cards') !== '0')
+    setCompactMode(localStorage.getItem('qc-compact-cards') === '1')
 
     const params = new URLSearchParams(window.location.search)
     const watchId = params.get('watch')
@@ -316,8 +316,7 @@ export default function DashboardPage() {
     : 'flex flex-1 overflow-hidden min-h-0 h-full w-full'
   const pinnedTasksClass = 'md:fixed md:top-12 md:right-0 md:w-[42%] md:max-w-[42%] md:z-30'
   const inventoryContentClass = 'w-full'
-  const inventoryCardGridClass =
-    'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 w-full'
+  const inventoryCardGridClass = 'inventory-card-grid'
   const inventoryListBuyClass = compactMode
     ? 'inventory-list-buy rounded-xl border overflow-hidden bg-card divide-y divide-default w-full'
     : inventoryCardGridClass
@@ -355,9 +354,10 @@ export default function DashboardPage() {
     ) : (
       <>
         <section className="inventory-section mb-10">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-buy-title text-lg font-bold">Buy</h3>
-            <span className="text-xs text-muted font-medium">{buyWatches.length} watches</span>
+          <div className="inventory-section-head inventory-section-head--buy">
+            <h3 className="inventory-section-title">Acquisitions</h3>
+            <div className="inventory-section-rule" aria-hidden />
+            <span className="inventory-section-badge">{buyWatches.length} Active</span>
           </div>
           {buyWatches.length === 0 ? (
             <p className="text-sm text-muted px-4 py-8 text-center rounded-3xl border border-dashed border-buy bg-panel/60">
@@ -378,9 +378,10 @@ export default function DashboardPage() {
           )}
         </section>
         <section className="inventory-section">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sell-title text-lg font-bold">Sell</h3>
-            <span className="text-xs text-muted font-medium">{sellWatches.length} watches</span>
+          <div className="inventory-section-head inventory-section-head--sell">
+            <h3 className="inventory-section-title">Liquidations</h3>
+            <div className="inventory-section-rule" aria-hidden />
+            <span className="inventory-section-badge">{sellWatches.length} Active</span>
           </div>
           {sellWatches.length === 0 ? (
             <p className="text-sm text-muted px-4 py-8 text-center rounded-3xl border border-dashed border-sell bg-panel/60">

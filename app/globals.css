@@ -218,6 +218,424 @@ html { scrollbar-gutter: stable; }
     border-left: 4px solid var(--color-sell);
   }
 
+  /* Premium inventory cards — Acquisitions / Liquidations mockup */
+  .watch-card-premium {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background: linear-gradient(180deg, rgba(30, 34, 45, 0.92) 0%, rgba(5, 11, 20, 0.96) 100%);
+    cursor: pointer;
+    transition: transform 0.45s ease, box-shadow 0.45s ease, border-color 0.45s ease;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.25);
+  }
+
+  .watch-card-premium:hover {
+    transform: translateY(-6px);
+  }
+
+  .watch-card-premium--buy {
+    box-shadow: 0 0 20px rgba(34, 211, 238, 0.06);
+  }
+  .watch-card-premium--buy:hover {
+    border-color: rgba(34, 211, 238, 0.45);
+    box-shadow: 0 10px 40px rgba(34, 211, 238, 0.14);
+  }
+  .watch-card-premium--buy.watch-card-premium--active {
+    border-color: rgba(34, 211, 238, 0.65);
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.55), 0 10px 40px rgba(34, 211, 238, 0.18);
+  }
+
+  .watch-card-premium--sell {
+    box-shadow: 0 0 20px rgba(251, 146, 60, 0.06);
+  }
+  .watch-card-premium--sell:hover {
+    border-color: rgba(251, 146, 60, 0.45);
+    box-shadow: 0 10px 40px rgba(251, 146, 60, 0.14);
+  }
+  .watch-card-premium--sell.watch-card-premium--active {
+    border-color: rgba(251, 146, 60, 0.65);
+    box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.55), 0 10px 40px rgba(251, 146, 60, 0.18);
+  }
+
+  .watch-card-premium__accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    opacity: 0.45;
+    z-index: 2;
+    transition: opacity 0.45s ease;
+  }
+  .watch-card-premium--buy .watch-card-premium__accent {
+    background: #22d3ee;
+  }
+  .watch-card-premium--sell .watch-card-premium__accent {
+    background: #fb923c;
+  }
+  .watch-card-premium:hover .watch-card-premium__accent {
+    opacity: 1;
+  }
+
+  .watch-card-premium__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1.25rem 1.25rem 0;
+    z-index: 1;
+  }
+
+  .watch-card-premium__heading {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .watch-card-premium__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    margin-bottom: 0.375rem;
+  }
+
+  .watch-card-premium__brand {
+    color: #cbd5e1;
+  }
+
+  .watch-card-premium__meta-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background: #475569;
+    flex-shrink: 0;
+  }
+
+  .watch-card-premium--buy .watch-card-premium__phase {
+    color: #22d3ee;
+  }
+  .watch-card-premium--sell .watch-card-premium__phase {
+    color: #fb923c;
+  }
+
+  .watch-card-premium__title {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.125rem;
+    line-height: 1.35;
+    font-weight: 600;
+    color: #f1f5f9;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    transition: color 0.3s ease;
+  }
+  .watch-card-premium:hover .watch-card-premium__title {
+    color: #fff;
+  }
+
+  .watch-card-premium__tasks-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    flex-shrink: 0;
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .watch-card-premium--buy .watch-card-premium__tasks-btn {
+    color: #22d3ee;
+    background: rgba(34, 211, 238, 0.1);
+    border-color: rgba(34, 211, 238, 0.28);
+  }
+  .watch-card-premium--buy .watch-card-premium__tasks-btn:hover {
+    background: rgba(34, 211, 238, 0.18);
+    border-color: rgba(34, 211, 238, 0.5);
+    box-shadow: 0 0 15px rgba(34, 211, 238, 0.35);
+  }
+  .watch-card-premium--sell .watch-card-premium__tasks-btn {
+    color: #fb923c;
+    background: rgba(251, 146, 60, 0.1);
+    border-color: rgba(251, 146, 60, 0.28);
+  }
+  .watch-card-premium--sell .watch-card-premium__tasks-btn:hover {
+    background: rgba(251, 146, 60, 0.18);
+    border-color: rgba(251, 146, 60, 0.5);
+    box-shadow: 0 0 15px rgba(251, 146, 60, 0.35);
+  }
+
+  .watch-card-premium__image-stage {
+    position: relative;
+    height: 16rem;
+    margin: 1rem 1rem 0.5rem;
+    border-radius: 0.75rem;
+    background: #fff;
+    overflow: hidden;
+    border: 1px solid rgba(226, 232, 240, 0.12);
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  .watch-card-premium__stock-badge {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.625rem;
+    border-radius: 0.5rem;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(51, 65, 85, 0.9);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .watch-card-premium__stock-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .watch-card-premium--buy .watch-card-premium__stock-label {
+    color: #22d3ee;
+  }
+  .watch-card-premium--sell .watch-card-premium__stock-label {
+    color: #fb923c;
+  }
+
+  .watch-card-premium__stock-no {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .watch-card-premium__image-wrap {
+    position: absolute;
+    inset: 0;
+    padding: 1rem;
+  }
+
+  .watch-card-premium__image {
+    object-fit: contain !important;
+    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.7s ease;
+    opacity: 0.95;
+  }
+  .watch-card-premium:hover .watch-card-premium__image {
+    transform: scale(1.08) translateY(-6px);
+    opacity: 1;
+  }
+
+  .watch-card-premium__image-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-muted);
+  }
+
+  .watch-card-premium__fetch-btn {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-accent);
+  }
+  .watch-card-premium__fetch-btn:hover {
+    text-decoration: underline;
+  }
+
+  .watch-card-premium__footer {
+    margin-top: auto;
+    padding: 1.1rem 1.25rem 1.25rem;
+    border-top: 1px solid rgba(51, 65, 85, 0.55);
+    background: rgba(5, 11, 20, 0.45);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .watch-card-premium__valuation-label {
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .watch-card-premium__price-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    margin-top: 0.25rem;
+  }
+
+  .watch-card-premium__price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+
+  .watch-card-premium__profit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.22);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.08);
+  }
+
+  .watch-card-premium__status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--color-muted);
+  }
+
+  .watch-card-premium__status-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .watch-card-premium__status-icon--unpaid {
+    color: #fb7185;
+  }
+  .watch-card-premium__status-icon--paid {
+    color: #34d399;
+    font-weight: 700;
+  }
+
+  .watch-card-premium__task-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .watch-card-premium__pct {
+    font-weight: 700;
+    color: #e2e8f0;
+    flex-shrink: 0;
+  }
+
+  .watch-card-premium__progress-track {
+    width: 100%;
+    height: 6px;
+    border-radius: 9999px;
+    background: rgba(30, 41, 59, 0.85);
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  }
+
+  .watch-card-premium__progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    position: relative;
+    transition: width 1s ease;
+  }
+  .watch-card-premium--buy .watch-card-premium__progress-fill {
+    background: #22d3ee;
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.75);
+  }
+  .watch-card-premium--sell .watch-card-premium__progress-fill {
+    background: #fb923c;
+    box-shadow: 0 0 10px rgba(251, 146, 60, 0.75);
+  }
+
+  .watch-card-premium__fob-link {
+    font-size: 0.8125rem;
+    color: var(--color-accent);
+  }
+  .watch-card-premium__fob-link:hover {
+    text-decoration: underline;
+  }
+
+  .inventory-section-head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .inventory-section-title {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .inventory-section-head--buy .inventory-section-title {
+    color: #22d3ee;
+  }
+  .inventory-section-head--sell .inventory-section-title {
+    color: #fb923c;
+  }
+
+  .inventory-section-rule {
+    flex: 1;
+    height: 1px;
+    background: rgba(51, 65, 85, 0.55);
+  }
+
+  .inventory-section-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .inventory-section-head--buy .inventory-section-badge {
+    color: #22d3ee;
+    background: rgba(34, 211, 238, 0.1);
+    border: 1px solid rgba(34, 211, 238, 0.22);
+  }
+  .inventory-section-head--sell .inventory-section-badge {
+    color: #fb923c;
+    background: rgba(251, 146, 60, 0.1);
+    border: 1px solid rgba(251, 146, 60, 0.22);
+  }
+
+  .inventory-card-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    width: 100%;
+  }
+  @media (min-width: 640px) {
+    .inventory-card-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 1024px) {
+    .inventory-card-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 2rem;
+    }
+  }
+
   .card {
     @apply rounded-xl border bg-card overflow-hidden;
     border-color: var(--color-border);
