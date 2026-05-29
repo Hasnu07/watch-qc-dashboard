@@ -48,9 +48,11 @@ export function verifyMemberPassword(
   password: string,
 ) {
   if (!member.password_hash) return false
-  const keys = [member.login_username?.trim(), member.name.trim()].filter(Boolean) as string[]
-  const uniqueKeys = [...new Set(keys.map(k => k.toLowerCase()))].map(
-    lower => keys.find(k => k.toLowerCase() === lower)!,
-  )
-  return uniqueKeys.some(key => hashPassword(key, password) === member.password_hash)
+  const candidates: string[] = []
+  if (member.login_username?.trim()) candidates.push(member.login_username.trim())
+  if (member.name.trim()) candidates.push(member.name.trim())
+  for (const key of candidates) {
+    if (hashPassword(key, password) === member.password_hash) return true
+  }
+  return false
 }
