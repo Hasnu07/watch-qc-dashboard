@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSseStatus } from '@/components/SseProvider'
+import { useUiSounds } from '@/components/SoundProvider'
 
 const NAV = [
   { href: '/', label: 'Team' },
@@ -15,6 +16,7 @@ const NAV = [
 export default function NavBar() {
   const pathname = usePathname()
   const { connected } = useSseStatus()
+  const { enabled, toggle } = useUiSounds()
 
   return (
     <nav className="sticky top-0 z-50 bg-panel border-b border-default">
@@ -41,6 +43,16 @@ export default function NavBar() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggle}
+            className="sound-toggle-btn"
+            title={enabled ? 'Mute UI sounds' : 'Enable UI sounds'}
+            aria-label={enabled ? 'Mute UI sounds' : 'Enable UI sounds'}
+            aria-pressed={enabled}
+          >
+            {enabled ? '🔊' : '🔇'}
+          </button>
           <span className={`hidden sm:inline text-xs ${connected ? 'text-positive' : 'text-muted'}`}>
             {connected ? 'Live' : 'Offline'}
           </span>

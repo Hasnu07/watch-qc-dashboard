@@ -808,3 +808,23 @@ html { scrollbar-gutter: stable; }
 .text-glow {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
 }
+
+.sound-toggle-btn {
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.25rem 0.375rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  cursor: pointer;
+  transition: transform 0.12s ease, background-color 0.12s ease;
+}
+
+.sound-toggle-btn:hover {
+  background: var(--color-panel);
+  transform: scale(1.06);
+}
+
+.sound-toggle-btn:active {
+  transform: scale(0.94);
+}

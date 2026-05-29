@@ -3,6 +3,7 @@ import { Luxurious_Script } from 'next/font/google'
 import './globals.css'
 import NavBar from '@/components/NavBar'
 import { SseProvider } from '@/components/SseProvider'
+import { SoundProvider } from '@/components/SoundProvider'
 
 const luxuriousScript = Luxurious_Script({
   weight: '400',
@@ -28,8 +29,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={luxuriousScript.variable}>
       <body className="bg-surface text-ink min-h-screen flex flex-col">
         <SseProvider>
-          <NavBar />
-          <main className="flex-1 flex flex-col">{children}</main>
+          <SoundProvider>
+            <NavBar />
+            <main className="flex-1 flex flex-col">{children}</main>
+          </SoundProvider>
         </SseProvider>
       </body>
     </html>
