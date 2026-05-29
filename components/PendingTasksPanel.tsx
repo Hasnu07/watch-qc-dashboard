@@ -56,7 +56,7 @@ function TaskStrip({
   const start = new Date(startedAt)
   const urgency = getPipelineUrgency(start, now)
   const elapsed = formatPipelineElapsed(start, now)
-  const showShimmer = urgency !== 'fresh'
+  const showShimmer = urgency === 'overdue' || urgency === 'warning'
 
   return (
     <div
@@ -67,7 +67,11 @@ function TaskStrip({
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStripClick?.() }}
     >
       {showShimmer && (
-        <div className="task-strip-shimmer" style={{ animationDelay: `${shimmerDelay}s` }} />
+        <div
+          className="task-strip-shimmer"
+          style={{ animationDelay: `${shimmerDelay}s` }}
+          aria-hidden
+        />
       )}
       <div className="task-strip-body">
         <span className="task-strip-icon" aria-hidden>{URGENCY_ICONS[urgency]}</span>
@@ -76,7 +80,11 @@ function TaskStrip({
       <div className="task-strip-meta">
         <div
           className="task-strip-timer"
-          style={urgency === 'overdue' || urgency === 'warning' ? { animationDelay: `${shimmerDelay}s` } : undefined}
+          style={
+            urgency === 'overdue' || urgency === 'warning'
+              ? { animationDelay: `${shimmerDelay + 0.25}s` }
+              : undefined
+          }
         >
           <span className="task-strip-timer-label">{URGENCY_LABELS[urgency]}</span>
           <span className="task-strip-timer-value font-mono-data">{elapsed}</span>
@@ -248,7 +256,7 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
                   <>
                     {team_tasks.length > 0 && (
                       <div className="mb-4">
-                        <h4 className="pending-section-title">Team tasks</h4>
+                        <h4 className="pending-section-title">Team Tasks</h4>
                         <div className="task-strip-list">
                           {team_tasks.map(t => {
                             const delay = stripIndex * 0.5
@@ -273,7 +281,7 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
 
                     {watch_groups.length > 0 && (
                       <div>
-                        <h4 className="pending-section-title">Watch tasks</h4>
+                        <h4 className="pending-section-title">Watch Tasks</h4>
                         <div className="space-y-4">
                           {watch_groups.map(group => {
                             const phase = group.phase === 'SELL' ? 'SELL' : 'BUY'
