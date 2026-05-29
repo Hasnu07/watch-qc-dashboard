@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
+import { getProfileAvatarUrl } from '@/lib/profile-avatars'
 
 interface LoginProfile {
   id: number
@@ -9,6 +10,7 @@ interface LoginProfile {
   department: string
   role: string
   login_username: string | null
+  avatar_url?: string | null
 }
 
 const PROFILE_COLORS = [
@@ -49,6 +51,51 @@ function ProfileSmiley({ large }: { large?: boolean }) {
         strokeLinecap="round"
       />
     </svg>
+  )
+}
+
+function profileAvatarSrc(profile: { name: string; avatar_url?: string | null }) {
+  return profile.avatar_url ?? getProfileAvatarUrl(profile.name)
+}
+
+function ProfileAvatar({
+  name,
+  role,
+  avatarUrl,
+  large,
+}: {
+  name: string
+  role: string
+  avatarUrl: string | null
+  large?: boolean
+}) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const showImage = Boolean(avatarUrl) && !imgFailed
+
+  return (
+    <div
+      className={large ? 'netflix-profile__avatar netflix-profile__avatar--large' : 'netflix-profile__avatar'}
+      style={showImage ? undefined : { background: profileColor(name) }}
+    >
+      {showImage && avatarUrl ? (
+        <Image
+          src={avatarUrl}
+          alt=""
+          fill
+          sizes={large ? '140px' : '120px'}
+          className="netflix-profile__avatar-img"
+          unoptimized
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        <ProfileSmiley large={large} />
+      )}
+      {role === 'MASTER' && (
+        <span className="netflix-profile__badge" title="Master">
+          ★
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -153,15 +200,11 @@ export default function LoginPage() {
                   className="netflix-profile"
                   onClick={() => pickProfile(profile)}
                 >
-                  <div
-                    className="netflix-profile__avatar"
-                    style={{ background: profileColor(profile.name) }}
-                  >
-                    <ProfileSmiley />
-                    {profile.role === 'MASTER' && (
-                      <span className="netflix-profile__badge" title="Master">★</span>
-                    )}
-                  </div>
+                  <ProfileAvatar
+                    name={profile.name}
+                    role={profile.role}
+                    avatarUrl={profileAvatarSrc(profile)}
+                  />
                   <span className="netflix-profile__name">{profile.name}</span>
                 </button>
               ))}
@@ -174,12 +217,12 @@ export default function LoginPage() {
             ← Profiles
           </button>
 
-          <div
-            className="netflix-profile__avatar netflix-profile__avatar--large"
-            style={{ background: profileColor(selected.name) }}
-          >
-            <ProfileSmiley large />
-          </div>
+          <ProfileAvatar
+            name={selected.name}
+            role={selected.role}
+            avatarUrl={profileAvatarSrc(selected)}
+            large
+          />
 
           <h2 className="netflix-login__profile-name">{selected.name}</h2>
           <p className="netflix-login__subtitle">Enter your password</p>

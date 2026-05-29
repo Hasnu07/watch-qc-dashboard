@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getProfileAvatarUrl } from '@/lib/profile-avatars'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +17,12 @@ export async function GET() {
         login_username: true,
       },
     })
-    return NextResponse.json(members)
+    return NextResponse.json(
+      members.map(member => ({
+        ...member,
+        avatar_url: getProfileAvatarUrl(member.name),
+      })),
+    )
   } catch (err) {
     console.error(err)
     return NextResponse.json({ error: 'Failed to load profiles' }, { status: 500 })
