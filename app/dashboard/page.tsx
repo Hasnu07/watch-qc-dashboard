@@ -12,12 +12,11 @@ import AutoScrollViewport from '@/components/AutoScrollViewport'
 import ConfirmRemoveModal from '@/components/ConfirmRemoveModal'
 import InventoryToolbar, { type InventoryFilters } from '@/components/InventoryToolbar'
 import ImportInboxPanel from '@/components/ImportInboxPanel'
+import DashboardToolsMenu from '@/components/DashboardToolsMenu'
 import CommandPalette from '@/components/CommandPalette'
 import SkeletonCard from '@/components/SkeletonCard'
-import { formatCurrency } from '@/lib/utils'
-import { useSseStatus } from '@/components/SseProvider'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
-import { DEPT_ORDER, DEPT_CONFIG, type Department } from '@/lib/ui-constants'
+import { DEPT_ORDER, type Department } from '@/lib/ui-constants'
 
 type WatchStage = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
@@ -92,7 +91,6 @@ function matchesSearch(watch: Watch, q: string): boolean {
 }
 
 export default function DashboardPage() {
-  const { connected: sseConnected } = useSseStatus()
   const [watches, setWatches] = useState<Watch[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddWatch, setShowAddWatch] = useState(false)
@@ -109,7 +107,7 @@ export default function DashboardPage() {
   const [inventoryTvScroll, setInventoryTvScroll] = useState(false)
   const [tasksPinned, setTasksPinned] = useState(true)
   const [showTasksPanel, setShowTasksPanel] = useState(true)
-  const [compactMode, setCompactMode] = useState(false)
+  const [compactMode, setCompactMode] = useState(true)
   const [filters, setFilters] = useState<InventoryFilters>({
     search: '', watchType: 'all', payment: 'all', location: 'all',
   })
@@ -178,7 +176,7 @@ export default function DashboardPage() {
     const pinned = localStorage.getItem('qc-tasks-pinned') !== '0'
     setTasksPinned(pinned)
     setShowTasksPanel(pinned || localStorage.getItem('qc-show-tasks') !== '0')
-    setCompactMode(localStorage.getItem('qc-compact-cards') === '1' || window.innerWidth < 768)
+    setCompactMode(localStorage.getItem('qc-compact-cards') !== '0')
   }, [])
 
   useKeyboardShortcuts({
@@ -245,17 +243,6 @@ export default function DashboardPage() {
     setActiveTab('inventory')
   }
 
-  const deptCounts = DEPT_ORDER.reduce((acc, dept) => {
-    acc[dept] = watches.filter(w => hasIncompleteDept(w, dept) || w.stage === dept).length
-    return acc
-  }, {} as Record<Department, number>)
-
-  const toggleAutoScroll = () => {
-    const next = !autoScroll
-    setAutoScroll(next)
-    localStorage.setItem('qc-autoscroll', next ? '1' : '0')
-  }
-
   const toggleInventoryTvScroll = () => {
     const next = !inventoryTvScroll
     setInventoryTvScroll(next)
@@ -305,16 +292,16 @@ export default function DashboardPage() {
       <div>{children}</div>
     )
 
-  const viewportHeightClass = 'h-[calc(100dvh-5.25rem)] max-h-[calc(100dvh-5.25rem)]'
+  const viewportHeightClass = 'h-[calc(100dvh-3rem)] max-h-[calc(100dvh-3rem)]'
   const splitRowClass = usePageScrollLayout
     ? 'flex w-full'
     : 'flex flex-1 overflow-hidden min-h-0 h-full w-full'
-  const pinnedTasksClass = 'md:fixed md:top-[5.25rem] md:right-0 md:w-[42%] md:max-w-[42%] md:z-30'
-  const inventoryGridClass = !showTasksPanel
-    ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 sm:gap-4'
-    : inventoryTvScroll
-      ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4'
-      : 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-2 2xl:grid-cols-3'
+  const pinnedTasksClass = 'md:fixed md:top-12 md:right-0 md:w-[42%] md:max-w-[42%] md:z-30'
+  const inventoryGridClass = compactMode
+    ? 'rounded-xl border border-default overflow-hidden bg-card divide-y divide-default'
+    : !showTasksPanel
+      ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 sm:gap-4'
+      : 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4'
   const leftWidthClass = showTasksPanel
     ? 'w-full md:w-[58%] md:max-w-[58%] md:flex-[0_0_58%] shrink-0'
     : 'w-full flex-1 min-w-0'
@@ -345,10 +332,10 @@ export default function DashboardPage() {
       </div>
     ) : (
       <>
-        <section>
-          <div className="flex items-center gap-3 mb-4 px-1">
-            <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-ink">Buy Inventory</h3>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-default bg-panel">{buyWatches.length}</span>
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <h3 className="text-sm font-semibold text-ink">Buy</h3>
+            <span className="text-xs text-muted">{buyWatches.length} watches</span>
           </div>
           {buyWatches.length === 0 ? (
             <p className="text-sm text-muted px-4 py-8 text-center rounded-3xl border border-dashed border-default bg-panel">
@@ -369,9 +356,9 @@ export default function DashboardPage() {
           )}
         </section>
         <section>
-          <div className="flex items-center gap-3 mb-4 px-1">
-            <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-accent">Sell Inventory</h3>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-accent/30 bg-accent/5 text-accent">{sellWatches.length}</span>
+          <div className="flex items-center justify-between mb-2 px-1">
+            <h3 className="text-sm font-semibold text-accent">Sell</h3>
+            <span className="text-xs text-muted">{sellWatches.length} watches</span>
           </div>
           {sellWatches.length === 0 ? (
             <p className="text-sm text-muted px-4 py-8 text-center rounded-3xl border border-dashed border-default bg-panel">
@@ -420,103 +407,60 @@ export default function DashboardPage() {
       <div className={splitRowClass}>
         {/* LEFT — Inventory */}
         <div className={`flex flex-col ${leftWidthClass} ${usePageScrollLayout ? '' : `${panelHeightClass} min-h-0 overflow-hidden`} border-r border-default ${activeTab === 'inventory' ? 'flex' : 'hidden'} md:flex`}>
-          <div className={`px-4 border-b border-default bg-card sm:px-8 flex-shrink-0 ${inventoryTvScroll ? 'py-3' : 'py-5 sm:py-6'}`}>
-            <div className={`flex items-center justify-between gap-3 ${inventoryTvScroll ? '' : 'mb-4'}`}>
-              <div>
-                <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink tracking-wide">Watch Pipeline</h2>
-                <p className="text-muted text-sm mt-1">
-                  {buyWatches.length} buy · {sellWatches.length} sell · {watches.length} total
-                  {inventoryTvScroll && <span className="text-accent font-semibold"> · TV mode</span>}
+          <div className={`px-4 border-b border-default bg-panel sm:px-6 flex-shrink-0 ${inventoryTvScroll ? 'py-3' : 'py-4'}`}>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-ink">Inventory</h2>
+                <p className="text-xs text-muted mt-0.5">
+                  {buyWatches.length} buy · {sellWatches.length} sell
+                  {pipelineStats && pipelineStats.stale_count > 0 && (
+                    <span className="text-negative"> · {pipelineStats.stale_count} need attention</span>
+                  )}
                 </p>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-                <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${sseConnected ? 'text-accent border-accent/30 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-accent live-dot' : 'bg-muted'}`} />
-                  {sseConnected ? 'Live' : 'Polling'}
-                </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {inventoryTvScroll ? (
-                  <>
-                    {showTasksPanel && (
-                      <button type="button" onClick={toggleShowTasksPanel} title="Hide tasks panel"
-                        className="hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border text-muted border-default bg-panel hover:text-ink">
-                        Hide tasks
-                      </button>
-                    )}
-                    {!showTasksPanel && (
-                      <button type="button" onClick={toggleShowTasksPanel} title="Show tasks panel"
-                        className="hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border text-accent border-accent/40 bg-accent/5">
-                        Show tasks
-                      </button>
-                    )}
-                    <button type="button" onClick={exitTvMode} title="Exit TV display mode"
-                      className="inline-flex text-[11px] font-semibold px-4 py-1.5 rounded-full border border-ink/20 bg-ink text-card hover:opacity-90 transition-opacity">
-                      Exit TV mode
-                    </button>
-                  </>
+                  <button type="button" onClick={exitTvMode} className="btn-secondary text-xs">Exit TV</button>
                 ) : (
                   <>
-                    <button onClick={() => setShowCommandPalette(true)} title="Command palette (⌘K)" className="btn-ghost hidden sm:inline-flex text-xs">⌘K</button>
-                    <a href="/api/watches/export" download className="btn-ghost hidden sm:inline-flex text-xs">Export</a>
-                    <button onClick={() => setShowPasteMessage(true)} title="Paste WhatsApp message" className="btn-secondary text-xs sm:text-sm">
-                      <span className="hidden sm:inline">Paste</span><span className="sm:hidden">📋</span>
+                    <button onClick={() => { setAddWatchStock(''); setShowAddWatch(true) }} className="btn-primary text-sm">
+                      + Add
                     </button>
-                    <button type="button" onClick={toggleInventoryTvScroll} title="Auto-scroll inventory for TV display"
-                      className="inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border text-muted border-default bg-panel hover:text-ink transition-colors">
-                      TV scroll
-                    </button>
-                    <button onClick={() => { setAddWatchStock(''); setShowAddWatch(true) }} className="btn-primary text-xs sm:text-sm">
-                      <span className="text-lg leading-none">+</span>
-                      <span className="hidden sm:inline">Add Watch</span>
-                    </button>
+                    <DashboardToolsMenu
+                      onCommandPalette={() => setShowCommandPalette(true)}
+                      onPaste={() => setShowPasteMessage(true)}
+                      onTvScroll={toggleInventoryTvScroll}
+                      onBulkFetch={startBulkImageFetch}
+                      bulkFetching={bulkFetching}
+                      missingImageCount={missingImageCount}
+                      inventoryTvScroll={inventoryTvScroll}
+                    />
                   </>
                 )}
               </div>
             </div>
 
-            {!inventoryTvScroll && pipelineStats && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                {[
-                  ['Pipeline value', formatCurrency(pipelineStats.total_pipeline_value), false],
-                  ['Stale', String(pipelineStats.stale_count), pipelineStats.stale_count > 0],
-                  ['Avg sell margin', pipelineStats.avg_sell_margin != null ? formatCurrency(pipelineStats.avg_sell_margin) : '—', false],
-                  ['On pipeline', String(pipelineStats.total_watches), false],
-                ].map(([label, value, warn]) => (
-                  <div key={label as string} className="rounded-2xl bg-panel border border-default px-4 py-3">
-                    <div className="section-label text-[9px]">{label as string}</div>
-                    <div className={`font-display text-lg font-semibold ${warn ? 'text-accent' : 'text-ink'}`}>{value as string}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {!inventoryTvScroll && (
             <>
             <ImportInboxPanel onImported={fetchWatches} />
 
-            {missingImageCount > 0 && (
-              <div className="flex flex-wrap items-center gap-3 mb-4">
-                <button type="button" disabled={bulkFetching} onClick={startBulkImageFetch}
-                  className="btn-ghost text-xs sm:text-sm disabled:opacity-50">
-                  {bulkFetching ? 'Fetching missing images…' : `Fetch missing images (${missingImageCount})`}
-                </button>
-                {bulkFetchMsg && <span className="text-xs text-muted">{bulkFetchMsg}</span>}
-              </div>
+            {bulkFetchMsg && (
+              <p className="text-xs text-muted mb-3">{bulkFetchMsg}</p>
             )}
 
-            {/* Stock-first quick entry */}
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-3">
               <input
                 type="text"
                 value={quickStock}
                 onChange={e => setQuickStock(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && quickStock.trim()) openAddWithStock(quickStock) }}
-                placeholder="Enter stock # to add…"
+                placeholder="Quick add by stock #"
                 className="input-field flex-1"
               />
               <button type="button" disabled={!quickStock.trim()}
                 onClick={() => openAddWithStock(quickStock)}
-                className="btn-primary disabled:opacity-40 px-6">
-                Go
+                className="btn-secondary disabled:opacity-40 px-4">
+                Add
               </button>
             </div>
 
@@ -527,24 +471,8 @@ export default function DashboardPage() {
               onCompactModeChange={toggleCompact}
             />
 
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-3">
-              {DEPT_ORDER.map(dept => {
-                const cfg = DEPT_CONFIG[dept]
-                const active = deptFilter === dept
-                return (
-                  <button key={dept} type="button" onClick={() => setDeptFilter(active ? null : dept)}
-                    className={`${cfg.bg} rounded-2xl px-3 py-3 flex items-center gap-3 text-left transition-all ${active ? 'ring-2 ring-accent ring-offset-2 ring-offset-card' : 'hover:border-accent/30'}`}>
-                    <span className="text-lg sm:text-2xl">{cfg.icon}</span>
-                    <div>
-                      <div className={`text-[9px] font-bold uppercase tracking-widest sm:text-xs ${cfg.color}`}>{cfg.label}</div>
-                      <div className={`font-black text-xl leading-none sm:text-2xl ${cfg.countColor}`}>{deptCounts[dept]}</div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
             {deptFilter && (
-              <button type="button" onClick={() => setDeptFilter(null)} className="mt-2 text-xs text-accent font-semibold hover:underline">
+              <button type="button" onClick={() => setDeptFilter(null)} className="mt-2 text-xs text-accent hover:underline">
                 Clear department filter
               </button>
             )}
@@ -577,49 +505,45 @@ export default function DashboardPage() {
         {/* RIGHT — Tasks sidebar */}
         {showTasksPanel && (
         <div className={`flex flex-col shrink-0 w-full md:w-[42%] md:max-w-[42%] md:flex-[0_0_42%] border-l border-default bg-surface ${useStickyTasks ? `${viewportHeightClass} overflow-hidden ${pinnedTasksClass}` : usePageScrollLayout ? '' : `${viewportHeightClass} min-h-0 overflow-hidden`} ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
-          <div className="flex items-center justify-between px-4 py-5 border-b border-default bg-card sm:px-8 flex-shrink-0">
+          <div className="flex items-center justify-between px-4 py-4 border-b border-default bg-panel sm:px-6 flex-shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <button type="button" onClick={() => setActiveTab('inventory')}
-                className="md:hidden flex-shrink-0 w-9 h-9 rounded-full bg-panel border border-default text-ink font-bold text-lg leading-none">
+                className="md:hidden flex-shrink-0 w-8 h-8 rounded-lg bg-card border border-default text-ink text-sm">
                 ←
               </button>
               <div className="min-w-0">
-                <h2 className="font-display text-2xl font-bold text-ink tracking-wide">Watch Tasks</h2>
+                <h2 className="text-lg font-semibold text-ink">Tasks</h2>
               {focusedWatch ? (
-                <p className="text-accent text-xs mt-1 font-medium sm:text-sm truncate max-w-[240px] sm:max-w-none">
+                <p className="text-xs mt-0.5 text-muted truncate max-w-[240px] sm:max-w-none">
                   #{focusedWatch.stock_no || focusedWatch.id} {focusedWatch.brand} {focusedWatch.model}
                 </p>
               ) : (
-                <p className="text-muted text-xs mt-0.5 font-medium sm:text-sm">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                <p className="text-xs mt-0.5 text-muted">
+                  {taskTab === 'sell' ? 'Sell workflow' : 'Buy workflow'}
                 </p>
               )}
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <button type="button" onClick={toggleTasksPinned} title="Keep tasks panel sticky while scrolling inventory"
-                className={`hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${tasksPinned ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
-                {tasksPinned ? 'Pinned' : 'Pin tasks'}
-              </button>
-              <button type="button" onClick={toggleAutoScroll} title="Auto-scroll task list"
-                className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${autoScroll ? 'text-accent border-accent/40 bg-accent/5' : 'text-muted border-default bg-panel'}`}>
-                {autoScroll ? 'Task scroll on' : 'Task scroll'}
+              <button type="button" onClick={toggleTasksPinned} title="Pin tasks while scrolling"
+                className={`hidden md:inline-flex btn-ghost text-xs ${tasksPinned ? 'text-accent' : ''}`}>
+                {tasksPinned ? 'Pinned' : 'Pin'}
               </button>
               <button type="button" onClick={toggleShowTasksPanel} title="Hide tasks panel"
-                className="hidden md:inline-flex text-[11px] font-semibold px-3 py-1.5 rounded-full border text-muted border-default bg-panel hover:text-ink">
+                className="hidden md:inline-flex btn-ghost text-xs">
                 Hide
               </button>
             </div>
           </div>
 
-          <div className={`flex border-b border-default bg-card/95 backdrop-blur-sm px-4 gap-2 pt-2 flex-shrink-0 ${taskPanelLocked ? 'sticky top-0 z-20' : ''}`}>
+          <div className={`flex border-b border-default bg-panel px-4 gap-1 flex-shrink-0 ${taskPanelLocked ? 'sticky top-0 z-20' : ''}`}>
             <button onClick={() => { setTaskTab('buy'); setActiveTab('tasks') }}
-              className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${taskTab === 'buy' ? 'border-accent text-accent' : 'border-transparent text-muted'}`}>
-              Buy Tasks
+              className={`px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${taskTab === 'buy' ? 'border-accent text-ink' : 'border-transparent text-muted'}`}>
+              Buy
             </button>
             <button onClick={() => { setTaskTab('sell'); setActiveTab('sell') }}
-              className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${taskTab === 'sell' ? 'border-accent text-accent' : 'border-transparent text-muted'}`}>
-              Sell Tasks
+              className={`px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${taskTab === 'sell' ? 'border-accent text-ink' : 'border-transparent text-muted'}`}>
+              Sell
             </button>
           </div>
 

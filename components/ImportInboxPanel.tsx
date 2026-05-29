@@ -46,10 +46,10 @@ export default function ImportInboxPanel({ onImported }: Props) {
   if (items.length === 0) return null
 
   return (
-    <div className="mb-4 rounded-3xl border border-default bg-sand/30 overflow-hidden">
+    <div className="mb-4 rounded-xl border border-default bg-panel overflow-hidden">
       <button type="button" onClick={() => setOpen(o => !o)}
-        className="w-full px-5 py-4 flex items-center justify-between text-left">
-        <span className="font-display text-sm font-bold uppercase tracking-widest text-ink">Import inbox · {items.length} need review</span>
+        className="w-full px-4 py-3 flex items-center justify-between text-left">
+        <span className="text-sm font-medium text-ink">Review imports · {items.length}</span>
         <span className="text-muted text-xs">{open ? '▾' : '▸'}</span>
       </button>
       {open && (
