@@ -152,8 +152,8 @@ model TeamMember {
   name              String
   whatsapp_number   String          @unique
   department        Department      @default(LOGISTICS)
-  login_username    String          @unique
-  password_hash     String
+  login_username    String?         @unique
+  password_hash     String?
   role              MemberRole      @default(MEMBER)
   created_at        DateTime        @default(now())
   tasks_assigned_to Task[]          @relation("AssignedTo")

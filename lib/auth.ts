@@ -54,7 +54,7 @@ export async function getSessionMember(token: string | undefined): Promise<Sessi
   return {
     id: m.id,
     name: m.name,
-    loginUsername: m.login_username,
+    loginUsername: m.login_username ?? m.name,
     role: m.role,
   }
 }

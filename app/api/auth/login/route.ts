@@ -17,11 +17,11 @@ export async function POST(req: NextRequest) {
       where: { login_username: { equals: username, mode: 'insensitive' } },
     })
 
-    if (!member) {
+    if (!member || !member.password_hash) {
       return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 })
     }
 
-    const expectedHash = hashPassword(member.login_username, password)
+    const expectedHash = hashPassword(member.login_username ?? member.name, password)
     if (member.password_hash !== expectedHash) {
       return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 })
     }

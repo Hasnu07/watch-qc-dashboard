@@ -1,21 +1,21 @@
--- CreateEnum
-CREATE TYPE "MemberRole" AS ENUM ('MEMBER', 'MASTER');
+-- CreateEnum (idempotent)
+DO $$ BEGIN
+  CREATE TYPE "MemberRole" AS ENUM ('MEMBER', 'MASTER');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
--- AlterTable: add auth columns with temporary defaults for existing rows
-ALTER TABLE "TeamMember" ADD COLUMN "login_username" TEXT;
-ALTER TABLE "TeamMember" ADD COLUMN "password_hash" TEXT;
-ALTER TABLE "TeamMember" ADD COLUMN "role" "MemberRole" NOT NULL DEFAULT 'MEMBER';
+-- AlterTable: nullable first so existing rows are safe; seed backfills values
+ALTER TABLE "TeamMember" ADD COLUMN IF NOT EXISTS "login_username" TEXT;
+ALTER TABLE "TeamMember" ADD COLUMN IF NOT EXISTS "password_hash" TEXT;
+ALTER TABLE "TeamMember" ADD COLUMN IF NOT EXISTS "role" "MemberRole" NOT NULL DEFAULT 'MEMBER';
 
 UPDATE "TeamMember" SET "login_username" = "name" WHERE "login_username" IS NULL;
-UPDATE "TeamMember" SET "password_hash" = '' WHERE "password_hash" IS NULL;
 
-ALTER TABLE "TeamMember" ALTER COLUMN "login_username" SET NOT NULL;
-ALTER TABLE "TeamMember" ALTER COLUMN "password_hash" SET NOT NULL;
-
-CREATE UNIQUE INDEX "TeamMember_login_username_key" ON "TeamMember"("login_username");
+CREATE UNIQUE INDEX IF NOT EXISTS "TeamMember_login_username_key" ON "TeamMember"("login_username");
 
 -- CreateTable
-CREATE TABLE "MemberSession" (
+CREATE TABLE IF NOT EXISTS "MemberSession" (
     "token" TEXT NOT NULL,
     "team_member_id" INTEGER NOT NULL,
     "expires_at" TIMESTAMP(3) NOT NULL,
@@ -24,4 +24,8 @@ CREATE TABLE "MemberSession" (
     CONSTRAINT "MemberSession_pkey" PRIMARY KEY ("token")
 );
 
-ALTER TABLE "MemberSession" ADD CONSTRAINT "MemberSession_team_member_id_fkey" FOREIGN KEY ("team_member_id") REFERENCES "TeamMember"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "MemberSession" ADD CONSTRAINT "MemberSession_team_member_id_fkey" FOREIGN KEY ("team_member_id") REFERENCES "TeamMember"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
