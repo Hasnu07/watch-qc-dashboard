@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { visibleWatchFilter } from '@/lib/watch-visibility'
 import { getTaskLabel } from '@/lib/task-labels'
+import { getOrInitPipelineTimerEpoch, pipelineStartedAtIso } from '@/lib/pipeline-timer-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,7 @@ function watchLabel(w: { brand: string | null; model: string | null; name: strin
 export async function GET() {
   try {
     const visibleFilter = await visibleWatchFilter()
+    const pipelineEpoch = await getOrInitPipelineTimerEpoch()
 
     const [members, teamTasks, watchTasks] = await Promise.all([
       prisma.teamMember.findMany({ orderBy: { name: 'asc' } }),
@@ -68,6 +70,7 @@ export async function GET() {
           label: string
           department: string
           phase: string
+          pipeline_started_at: string
         }>
       }>()
 
@@ -87,6 +90,7 @@ export async function GET() {
           label: getTaskLabel(t.task_type, phase),
           department: t.department,
           phase,
+          pipeline_started_at: pipelineStartedAtIso(t.created_at, pipelineEpoch),
         })
       }
 
@@ -103,7 +107,10 @@ export async function GET() {
           department: member.department,
         },
         pending_count,
-        team_tasks: memberTeamTasks,
+        team_tasks: memberTeamTasks.map(t => ({
+          ...t,
+          pipeline_started_at: pipelineStartedAtIso(t.created_at, pipelineEpoch),
+        })),
         watch_groups,
       }
     })

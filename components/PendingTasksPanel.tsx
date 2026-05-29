@@ -2,21 +2,45 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { DEPT_CONFIG, type Department } from '@/lib/ui-constants'
+import { formatPipelineElapsed, isOverPipelineSla } from '@/lib/pipeline-timer'
 
 interface MemberPending {
   member: { id: number; name: string; department: Department }
   pending_count: number
-  team_tasks: Array<{ id: number; message_text: string; date: string; created_at: string }>
+  team_tasks: Array<{ id: number; message_text: string; date: string; created_at: string; pipeline_started_at: string }>
   watch_groups: Array<{
     watch_id: number
     watch_label: string
     phase: string
-    tasks: Array<{ id: number; task_type: string; label: string; department: string; phase: string }>
+    tasks: Array<{ id: number; task_type: string; label: string; department: string; phase: string; pipeline_started_at: string }>
   }>
 }
 
 interface PendingTasksPanelProps {
   onOpenWatch?: (watchId: number, phase: 'BUY' | 'SELL') => void
+}
+
+function PipelineTimer({ startedAt }: { startedAt: string }) {
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const start = new Date(startedAt)
+  const overSla = isOverPipelineSla(start, now)
+
+  return (
+    <span
+      className={`flex-shrink-0 text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded ${
+        overSla ? 'text-negative bg-negative/10' : 'text-muted bg-panel'
+      }`}
+      title="Time in pipeline"
+    >
+      {formatPipelineElapsed(start, now)}
+    </span>
+  )
 }
 
 function MemberAvatar({ name, department }: { name: string; department: Department }) {
@@ -152,7 +176,8 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
                                 className="mt-0.5 w-4 h-4 rounded border border-default flex-shrink-0 hover:border-accent disabled:opacity-50"
                                 aria-label="Mark complete"
                               />
-                              <span className="text-ink leading-snug">{t.message_text}</span>
+                              <span className="text-ink leading-snug flex-1 min-w-0">{t.message_text}</span>
+                              <PipelineTimer startedAt={t.pipeline_started_at} />
                             </li>
                           ))}
                         </ul>
@@ -179,7 +204,8 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
                                 {group.tasks.map(t => (
                                   <li key={t.id} className="text-sm text-ink flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
-                                    {t.label}
+                                    <span className="flex-1 min-w-0">{t.label}</span>
+                                    <PipelineTimer startedAt={t.pipeline_started_at} />
                                   </li>
                                 ))}
                               </ul>
