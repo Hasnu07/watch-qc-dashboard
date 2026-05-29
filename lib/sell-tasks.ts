@@ -28,6 +28,13 @@ export const DEFAULT_SELL_TEMPLATES = [
   { label: 'Make Invoice to Client',                         department: 'ACCOUNTING', task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Hassan',  order: 5 },
 ]
 
+/** Sell tasks stored as label in task_type that gate downstream pipeline work. */
+export const SELL_BLOCKING_TASK_LABELS = new Set([
+  'Logistics Handled',
+  'Share Payment Status and Amount to Accounts Team',
+  'Set Status on FOB',
+])
+
 // Ensures builtin templates exist. Only fills in default_assignee on creation
 // or when the existing row has none — never overwrites a user-set assignee.
 export async function ensureDefaultTemplates() {

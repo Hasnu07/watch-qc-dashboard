@@ -1,10 +1,13 @@
 'use client'
 
-import type { PendingSummary } from '@/lib/pending-dashboard'
+import type { PendingFilter, PendingSummary } from '@/lib/pending-dashboard'
 
 interface PendingOpsSidebarProps {
   summary: PendingSummary | null
   loading?: boolean
+  filter?: PendingFilter
+  onFilterChange?: (filter: PendingFilter) => void
+  onFocusUnassigned?: () => void
 }
 
 function DeptBar({ label, count, max }: { label: string; count: number; max: number }) {
@@ -22,7 +25,39 @@ function DeptBar({ label, count, max }: { label: string; count: number; max: num
   )
 }
 
-export default function PendingOpsSidebar({ summary, loading }: PendingOpsSidebarProps) {
+function StatButton({
+  label,
+  value,
+  valueClass,
+  onClick,
+  disabled,
+}: {
+  label: string
+  value: string | number
+  valueClass?: string
+  onClick?: () => void
+  disabled?: boolean
+}) {
+  const Tag = onClick && !disabled ? 'button' : 'div'
+  return (
+    <Tag
+      type={Tag === 'button' ? 'button' : undefined}
+      className={`pending-ops-stat ${onClick && !disabled ? 'pending-ops-stat-clickable' : ''}`}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      <span className="pending-ops-stat-label">{label}</span>
+      <span className={`pending-ops-stat-value ${valueClass ?? 'text-ink'}`}>{value}</span>
+    </Tag>
+  )
+}
+
+export default function PendingOpsSidebar({
+  summary,
+  loading,
+  onFilterChange,
+  onFocusUnassigned,
+}: PendingOpsSidebarProps) {
   if (loading || !summary) {
     return (
       <aside className="pending-ops-sidebar">
@@ -74,26 +109,30 @@ export default function PendingOpsSidebar({ summary, loading }: PendingOpsSideba
       </div>
 
       <div className="pending-ops-card pending-ops-stats-grid">
-        <div className="pending-ops-stat">
-          <span className="pending-ops-stat-label">Overdue</span>
-          <span className={`pending-ops-stat-value ${summary.overdue_count > 0 ? 'text-negative' : 'text-ink'}`}>
-            {summary.overdue_count}
-          </span>
-        </div>
-        <div className="pending-ops-stat">
-          <span className="pending-ops-stat-label">Unassigned</span>
-          <span className={`pending-ops-stat-value ${summary.unassigned_count > 0 ? 'text-negative' : 'text-ink'}`}>
-            {summary.unassigned_count}
-          </span>
-        </div>
-        <div className="pending-ops-stat">
-          <span className="pending-ops-stat-label">Cleared 24h</span>
-          <span className="pending-ops-stat-value text-positive">{summary.cleared_24h}</span>
-        </div>
-        <div className="pending-ops-stat">
-          <span className="pending-ops-stat-label">Oldest overdue</span>
-          <span className="pending-ops-stat-value text-ink text-base font-mono-data">{summary.oldest_overdue_label}</span>
-        </div>
+        <StatButton
+          label="Overdue"
+          value={summary.overdue_count}
+          valueClass={summary.overdue_count > 0 ? 'text-negative' : 'text-ink'}
+          onClick={() => onFilterChange?.('overdue')}
+          disabled={!onFilterChange || summary.overdue_count === 0}
+        />
+        <StatButton
+          label="Unassigned"
+          value={summary.unassigned_count}
+          valueClass={summary.unassigned_count > 0 ? 'text-negative' : 'text-ink'}
+          onClick={() => onFocusUnassigned?.()}
+          disabled={!onFocusUnassigned || summary.unassigned_count === 0}
+        />
+        <StatButton
+          label="Cleared 24h"
+          value={summary.cleared_24h}
+          valueClass="text-positive"
+        />
+        <StatButton
+          label="Oldest overdue"
+          value={summary.oldest_overdue_label}
+          valueClass="text-ink text-base font-mono-data"
+        />
       </div>
 
       <div className="pending-ops-card">
@@ -108,9 +147,23 @@ export default function PendingOpsSidebar({ summary, loading }: PendingOpsSideba
       <div className="pending-ops-card">
         <p className="pending-ops-card-label">Totals</p>
         <p className="text-sm text-ink mt-1">
-          <span className="font-bold tabular-nums">{summary.total_pending}</span>
+          <button
+            type="button"
+            className="font-bold tabular-nums hover:underline"
+            onClick={() => onFilterChange?.('all')}
+            disabled={!onFilterChange}
+          >
+            {summary.total_pending}
+          </button>
           <span className="text-muted"> pending · </span>
-          <span className="font-bold tabular-nums text-[#ffb74d]">{summary.due_soon_count}</span>
+          <button
+            type="button"
+            className="font-bold tabular-nums text-[#ffb74d] hover:underline"
+            onClick={() => onFilterChange?.('due_soon')}
+            disabled={!onFilterChange || summary.due_soon_count === 0}
+          >
+            {summary.due_soon_count}
+          </button>
           <span className="text-muted"> due soon</span>
         </p>
       </div>

@@ -719,6 +719,24 @@ html { scrollbar-gutter: stable; }
     font-variant-numeric: tabular-nums;
   }
 
+  .pending-ops-stat-clickable {
+    text-align: left;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    transition: background-color 0.15s;
+  }
+
+  .pending-ops-stat-clickable:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .pending-ops-stat-clickable:disabled {
+    cursor: default;
+  }
+
   .pending-ops-dept-track {
     height: 0.375rem;
     border-radius: 9999px;

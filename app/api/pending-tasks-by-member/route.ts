@@ -4,7 +4,7 @@ import { visibleWatchFilter } from '@/lib/watch-visibility'
 import { getTaskLabel } from '@/lib/task-labels'
 import { getOrInitPipelineTimerEpoch, pipelineStartedAtIso } from '@/lib/pipeline-timer-server'
 import {
-  BLOCKING_TASK_TYPES,
+  isBlockingWatchTask,
   computeHealthScore,
   healthLabel,
   maxOverdueLabel,
@@ -67,7 +67,7 @@ function buildWatchGroups(
       department: t.department,
       phase,
       pipeline_started_at: pipelineStartedAtIso(t.created_at, pipelineEpoch),
-      is_blocking: BLOCKING_TASK_TYPES.has(t.task_type),
+      is_blocking: isBlockingWatchTask(t.task_type, phase),
     }
     watchMap.get(t.watch_id)!.tasks.push(task)
   }

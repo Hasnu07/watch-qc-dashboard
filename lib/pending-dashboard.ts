@@ -4,13 +4,21 @@ import {
   isOverPipelineSla,
   type PipelineUrgency,
 } from '@/lib/pipeline-timer'
+import { SELL_BLOCKING_TASK_LABELS } from '@/lib/sell-tasks'
 
 export type PendingFilter = 'all' | 'overdue' | 'due_soon'
+export type PendingView = 'people' | 'queue'
 
 export const BLOCKING_TASK_TYPES = new Set([
   'ACCOUNTING_MARK_PAYMENT',
   'LOGISTICS_SET_LOCATION',
 ])
+
+export function isBlockingWatchTask(taskType: string, phase: string): boolean {
+  if (BLOCKING_TASK_TYPES.has(taskType)) return true
+  if (phase === 'SELL' && SELL_BLOCKING_TASK_LABELS.has(taskType)) return true
+  return false
+}
 
 export interface PendingWatchTask {
   id: number

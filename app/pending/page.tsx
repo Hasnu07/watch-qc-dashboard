@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PendingTasksPanel from '@/components/PendingTasksPanel'
+import PendingQueuePanel from '@/components/PendingQueuePanel'
 import PendingOpsSidebar from '@/components/PendingOpsSidebar'
 import { usePendingDashboard, type PendingFilter } from '@/hooks/usePendingDashboard'
+import type { PendingView } from '@/lib/pending-dashboard'
 
 const EMPTY_UNASSIGNED = {
   pending_count: 0,
@@ -14,10 +16,23 @@ const EMPTY_UNASSIGNED = {
   watch_groups: [],
 }
 
+const VIEW_OPTIONS: { id: PendingView; label: string }[] = [
+  { id: 'people', label: 'By person' },
+  { id: 'queue', label: 'Triage queue' },
+]
+
+const FILTER_OPTIONS: { id: PendingFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'overdue', label: 'Overdue' },
+  { id: 'due_soon', label: 'Due soon' },
+]
+
 export default function PendingPage() {
   const router = useRouter()
   const { data, loading, now, refresh } = usePendingDashboard()
   const [filter, setFilter] = useState<PendingFilter>('all')
+  const [view, setView] = useState<PendingView>('people')
+  const [focusUnassigned, setFocusUnassigned] = useState(false)
 
   return (
     <div className="flex flex-col flex-1 min-h-[calc(100dvh-3rem)]">
@@ -33,26 +48,89 @@ export default function PendingPage() {
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="pending-ops-layout">
           <div className="pending-ops-main order-2 lg:order-1">
-            <PendingTasksPanel
-              members={data?.members ?? []}
-              unassigned={data?.unassigned ?? EMPTY_UNASSIGNED}
-              filter={filter}
-              onFilterChange={setFilter}
-              loading={loading}
-              now={now}
-              onRefresh={refresh}
-              onOpenWatch={(watchId, phase) => {
-                const tab = phase === 'SELL' ? 'sell' : 'buy'
-                router.push(`/dashboard?tab=${tab}&watch=${watchId}`)
-              }}
-            />
+            <div className="pending-people-list p-4 sm:p-5 space-y-3 w-full">
+              <div className="flex flex-wrap gap-2 mb-2">
+                <div className="pending-view-toggle flex flex-wrap gap-1.5 mr-2">
+                  {VIEW_OPTIONS.map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setView(opt.id)}
+                      className={`pending-filter-chip ${view === opt.id ? 'pending-filter-chip-active' : ''}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {FILTER_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setFilter(opt.id)}
+                    className={`pending-filter-chip ${filter === opt.id ? 'pending-filter-chip-active' : ''}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {loading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-16 rounded-xl bg-panel animate-pulse" />
+                  ))}
+                </div>
+              ) : view === 'queue' ? (
+                <PendingQueuePanel
+                  members={data?.members ?? []}
+                  unassigned={data?.unassigned ?? EMPTY_UNASSIGNED}
+                  filter={filter}
+                  now={now}
+                  onRefresh={refresh}
+                  onOpenWatch={(watchId, phase) => {
+                    const tab = phase === 'SELL' ? 'sell' : 'buy'
+                    router.push(`/dashboard?tab=${tab}&watch=${watchId}`)
+                  }}
+                />
+              ) : (
+                <PendingTasksPanel
+                  members={data?.members ?? []}
+                  unassigned={data?.unassigned ?? EMPTY_UNASSIGNED}
+                  filter={filter}
+                  hideFilters
+                  focusUnassigned={focusUnassigned}
+                  onFocusUnassignedHandled={() => setFocusUnassigned(false)}
+                  loading={false}
+                  now={now}
+                  onRefresh={refresh}
+                  onOpenWatch={(watchId, phase) => {
+                    const tab = phase === 'SELL' ? 'sell' : 'buy'
+                    router.push(`/dashboard?tab=${tab}&watch=${watchId}`)
+                  }}
+                />
+              )}
+            </div>
           </div>
 
           <div className="pending-ops-aside order-1 lg:order-2">
-            <PendingOpsSidebar summary={data?.summary ?? null} loading={loading} />
+            <PendingOpsSidebar
+              summary={data?.summary ?? null}
+              loading={loading}
+              filter={filter}
+              onFilterChange={next => {
+                setFilter(next)
+                if (next !== 'all') setFocusUnassigned(false)
+              }}
+              onFocusUnassigned={() => {
+                setView('people')
+                setFilter('all')
+                setFocusUnassigned(true)
+              }}
+            />
           </div>
         </div>
       </div>
     </div>
   )
 }
+

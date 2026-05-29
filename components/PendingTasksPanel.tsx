@@ -28,7 +28,10 @@ interface PendingTasksPanelProps {
   members: MemberPending[]
   unassigned: UnassignedPending
   filter: PendingFilter
-  onFilterChange: (filter: PendingFilter) => void
+  onFilterChange?: (filter: PendingFilter) => void
+  hideFilters?: boolean
+  focusUnassigned?: boolean
+  onFocusUnassignedHandled?: () => void
   loading?: boolean
   now: Date
   onOpenWatch?: (watchId: number, phase: 'BUY' | 'SELL') => void
@@ -327,6 +330,9 @@ export default function PendingTasksPanel({
   unassigned,
   filter,
   onFilterChange,
+  hideFilters = false,
+  focusUnassigned = false,
+  onFocusUnassignedHandled,
   loading,
   now,
   onOpenWatch,
@@ -353,6 +359,16 @@ export default function PendingTasksPanel({
       prevFilter.current = filter
     }
   }, [filter, loading, members, unassigned, visibleMembers])
+
+  useEffect(() => {
+    if (!focusUnassigned || unassigned.pending_count === 0) return
+    setExpanded(prev => {
+      const next = new Set(prev)
+      next.add(UNASSIGNED_KEY)
+      return next
+    })
+    onFocusUnassignedHandled?.()
+  }, [focusUnassigned, unassigned.pending_count, onFocusUnassignedHandled])
 
   const toggleExpanded = (id: number) => {
     setExpanded(prev => {
@@ -388,19 +404,21 @@ export default function PendingTasksPanel({
   }
 
   return (
-    <div className="pending-people-list p-4 sm:p-5 space-y-3 w-full">
-      <div className="pending-filter-chips flex flex-wrap gap-2 mb-2">
-        {FILTER_OPTIONS.map(opt => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => onFilterChange(opt.id)}
-            className={`pending-filter-chip ${filter === opt.id ? 'pending-filter-chip-active' : ''}`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+    <div className={hideFilters ? 'space-y-3 w-full' : 'pending-people-list p-4 sm:p-5 space-y-3 w-full'}>
+      {!hideFilters && (
+        <div className="pending-filter-chips flex flex-wrap gap-2 mb-2">
+          {FILTER_OPTIONS.map(opt => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => onFilterChange?.(opt.id)}
+              className={`pending-filter-chip ${filter === opt.id ? 'pending-filter-chip-active' : ''}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {visibleMembers.length === 0 && !showUnassigned && (
         <div className="py-8 text-center text-muted">
