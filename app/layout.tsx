@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { Suspense } from 'react'
 import { Luxurious_Script } from 'next/font/google'
 import './globals.css'
 import NavBar from '@/components/NavBar'
@@ -29,11 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={luxuriousScript.variable}>
       <body className="bg-surface text-ink min-h-screen flex flex-col">
         <SseProvider>
-          <Suspense fallback={
-            <nav className="sticky top-0 z-50 bg-panel border-b border-default h-12" aria-hidden="true" />
-          }>
-            <NavBar />
-          </Suspense>
+          <NavBar />
           <main className="flex-1 flex flex-col">{children}</main>
         </SseProvider>
       </body>
