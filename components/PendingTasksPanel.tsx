@@ -10,6 +10,12 @@ const URGENCY_LABELS: Record<PipelineUrgency, string> = {
   overdue: 'Overdue',
 }
 
+const URGENCY_ICONS: Record<PipelineUrgency, string> = {
+  fresh: '⏳',
+  warning: '⚠️',
+  overdue: '⚠️',
+}
+
 interface MemberPending {
   member: { id: number; name: string; department: Department }
   pending_count: number
@@ -26,26 +32,68 @@ interface PendingTasksPanelProps {
   onOpenWatch?: (watchId: number, phase: 'BUY' | 'SELL') => void
 }
 
-function PipelineTimer({ startedAt }: { startedAt: string }) {
-  const [now, setNow] = useState(() => new Date())
+interface TaskStripProps {
+  title: string
+  startedAt: string
+  now: Date
+  shimmerDelay?: number
+  actionLabel?: string
+  actionDisabled?: boolean
+  onAction?: () => void
+  onStripClick?: () => void
+}
 
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 15_000)
-    return () => clearInterval(id)
-  }, [])
-
+function TaskStrip({
+  title,
+  startedAt,
+  now,
+  shimmerDelay = 0,
+  actionLabel = 'Review',
+  actionDisabled = false,
+  onAction,
+  onStripClick,
+}: TaskStripProps) {
   const start = new Date(startedAt)
   const urgency = getPipelineUrgency(start, now)
   const elapsed = formatPipelineElapsed(start, now)
+  const showShimmer = urgency !== 'fresh'
 
   return (
-    <span
-      className={`pipeline-timer pipeline-timer-${urgency}`}
-      title={`In pipeline for ${elapsed}${isOverPipelineSla(start, now) ? ' — past 24h SLA' : ''}`}
+    <div
+      className={`task-strip task-strip-${urgency}`}
+      onClick={onStripClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStripClick?.() }}
     >
-      <span className="pipeline-timer-label">{URGENCY_LABELS[urgency]}</span>
-      <span className="pipeline-timer-value font-mono-data">{elapsed}</span>
-    </span>
+      {showShimmer && (
+        <div className="task-strip-shimmer" style={{ animationDelay: `${shimmerDelay}s` }} />
+      )}
+      <div className="task-strip-body">
+        <span className="task-strip-icon" aria-hidden>{URGENCY_ICONS[urgency]}</span>
+        <span className="task-strip-title">{title}</span>
+      </div>
+      <div className="task-strip-meta">
+        <div
+          className="task-strip-timer"
+          style={urgency === 'overdue' || urgency === 'warning' ? { animationDelay: `${shimmerDelay}s` } : undefined}
+        >
+          <span className="task-strip-timer-label">{URGENCY_LABELS[urgency]}</span>
+          <span className="task-strip-timer-value font-mono-data">{elapsed}</span>
+        </div>
+        <button
+          type="button"
+          className="task-strip-action"
+          disabled={actionDisabled}
+          onClick={e => {
+            e.stopPropagation()
+            onAction?.()
+          }}
+        >
+          {actionLabel}
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -161,7 +209,7 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
   }
 
   return (
-    <div className="p-4 sm:p-5 space-y-3">
+    <div className="p-4 sm:p-5 space-y-3 max-w-3xl mx-auto w-full">
       <p className="text-xs text-muted mb-1">
         {totalPending} pending across {data.filter(m => m.pending_count > 0).length} people
       </p>
@@ -169,8 +217,10 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
       {data.map(({ member, pending_count, team_tasks, watch_groups }) => {
         const isOpen = expanded.has(member.id)
         const overdueCount = countOverdueTasks(team_tasks, watch_groups, now)
+        let stripIndex = 0
+
         return (
-          <section key={member.id} className="rounded-xl border border-default bg-card overflow-hidden">
+          <section key={member.id} className="rounded-xl border border-white/10 bg-card overflow-hidden shadow-lg">
             <button
               type="button"
               onClick={() => toggleExpanded(member.id)}
@@ -182,9 +232,7 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
                 <p className="text-xs text-muted capitalize">{member.department.toLowerCase()}</p>
               </div>
               {overdueCount > 0 && (
-                <span className="pipeline-timer pipeline-timer-overdue !min-w-0 !px-2.5 !py-1.5">
-                  <span className="pipeline-timer-label !text-[0.5rem]">{overdueCount} overdue</span>
-                </span>
+                <span className="member-overdue-pill">{overdueCount} overdue</span>
               )}
               <span className={`text-sm font-bold tabular-nums ${pending_count > 0 ? 'text-accent' : 'text-muted'}`}>
                 {pending_count} Remain
@@ -193,68 +241,72 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
             </button>
 
             {isOpen && (
-              <div className="border-t border-default px-4 py-3 space-y-4 bg-panel/30">
+              <div className="pending-member-body border-t border-white/10">
                 {pending_count === 0 ? (
-                  <p className="text-sm text-muted py-1">No pending tasks</p>
+                  <p className="text-sm text-white/70 py-1">No pending tasks</p>
                 ) : (
                   <>
                     {team_tasks.length > 0 && (
-                      <div>
-                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">Team tasks</h4>
-                        <ul className="space-y-2">
+                      <div className="mb-4">
+                        <h4 className="pending-section-title">Team tasks</h4>
+                        <div className="task-strip-list">
                           {team_tasks.map(t => {
-                            const overdue = isOverPipelineSla(new Date(t.pipeline_started_at), now)
+                            const delay = stripIndex * 0.5
+                            stripIndex++
                             return (
-                            <li
-                              key={t.id}
-                              className={`pending-task-row ${overdue ? 'pending-task-row-overdue' : ''}`}
-                            >
-                              <PipelineTimer startedAt={t.pipeline_started_at} />
-                              <button
-                                type="button"
-                                disabled={toggling === t.id}
-                                onClick={() => completeTeamTask(t.id)}
-                                className="w-5 h-5 rounded border-2 border-default flex-shrink-0 hover:border-accent disabled:opacity-50"
-                                aria-label="Mark complete"
+                              <TaskStrip
+                                key={t.id}
+                                title={t.message_text}
+                                startedAt={t.pipeline_started_at}
+                                now={now}
+                                shimmerDelay={delay}
+                                actionLabel="Done"
+                                actionDisabled={toggling === t.id}
+                                onAction={() => completeTeamTask(t.id)}
+                                onStripClick={() => completeTeamTask(t.id)}
                               />
-                              <span className="text-ink leading-snug flex-1 min-w-0 font-medium">{t.message_text}</span>
-                            </li>
-                          )})}
-                        </ul>
+                            )
+                          })}
+                        </div>
                       </div>
                     )}
 
                     {watch_groups.length > 0 && (
                       <div>
-                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">Watch tasks</h4>
-                        <div className="space-y-3">
-                          {watch_groups.map(group => (
-                            <div key={group.watch_id} className="rounded-lg border border-default/80 bg-card/80 overflow-hidden">
-                              <button
-                                type="button"
-                                onClick={() => onOpenWatch?.(group.watch_id, group.phase === 'SELL' ? 'SELL' : 'BUY')}
-                                className={`w-full text-left px-3 py-2 text-sm font-semibold border-b border-default/60 hover:bg-panel/50 ${
-                                  group.phase === 'SELL' ? 'text-[var(--color-sell)]' : 'text-[var(--color-buy)]'
-                                }`}
-                              >
-                                {group.watch_label}
-                                <span className="ml-2 text-[10px] font-bold uppercase opacity-70">{group.phase}</span>
-                              </button>
-                              <ul className="px-2 py-2 space-y-2">
-                                {group.tasks.map(t => {
-                                  const overdue = isOverPipelineSla(new Date(t.pipeline_started_at), now)
-                                  return (
-                                  <li
-                                    key={t.id}
-                                    className={`pending-task-row ${overdue ? 'pending-task-row-overdue' : ''}`}
-                                  >
-                                    <PipelineTimer startedAt={t.pipeline_started_at} />
-                                    <span className="flex-1 min-w-0 font-medium text-ink">{t.label}</span>
-                                  </li>
-                                )})}
-                              </ul>
-                            </div>
-                          ))}
+                        <h4 className="pending-section-title">Watch tasks</h4>
+                        <div className="space-y-4">
+                          {watch_groups.map(group => {
+                            const phase = group.phase === 'SELL' ? 'SELL' : 'BUY'
+                            const phaseClass = phase === 'SELL' ? 'text-sell' : 'text-buy'
+                            return (
+                              <div key={group.watch_id} className="pending-watch-group">
+                                <div className="pending-watch-group-header">
+                                  <h4 className={`pending-watch-group-title ${phaseClass}`}>
+                                    {group.watch_label}
+                                  </h4>
+                                  <span className={`pending-watch-group-phase ${phaseClass}`}>{phase}</span>
+                                </div>
+                                <div className="task-strip-list">
+                                  {group.tasks.map(t => {
+                                    const delay = stripIndex * 0.5
+                                    stripIndex++
+                                    return (
+                                      <TaskStrip
+                                        key={t.id}
+                                        title={t.label}
+                                        startedAt={t.pipeline_started_at}
+                                        now={now}
+                                        shimmerDelay={delay}
+                                        actionLabel="Review"
+                                        onAction={() => onOpenWatch?.(group.watch_id, phase)}
+                                        onStripClick={() => onOpenWatch?.(group.watch_id, phase)}
+                                      />
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          })}
                         </div>
                       </div>
                     )}
