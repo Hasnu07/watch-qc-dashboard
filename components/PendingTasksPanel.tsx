@@ -155,7 +155,7 @@ function buildExpandedIds(
     if (unassigned.due_soon_count > 0) ids.add(UNASSIGNED_KEY)
   } else {
     for (const m of members) {
-      if (m.pending_count > 0) ids.add(m.member.id)
+      ids.add(m.member.id)
     }
     if (unassigned.pending_count > 0) ids.add(UNASSIGNED_KEY)
   }
@@ -340,22 +340,25 @@ export default function PendingTasksPanel({
 }: PendingTasksPanelProps) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [toggling, setToggling] = useState<number | null>(null)
-  const hasInitialExpanded = useRef(false)
   const prevFilter = useRef<PendingFilter>(filter)
+  const wasLoading = useRef(true)
 
   const visibleMembers = members.filter(m => memberMatchesFilter(m, filter))
   const showUnassigned = unassignedMatchesFilter(unassigned, filter)
 
   useEffect(() => {
-    if (loading) return
+    if (loading) {
+      wasLoading.current = true
+      return
+    }
 
+    const justLoaded = wasLoading.current
+    wasLoading.current = false
     const filterChanged = prevFilter.current !== filter
-    const isInitial = !hasInitialExpanded.current
 
-    if (isInitial || filterChanged) {
+    if (justLoaded || filterChanged) {
       const sourceMembers = filter === 'all' ? members : visibleMembers
       setExpanded(buildExpandedIds(filter, sourceMembers, unassigned))
-      hasInitialExpanded.current = true
       prevFilter.current = filter
     }
   }, [filter, loading, members, unassigned, visibleMembers])

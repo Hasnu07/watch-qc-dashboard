@@ -297,7 +297,7 @@ html { scrollbar-gutter: stable; }
   }
 
   .pending-member-body {
-    background: #000000;
+    background: #131722;
     padding: 1rem;
     border-radius: 0 0 0.75rem 0.75rem;
   }
@@ -786,7 +786,7 @@ html { scrollbar-gutter: stable; }
 }
 
 .pending-member-body {
-  background: #000000 !important;
+  background: #131722 !important;
 }
 
 .text-glow {

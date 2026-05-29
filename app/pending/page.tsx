@@ -100,7 +100,7 @@ export default function PendingPage() {
                   hideFilters
                   focusUnassigned={focusUnassigned}
                   onFocusUnassignedHandled={() => setFocusUnassigned(false)}
-                  loading={false}
+                  loading={loading}
                   now={now}
                   onRefresh={refresh}
                   onOpenWatch={(watchId, phase) => {
