@@ -32,10 +32,24 @@ function profileColor(name: string) {
   return PROFILE_COLORS[Math.abs(hash) % PROFILE_COLORS.length]
 }
 
-function profileInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  return name.trim().slice(0, 2).toUpperCase()
+function ProfileSmiley({ large }: { large?: boolean }) {
+  return (
+    <svg
+      className={large ? 'netflix-profile__smiley netflix-profile__smiley--large' : 'netflix-profile__smiley'}
+      viewBox="0 0 64 64"
+      aria-hidden
+    >
+      <circle cx="22" cy="26" r="4" fill="currentColor" />
+      <circle cx="42" cy="26" r="4" fill="currentColor" />
+      <path
+        d="M18 38 Q32 52 46 38"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="4"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
 }
 
 function redirectAfterLogin() {
@@ -143,7 +157,7 @@ export default function LoginPage() {
                     className="netflix-profile__avatar"
                     style={{ background: profileColor(profile.name) }}
                   >
-                    <span className="netflix-profile__initials">{profileInitials(profile.name)}</span>
+                    <ProfileSmiley />
                     {profile.role === 'MASTER' && (
                       <span className="netflix-profile__badge" title="Master">★</span>
                     )}
@@ -164,7 +178,7 @@ export default function LoginPage() {
             className="netflix-profile__avatar netflix-profile__avatar--large"
             style={{ background: profileColor(selected.name) }}
           >
-            <span className="netflix-profile__initials">{profileInitials(selected.name)}</span>
+            <ProfileSmiley large />
           </div>
 
           <h2 className="netflix-login__profile-name">{selected.name}</h2>
@@ -198,8 +212,6 @@ export default function LoginPage() {
               {loading ? 'Signing in…' : 'Continue'}
             </button>
           </form>
-
-          <p className="netflix-login__hint">Default: {selected.name}@125</p>
         </div>
       )}
     </div>

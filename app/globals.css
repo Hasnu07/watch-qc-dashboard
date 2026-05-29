@@ -1766,16 +1766,15 @@ html { scrollbar-gutter: stable; }
   border: 3px solid rgba(255, 255, 255, 0.25);
 }
 
-.netflix-profile__initials {
-  font-size: 2.75rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  line-height: 1;
+.netflix-profile__smiley {
+  width: 3.5rem;
+  height: 3.5rem;
+  color: rgba(255, 255, 255, 0.92);
 }
 
-.netflix-profile__avatar--large .netflix-profile__initials {
-  font-size: 3.25rem;
+.netflix-profile__smiley--large {
+  width: 4.25rem;
+  height: 4.25rem;
 }
 
 .netflix-profile__badge {
@@ -1911,20 +1910,15 @@ html { scrollbar-gutter: stable; }
   font-size: 0.9375rem;
 }
 
-.netflix-login__hint {
-  margin-top: 1.25rem;
-  font-size: 0.8125rem;
-  color: rgba(255, 255, 255, 0.35);
-}
-
 @media (max-width: 640px) {
   .netflix-profile__avatar {
     width: 88px;
     height: 88px;
   }
 
-  .netflix-profile__initials {
-    font-size: 2rem;
+  .netflix-profile__smiley {
+    width: 2.75rem;
+    height: 2.75rem;
   }
 
   .netflix-login__grid {
