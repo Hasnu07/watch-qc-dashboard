@@ -582,7 +582,29 @@ html { scrollbar-gutter: stable; }
 
 /* Pending task strips — outside @layer so red gradient always wins */
 .task-strip-red,
-.task-strip.task-strip-red {
+.task-strip.task-strip-red,
+.member-strip-red {
   background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%) !important;
-  border-color: rgba(248, 113, 113, 0.85) !important;
+  border: 1px solid rgba(248, 113, 113, 0.85) !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+}
+
+.member-strip {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+
+.member-strip-empty {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+}
+
+.member-strip-shimmer {
+  border-radius: 0.75rem;
+}
+
+.text-glow {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
 }

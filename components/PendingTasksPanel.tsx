@@ -219,24 +219,47 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
         let stripIndex = 0
 
         return (
-          <section key={member.id} className="rounded-xl border border-white/10 bg-card overflow-hidden shadow-lg">
+          <section key={member.id} className="rounded-xl overflow-hidden shadow-lg">
             <button
               type="button"
               onClick={() => toggleExpanded(member.id)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-panel/60 transition-colors"
+              className={`member-strip w-full flex items-center gap-3 px-4 py-3.5 text-left transition-transform hover:scale-[1.01] ${
+                pending_count > 0 ? 'member-strip-red' : 'member-strip-empty'
+              }`}
+              style={
+                pending_count > 0
+                  ? { background: 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)' }
+                  : undefined
+              }
             >
-              <MemberAvatar name={member.name} department={member.department} />
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-ink truncate">{member.name}</p>
-                <p className="text-xs text-muted capitalize">{member.department.toLowerCase()}</p>
-              </div>
-              {overdueCount > 0 && (
-                <span className="member-overdue-pill">{overdueCount} overdue</span>
+              {pending_count > 0 && (
+                <div className="task-strip-shimmer member-strip-shimmer" aria-hidden />
               )}
-              <span className={`text-sm font-bold tabular-nums ${pending_count > 0 ? 'text-accent' : 'text-muted'}`}>
-                {pending_count} Remain
+              <MemberAvatar name={member.name} department={member.department} />
+              <div className="flex-1 min-w-0 relative z-10">
+                <p className={`font-bold truncate ${pending_count > 0 ? 'text-white text-glow' : 'text-ink'}`}>
+                  {member.name}
+                </p>
+                <p className={`text-xs capitalize ${pending_count > 0 ? 'text-white/75' : 'text-muted'}`}>
+                  {member.department.toLowerCase()}
+                </p>
+              </div>
+              {pending_count > 0 && (
+                <div className="relative z-10 flex items-center gap-2 flex-shrink-0">
+                  <div className="task-strip-timer">
+                    <span className="task-strip-timer-label">
+                      {overdueCount === pending_count ? 'Overdue' : `${overdueCount} overdue`}
+                    </span>
+                    <span className="task-strip-timer-value font-mono-data">{pending_count}</span>
+                  </div>
+                </div>
+              )}
+              {pending_count === 0 && (
+                <span className="text-sm text-muted">Clear</span>
+              )}
+              <span className={`relative z-10 text-xs ${pending_count > 0 ? 'text-white/90' : 'text-muted'}`}>
+                {isOpen ? '▾' : '▸'}
               </span>
-              <span className="text-muted text-xs">{isOpen ? '▾' : '▸'}</span>
             </button>
 
             {isOpen && (
