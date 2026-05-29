@@ -411,19 +411,25 @@ html { scrollbar-gutter: stable; }
   .task-strip-overdue {
     background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%);
     border-color: rgba(248, 113, 113, 0.85);
-    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+    box-shadow:
+      0 4px 12px rgba(220, 38, 38, 0.35),
+      inset 0 0 0 2px rgba(248, 113, 113, 0.95);
   }
 
   .task-strip-warning {
     background: linear-gradient(90deg, #c2410c 0%, #f97316 100%);
     border-color: rgba(251, 146, 60, 0.85);
-    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+    box-shadow:
+      0 4px 12px rgba(234, 88, 12, 0.3),
+      inset 0 0 0 2px rgba(251, 146, 60, 0.95);
   }
 
   .task-strip-fresh {
     background: linear-gradient(90deg, #0369a1 0%, #00bcd4 100%);
     border-color: rgba(34, 211, 238, 0.55);
-    box-shadow: 0 4px 12px rgba(3, 105, 161, 0.3);
+    box-shadow:
+      0 4px 12px rgba(3, 105, 161, 0.3),
+      inset 0 0 0 2px rgba(34, 211, 238, 0.85);
   }
 
   .task-strip-body {
