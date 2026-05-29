@@ -219,13 +219,13 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
         let stripIndex = 0
 
         return (
-          <section key={member.id} className="rounded-xl overflow-hidden shadow-lg">
+          <section key={member.id} className="pending-member-card rounded-xl shadow-lg overflow-hidden">
             <button
               type="button"
               onClick={() => toggleExpanded(member.id)}
-              className={`member-strip w-full flex items-center gap-3 px-4 py-3.5 text-left transition-transform hover:scale-[1.01] ${
-                pending_count > 0 ? 'member-strip-red' : 'member-strip-empty'
-              }`}
+              className={`member-strip w-full flex items-center gap-3 px-4 py-3.5 text-left ${
+                isOpen ? 'member-strip-open' : 'member-strip-closed'
+              } ${pending_count > 0 ? 'member-strip-red' : 'member-strip-empty'}`}
               style={
                 pending_count > 0
                   ? { background: 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)' }
@@ -263,7 +263,7 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
             </button>
 
             {isOpen && (
-              <div className="pending-member-body border-t border-white/10">
+              <div className="pending-member-body">
                 {pending_count === 0 ? (
                   <p className="text-sm text-white/70 py-1">No pending tasks</p>
                 ) : (

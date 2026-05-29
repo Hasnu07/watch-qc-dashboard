@@ -297,8 +297,21 @@ html { scrollbar-gutter: stable; }
   }
 
   .pending-member-body {
-    background: #5c6068;
+    background: #000000;
     padding: 1rem;
+    border-radius: 0 0 0.75rem 0.75rem;
+  }
+
+  .pending-member-card .member-strip-open {
+    border-radius: 0.75rem 0.75rem 0 0;
+  }
+
+  .pending-member-card .member-strip-closed {
+    border-radius: 0.75rem;
+  }
+
+  .pending-member-card .member-strip-open .member-strip-shimmer {
+    border-radius: 0.75rem 0.75rem 0 0;
   }
 
   .pending-section-title {
@@ -592,8 +605,8 @@ html { scrollbar-gutter: stable; }
 .member-strip {
   position: relative;
   overflow: hidden;
-  border-radius: 0.75rem;
   cursor: pointer;
+  border: none;
 }
 
 .member-strip-empty {
@@ -602,7 +615,11 @@ html { scrollbar-gutter: stable; }
 }
 
 .member-strip-shimmer {
-  border-radius: 0.75rem;
+  border-radius: inherit;
+}
+
+.pending-member-body {
+  background: #000000 !important;
 }
 
 .text-glow {
