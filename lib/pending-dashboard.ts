@@ -35,6 +35,7 @@ export interface PendingWatchGroup {
   watch_label: string
   stock_no: string | null
   phase: string
+  image_url: string | null
   tasks: PendingWatchTask[]
 }
 

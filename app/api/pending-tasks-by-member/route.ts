@@ -45,7 +45,15 @@ function buildWatchGroups(
     task_type: string
     phase: string
     created_at: Date
-    watch: { id: number; name: string; brand: string | null; model: string | null; stock_no: string | null }
+    watch: {
+      id: number
+      name: string
+      brand: string | null
+      model: string | null
+      stock_no: string | null
+      image_url: string | null
+      linked_buy_watch: { image_url: string | null } | null
+    }
   }>,
   pipelineEpoch: Date,
 ): PendingWatchGroup[] {
@@ -59,6 +67,7 @@ function buildWatchGroups(
         watch_label: watchLabel(t.watch),
         stock_no: t.watch.stock_no,
         phase,
+        image_url: t.watch.image_url || t.watch.linked_buy_watch?.image_url || null,
         tasks: [],
       })
     }
@@ -146,7 +155,8 @@ export async function GET(req: NextRequest) {
               brand: true,
               model: true,
               stock_no: true,
-              watch_type: true,
+              image_url: true,
+              linked_buy_watch: { select: { image_url: true } },
             },
           },
         },

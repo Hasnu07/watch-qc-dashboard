@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePendingDashboard } from '@/hooks/usePendingDashboard'
 import { DEPT_CONFIG, type Department } from '@/lib/ui-constants'
@@ -8,7 +9,7 @@ import { formatPipelineElapsed, getPipelineUrgency, type PipelineUrgency } from 
 import type { MemberPending, PendingTeamTask, PendingWatchGroup, PendingWatchTask } from '@/lib/pending-dashboard'
 
 const SLIDE_MS = 12_000
-const ROWS_PER_SLIDE = 5
+const ROWS_PER_SLIDE = 4
 
 const URGENCY_LABEL: Record<PipelineUrgency, string> = {
   fresh: 'Waiting',
@@ -92,11 +93,20 @@ function WatchLeftPanel({ group }: { group: PendingWatchGroup }) {
   const phaseCls = group.phase === 'SELL' ? 'slideshow-phase-sell' : 'slideshow-phase-buy'
   return (
     <div className="slideshow-watch-panel">
-      <span className={`slideshow-phase ${phaseCls}`}>{group.phase}</span>
-      <h3 className="slideshow-watch-title">{group.watch_label}</h3>
-      {group.stock_no && (
-        <p className="slideshow-watch-stock">Stock #{group.stock_no}</p>
-      )}
+      <div className="slideshow-watch-image">
+        {group.image_url ? (
+          <Image src={group.image_url} alt="" fill className="object-contain p-1" unoptimized />
+        ) : (
+          <span className="slideshow-watch-placeholder" aria-hidden>⌚</span>
+        )}
+      </div>
+      <div className="slideshow-watch-info">
+        <span className={`slideshow-phase ${phaseCls}`}>{group.phase}</span>
+        <h3 className="slideshow-watch-title">{group.watch_label}</h3>
+        {group.stock_no && (
+          <p className="slideshow-watch-stock">Stock #{group.stock_no}</p>
+        )}
+      </div>
     </div>
   )
 }
@@ -134,10 +144,15 @@ function SlideContent({ slide, now }: { slide: Slide; now: Date }) {
           <div key={i} className="slideshow-row">
             <div className="slideshow-row-left">
               {row.kind === 'team' ? (
-                <div className="slideshow-watch-panel">
-                  <span className="slideshow-phase slideshow-phase-team">Team</span>
-                  <h3 className="slideshow-watch-title">Team Tasks</h3>
-                  <p className="slideshow-watch-stock">{row.tasks.length} task{row.tasks.length !== 1 ? 's' : ''}</p>
+                <div className="slideshow-watch-panel slideshow-watch-panel--team">
+                  <div className="slideshow-watch-image slideshow-watch-image--team">
+                    <span className="slideshow-watch-placeholder" aria-hidden>📋</span>
+                  </div>
+                  <div className="slideshow-watch-info">
+                    <span className="slideshow-phase slideshow-phase-team">Team</span>
+                    <h3 className="slideshow-watch-title">Team Tasks</h3>
+                    <p className="slideshow-watch-stock">{row.tasks.length} task{row.tasks.length !== 1 ? 's' : ''}</p>
+                  </div>
                 </div>
               ) : (
                 <WatchLeftPanel group={row.group} />
