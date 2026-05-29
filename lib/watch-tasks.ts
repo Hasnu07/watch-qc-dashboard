@@ -2,6 +2,7 @@ import { prisma } from './prisma'
 import { getVisibleWatches } from './watch-visibility'
 import { sendWhatsAppMessage, toChatId } from './greenapi'
 import { emitWatchTaskEvent } from './events'
+import { labelsForTaskList } from './accessory-tasks'
 
 const APP_LINK = 'https://qc-dashboard-q907.onrender.com'
 
@@ -133,13 +134,14 @@ async function notifyAssignedPersons(
   for (const t of tasks) {
     if (!t.assigned_to) continue
     if (!byPerson.has(t.assigned_to)) byPerson.set(t.assigned_to, [])
-    byPerson.get(t.assigned_to)!.push(TASK_LABELS[t.task_type] ?? t.task_type)
+    byPerson.get(t.assigned_to)!.push(t.task_type)
   }
 
   await Promise.allSettled(
-    Array.from(byPerson.entries()).map(([name, labels]) => {
+    Array.from(byPerson.entries()).map(([name, taskTypes]) => {
       const number = memberMap.get(name.toLowerCase())
       if (!number) return Promise.resolve()
+      const labels = labelsForTaskList(taskTypes, tt => TASK_LABELS[tt] ?? tt)
       const taskLines = labels.map(l => `• ${l}`).join('\n')
       const msg = `📋 ${intro}: *${watchName}*\n\nYour assigned tasks:\n${taskLines}\n\n🔗 ${APP_LINK}`
       return sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(number), msg, settings.apiUrl)
@@ -240,14 +242,14 @@ export async function sendPendingTaskReminders() {
   if (pendingTasks.length === 0) return
 
   // Group by assigned_to name
-  const byPerson = new Map<string, Map<number, { watchName: string; labels: string[] }>>()
+  const byPerson = new Map<string, Map<number, { watchName: string; taskTypes: string[] }>>()
   for (const task of pendingTasks) {
     const assignee = task.assigned_to!
     const wName = [task.watch.brand, task.watch.model].filter(Boolean).join(' ') || task.watch.name
     if (!byPerson.has(assignee)) byPerson.set(assignee, new Map())
     const watches = byPerson.get(assignee)!
-    if (!watches.has(task.watch_id)) watches.set(task.watch_id, { watchName: wName, labels: [] })
-    watches.get(task.watch_id)!.labels.push(TASK_LABELS[task.task_type] ?? task.task_type)
+    if (!watches.has(task.watch_id)) watches.set(task.watch_id, { watchName: wName, taskTypes: [] })
+    watches.get(task.watch_id)!.taskTypes.push(task.task_type)
   }
 
   // Look up WhatsApp numbers for all assignees
@@ -259,7 +261,10 @@ export async function sendPendingTaskReminders() {
       const number = memberMap.get(name.toLowerCase())
       if (!number) return Promise.resolve()
       const lines = Array.from(watches.values())
-        .map(({ watchName, labels }) => `• ${watchName}: ${labels.join(', ')}`)
+        .map(({ watchName, taskTypes }) => {
+          const labels = labelsForTaskList(taskTypes, tt => TASK_LABELS[tt] ?? tt)
+          return `• ${watchName}: ${labels.join(', ')}`
+        })
         .join('\n')
       const message = `⏰ Reminder — Your pending tasks:\n${lines}\n\n🔗 ${APP_LINK}`
       return sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(number), message, settings.apiUrl)

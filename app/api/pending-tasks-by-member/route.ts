@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { visibleWatchFilter } from '@/lib/watch-visibility'
 import { getTaskLabel } from '@/lib/task-labels'
+import { collapseAccessoryPendingTasks, effectiveWatchPendingCount } from '@/lib/accessory-tasks'
 import { getOrInitPipelineTimerEpoch, pipelineStartedAtIso } from '@/lib/pipeline-timer-server'
 import {
   isBlockingWatchTask,
@@ -73,7 +74,9 @@ function buildWatchGroups(
     watchMap.get(t.watch_id)!.tasks.push(task)
   }
 
-  return Array.from(watchMap.values()).sort((a, b) => a.watch_label.localeCompare(b.watch_label))
+  return Array.from(watchMap.values())
+    .map(g => ({ ...g, tasks: collapseAccessoryPendingTasks(g.tasks) }))
+    .sort((a, b) => a.watch_label.localeCompare(b.watch_label))
 }
 
 function countDueSoon(
@@ -170,7 +173,7 @@ export async function GET(req: NextRequest) {
         }))
       const memberWatchTasks = watchTasks.filter(t => nameMatches(t.assigned_to, member.name))
       const watch_groups = buildWatchGroups(memberWatchTasks, pipelineEpoch)
-      const pending_count = memberTeamTasks.length + memberWatchTasks.length
+      const pending_count = memberTeamTasks.length + effectiveWatchPendingCount(memberWatchTasks)
       const overdue_count = countOverdue(memberTeamTasks, watch_groups, now)
       const due_soon_count = countDueSoon(memberTeamTasks, watch_groups, now)
 
@@ -192,7 +195,7 @@ export async function GET(req: NextRequest) {
 
     const unassignedTeamTasks: typeof membersData[0]['team_tasks'] = []
     const unassignedWatchGroups = buildWatchGroups(unassignedWatchTasks, pipelineEpoch)
-    const unassignedPending = unassignedTeamTasks.length + unassignedWatchTasks.length
+    const unassignedPending = unassignedTeamTasks.length + effectiveWatchPendingCount(unassignedWatchTasks)
     const unassignedOverdue = countOverdue(unassignedTeamTasks, unassignedWatchGroups, now)
     const unassignedDueSoon = countDueSoon(unassignedTeamTasks, unassignedWatchGroups, now)
 

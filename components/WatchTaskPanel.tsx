@@ -6,6 +6,7 @@ import { useWatchTaskFilters } from '@/hooks/useWatchTaskFilters'
 import { useWatchTasksLoader } from '@/hooks/useWatchTasksLoader'
 import { useCurrentMember } from '@/hooks/useCurrentMember'
 import { DEPT_CONFIG, DEPT_ORDER, type Department } from '@/lib/ui-constants'
+import { isAccessoryTaskType } from '@/lib/accessory-tasks'
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
 type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
 
@@ -35,10 +36,6 @@ const TASK_LABELS: Record<string, string> = {
   LOGISTICS_SET_LOCATION: 'Set Location', LOGISTICS_UPDATE_COST: 'Update Logistics Cost',
 }
 
-const ACCESSORY_TASK_TYPES = [
-  'LOGISTICS_ACCESSORIES_BOX', 'LOGISTICS_ACCESSORIES_PAPERS', 'LOGISTICS_ACCESSORIES_EXTRA_LINKS',
-  'LOGISTICS_ACCESSORIES_WARRANTY_CARD', 'LOGISTICS_ACCESSORIES_HANG_TAG',
-]
 const ACCESSORY_LABELS: Record<string, string> = {
   LOGISTICS_ACCESSORIES_BOX: 'Box', LOGISTICS_ACCESSORIES_PAPERS: 'Papers',
   LOGISTICS_ACCESSORIES_EXTRA_LINKS: 'Extra Links', LOGISTICS_ACCESSORIES_WARRANTY_CARD: 'Warranty Card',
@@ -498,8 +495,8 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onTo
             const cfg = DEPT_CONFIG[dept]
             const deptPending = dt.filter(t => !t.is_completed && !t.is_locked).length
             const deptDone = deptPending === 0
-            const mainTasks = dt.filter(t => !ACCESSORY_TASK_TYPES.includes(t.task_type))
-            const accessoryTasks = dt.filter(t => ACCESSORY_TASK_TYPES.includes(t.task_type))
+            const mainTasks = dt.filter(t => !isAccessoryTaskType(t.task_type))
+            const accessoryTasks = dt.filter(t => isAccessoryTaskType(t.task_type))
 
             return (
               <div key={dept} className={`px-3 py-3 ${dept !== 'LOGISTICS' ? 'border-b border-default' : ''}`}>

@@ -1,4 +1,5 @@
 import { DEFAULT_SELL_TEMPLATES } from './sell-tasks'
+import { ACCESSORY_GROUP_LABEL, isAccessoryTaskType } from './accessory-tasks'
 
 export const BUY_TASK_LABELS: Record<string, string> = {
   ACCOUNTING_MARK_PAYMENT: 'Mark Payment Status',
@@ -25,6 +26,9 @@ const SELL_LABELS_FROM_TEMPLATES = Object.fromEntries(
 )
 
 export function getTaskLabel(taskType: string, phase?: 'BUY' | 'SELL'): string {
+  if (isAccessoryTaskType(taskType) || taskType === 'LOGISTICS_ACCESSORIES') {
+    return ACCESSORY_GROUP_LABEL
+  }
   if (phase === 'SELL' || !BUY_TASK_LABELS[taskType]) {
     return SELL_LABELS_FROM_TEMPLATES[taskType] ?? BUY_TASK_LABELS[taskType] ?? taskType
   }
