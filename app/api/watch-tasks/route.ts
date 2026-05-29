@@ -2,18 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { visibleWatchFilter } from '@/lib/watch-visibility'
 import { ensureStockGroupAssigneeDefault } from '@/lib/watch-tasks'
+import { getSessionFromRequest, watchTaskAssigneeFilter } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   try {
     await ensureStockGroupAssigneeDefault()
+    const session = await getSessionFromRequest(req)
     const { searchParams } = new URL(req.url)
     const department = searchParams.get('department')
     const watchId = searchParams.get('watch_id')
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {}
+    if (session) Object.assign(where, watchTaskAssigneeFilter(session))
     if (department) where.department = department
     if (watchId) where.watch_id = parseInt(watchId, 10)
 

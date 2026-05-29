@@ -6,6 +6,7 @@ import PendingTasksPanel from '@/components/PendingTasksPanel'
 import PendingQueuePanel from '@/components/PendingQueuePanel'
 import PendingOpsSidebar from '@/components/PendingOpsSidebar'
 import { usePendingDashboard, type PendingFilter } from '@/hooks/usePendingDashboard'
+import { useCurrentMember } from '@/hooks/useCurrentMember'
 import type { PendingView } from '@/lib/pending-dashboard'
 
 const EMPTY_UNASSIGNED = {
@@ -30,6 +31,7 @@ const FILTER_OPTIONS: { id: PendingFilter; label: string }[] = [
 export default function PendingPage() {
   const router = useRouter()
   const { data, loading, now, refresh } = usePendingDashboard()
+  const { isMaster } = useCurrentMember()
   const [filter, setFilter] = useState<PendingFilter>('all')
   const [view, setView] = useState<PendingView>('people')
   const [focusUnassigned, setFocusUnassigned] = useState(false)
@@ -50,6 +52,7 @@ export default function PendingPage() {
           <div className="pending-ops-main order-2 lg:order-1">
             <div className="pending-people-list p-4 sm:p-5 space-y-3 w-full">
               <div className="flex flex-wrap gap-2 mb-2">
+                {isMaster && (
                 <div className="pending-view-toggle flex flex-wrap gap-1.5 mr-2">
                   {VIEW_OPTIONS.map(opt => (
                     <button
@@ -62,6 +65,7 @@ export default function PendingPage() {
                     </button>
                   ))}
                 </div>
+                )}
                 {FILTER_OPTIONS.map(opt => (
                   <button
                     key={opt.id}
@@ -80,7 +84,7 @@ export default function PendingPage() {
                     <div key={i} className="h-16 rounded-xl bg-panel animate-pulse" />
                   ))}
                 </div>
-              ) : view === 'queue' ? (
+              ) : view === 'queue' && isMaster ? (
                 <PendingQueuePanel
                   members={data?.members ?? []}
                   unassigned={data?.unassigned ?? EMPTY_UNASSIGNED}
@@ -121,11 +125,11 @@ export default function PendingPage() {
                 setFilter(next)
                 if (next !== 'all') setFocusUnassigned(false)
               }}
-              onFocusUnassigned={() => {
+              onFocusUnassigned={isMaster ? () => {
                 setView('people')
                 setFilter('all')
                 setFocusUnassigned(true)
-              }}
+              } : undefined}
             />
           </div>
         </div>

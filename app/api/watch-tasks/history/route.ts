@@ -1,11 +1,14 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getSessionFromRequest, watchTaskAssigneeFilter } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const session = await getSessionFromRequest(req)
     const tasks = await prisma.watchTask.findMany({
+      where: session ? watchTaskAssigneeFilter(session) : {},
       include: {
         watch: { select: { id: true, name: true, brand: true, model: true } },
       },

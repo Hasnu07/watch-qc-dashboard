@@ -1,6 +1,7 @@
 'use client'
 
 import type { PendingFilter, PendingSummary } from '@/lib/pending-dashboard'
+import { useCurrentMember } from '@/hooks/useCurrentMember'
 
 interface PendingOpsSidebarProps {
   summary: PendingSummary | null
@@ -58,6 +59,8 @@ export default function PendingOpsSidebar({
   onFilterChange,
   onFocusUnassigned,
 }: PendingOpsSidebarProps) {
+  const { isMaster } = useCurrentMember()
+
   if (loading || !summary) {
     return (
       <aside className="pending-ops-sidebar">
@@ -116,6 +119,7 @@ export default function PendingOpsSidebar({
           onClick={() => onFilterChange?.('overdue')}
           disabled={!onFilterChange || summary.overdue_count === 0}
         />
+        {isMaster && (
         <StatButton
           label="Unassigned"
           value={summary.unassigned_count}
@@ -123,6 +127,7 @@ export default function PendingOpsSidebar({
           onClick={() => onFocusUnassigned?.()}
           disabled={!onFocusUnassigned || summary.unassigned_count === 0}
         />
+        )}
         <StatButton
           label="Cleared 24h"
           value={summary.cleared_24h}

@@ -23,6 +23,8 @@ interface Props {
   activeRoleName?: string | null
   filtersActive?: boolean
   onShowAllTasks?: () => void
+  /** Non-master members: hide all-tasks / assignee / role controls */
+  memberOnly?: boolean
 }
 
 const SORT_LABELS: Record<WatchTaskSortMode, string> = {
@@ -46,6 +48,7 @@ export default function WatchTaskToolbar({
   activeRoleName,
   filtersActive = false,
   onShowAllTasks,
+  memberOnly = false,
 }: Props) {
   const chipCls = (active: boolean) =>
     active ? 'chip-active' : 'chip hover:border-accent/40 hover:text-ink'
@@ -55,11 +58,11 @@ export default function WatchTaskToolbar({
     <div className="mb-4 space-y-2.5">
       <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-panel rounded-2xl border border-default">
         <span className="text-sm font-semibold text-ink">
-          {totalPending === 0 && !myTasksOnly
+          {totalPending === 0 && (memberOnly || !myTasksOnly)
             ? 'All tasks complete'
             : `${totalPending} pending · ${watchCount} watch${watchCount !== 1 ? 'es' : ''}`}
         </span>
-        {onShowAllTasks && (
+        {!memberOnly && onShowAllTasks && (
           <button
             type="button"
             onClick={onShowAllTasks}
@@ -73,7 +76,7 @@ export default function WatchTaskToolbar({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {showRolePresets && onRolePreset && ROLE_PRESETS.map(preset => (
+        {!memberOnly && showRolePresets && onRolePreset && ROLE_PRESETS.map(preset => (
           <button
             key={preset.name}
             type="button"
@@ -84,6 +87,7 @@ export default function WatchTaskToolbar({
           </button>
         ))}
 
+        {!memberOnly && (
         <button
           type="button"
           onClick={() => onMyTasksOnlyChange(!myTasksOnly)}
@@ -99,8 +103,9 @@ export default function WatchTaskToolbar({
           </span>
           My tasks
         </button>
+        )}
 
-        {myTasksOnly && (
+        {!memberOnly && myTasksOnly && (
           <div className="relative">
             <select
               value={myName}
@@ -138,15 +143,19 @@ export default function WatchTaskToolbar({
   )
 }
 
-export function WatchTaskEmptyFilter({ onShowAll }: { onShowAll: () => void }) {
+export function WatchTaskEmptyFilter({ onShowAll, memberOnly = false }: { onShowAll: () => void; memberOnly?: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-muted gap-3 px-6 text-center">
       <span className="text-4xl">👤</span>
       <p className="font-semibold text-lg text-ink">No tasks assigned to you</p>
-      <p className="text-sm">Turn off &quot;My tasks&quot; above, or pick your name from the list.</p>
-      <button type="button" onClick={onShowAll} className="mt-2 btn-primary text-sm">
-        Show all tasks
-      </button>
+      {!memberOnly && (
+        <>
+          <p className="text-sm">Turn off &quot;My tasks&quot; above, or pick your name from the list.</p>
+          <button type="button" onClick={onShowAll} className="mt-2 btn-primary text-sm">
+            Show all tasks
+          </button>
+        </>
+      )}
     </div>
   )
 }

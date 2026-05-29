@@ -533,12 +533,11 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedWatchId, setExpandedWatchId] = useState<number | null>(null)
+  const { member, canCompleteWatchTask, canAssignWatchTask, isMaster } = useCurrentMember()
   const {
     myTasksOnly, setMyTasksOnly, myName, setMyName, sort, setSort,
-    deptFilter, filterByAssignee, clearMyTasksFilter,
-  } = useWatchTaskFilters()
-  const { member, canCompleteWatchTask, canAssignWatchTask } = useCurrentMember()
-  const filtersActive = myTasksOnly || !!deptFilter
+    deptFilter, filterByAssignee, clearMyTasksFilter, filtersActive, memberOnly,
+  } = useWatchTaskFilters({ restrictToMember: isMaster ? null : member?.name ?? null })
 
   useEffect(() => {
     if (member?.name) setMyName(member.name)
@@ -671,10 +670,11 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
           onSortChange={setSort}
           filtersActive={filtersActive}
           onShowAllTasks={clearMyTasksFilter}
+          memberOnly={memberOnly}
         />
 
         {filteredTasks.length === 0 ? (
-          <WatchTaskEmptyFilter onShowAll={clearMyTasksFilter} />
+          <WatchTaskEmptyFilter onShowAll={clearMyTasksFilter} memberOnly={memberOnly} />
         ) : (
           watchGroups.map(({ watchId, watchName, tasks: watchTasks }) => (
             <WatchAccordion

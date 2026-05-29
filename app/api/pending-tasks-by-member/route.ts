@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { visibleWatchFilter } from '@/lib/watch-visibility'
 import { getTaskLabel } from '@/lib/task-labels'
@@ -13,6 +13,7 @@ import {
   type PendingWatchTask,
 } from '@/lib/pending-dashboard'
 import { getPipelineUrgency } from '@/lib/pipeline-timer'
+import { getSessionFromRequest, isMaster, namesMatch } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -107,8 +108,9 @@ function countOverdue(
   return count
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const session = await getSessionFromRequest(req)
     const visibleFilter = await visibleWatchFilter()
     const pipelineEpoch = await getOrInitPipelineTimerEpoch()
     const now = new Date()
@@ -239,7 +241,7 @@ export async function GET() {
 
     const health_score = computeHealthScore(total_pending, overdue_count, unassigned.pending_count)
 
-    const response: PendingDashboardResponse = {
+    let response: PendingDashboardResponse = {
       summary: {
         total_pending,
         overdue_count,
@@ -253,6 +255,51 @@ export async function GET() {
       },
       members: membersData,
       unassigned,
+    }
+
+    if (session && !isMaster(session)) {
+      const mine = membersData.find(m => namesMatch(m.member.name, session.name))
+      const myTeamTasks = mine?.team_tasks ?? []
+      const myWatchGroups = mine?.watch_groups ?? []
+      const myPending = mine?.pending_count ?? 0
+      const myOverdue = mine?.overdue_count ?? 0
+      const myDueSoon = mine?.due_soon_count ?? 0
+      const myByDept = { ACCOUNTING: 0, SALES: 0, LOGISTICS: 0 }
+      const myPipelineItems: Array<{ pipeline_started_at: string }> = []
+
+      for (const t of myTeamTasks) {
+        myPipelineItems.push(t)
+        if (mine) myByDept[mine.member.department as keyof typeof myByDept]++
+      }
+      for (const g of myWatchGroups) {
+        for (const t of g.tasks) {
+          myPipelineItems.push(t)
+          myByDept[t.department as keyof typeof myByDept]++
+        }
+      }
+
+      const myHealth = computeHealthScore(myPending, myOverdue, 0)
+      response = {
+        summary: {
+          total_pending: myPending,
+          overdue_count: myOverdue,
+          due_soon_count: myDueSoon,
+          unassigned_count: 0,
+          cleared_24h: clearedWatch + clearedTeam,
+          oldest_overdue_label: maxOverdueLabel(myPipelineItems, now),
+          by_department: myByDept,
+          health_score: myHealth,
+          health_label: healthLabel(myHealth),
+        },
+        members: mine ? [mine] : [],
+        unassigned: {
+          pending_count: 0,
+          overdue_count: 0,
+          due_soon_count: 0,
+          team_tasks: [],
+          watch_groups: [],
+        },
+      }
     }
 
     return NextResponse.json(response)

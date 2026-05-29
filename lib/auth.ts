@@ -21,9 +21,17 @@ export function defaultMemberPassword(name: string) {
   return `${name}@125`
 }
 
-function namesMatch(a: string | null | undefined, b: string | null | undefined) {
+export function namesMatch(a: string | null | undefined, b: string | null | undefined) {
   if (!a || !b) return false
   return a.trim().toLowerCase() === b.trim().toLowerCase()
+}
+
+/** Prisma where fragment: MEMBER sees only tasks assigned to them; MASTER sees all. */
+export function watchTaskAssigneeFilter(member: SessionMember) {
+  if (isMaster(member)) return {}
+  return {
+    assigned_to: { equals: member.name.trim(), mode: 'insensitive' as const },
+  }
 }
 
 export async function createSession(memberId: number) {
