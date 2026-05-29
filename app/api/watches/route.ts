@@ -32,12 +32,13 @@ export async function GET() {
       linkedBuyIds.length
         ? prisma.watch.findMany({
             where: { id: { in: linkedBuyIds } },
-            select: { id: true, purchase_price: true },
+            select: { id: true, purchase_price: true, image_url: true },
           })
         : Promise.resolve([]),
     ])
     const tasks = [...buyTasks, ...sellTasks]
     const buyPriceById = new Map(linkedBuys.map(b => [b.id, Number(b.purchase_price || 0)]))
+    const buyImageById = new Map(linkedBuys.map(b => [b.id, b.image_url]))
     for (const w of watches) {
       if (w.watch_type !== 'SELL' && w.purchase_price) {
         buyPriceById.set(w.id, Number(w.purchase_price))
@@ -60,7 +61,12 @@ export async function GET() {
     }
 
     const enriched = watches.map(w => {
-      const withSummary = { ...w, task_summary: byWatch.get(w.id) ?? blank() }
+      const linkedBuyImage = w.linked_buy_watch_id ? buyImageById.get(w.linked_buy_watch_id) ?? null : null
+      const withSummary = {
+        ...w,
+        linked_buy_image_url: linkedBuyImage,
+        task_summary: byWatch.get(w.id) ?? blank(),
+      }
       return enrichWatchMetrics(withSummary, buyPriceById)
     })
 

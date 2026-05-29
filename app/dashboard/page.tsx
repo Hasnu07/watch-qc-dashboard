@@ -66,6 +66,7 @@ interface Watch {
   stale_reason?: string | null
   linked_buy_watch_id?: number | null
   fob_url?: string | null
+  linked_buy_image_url?: string | null
   created_at?: string
 }
 
@@ -116,6 +117,40 @@ export default function DashboardPage() {
   const [pipelineStats, setPipelineStats] = useState<PipelineStats | null>(null)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [undoRemove, setUndoRemove] = useState<{ id: number; watch: Watch; timer: ReturnType<typeof setTimeout> } | null>(null)
+  const [bulkFetchMsg, setBulkFetchMsg] = useState('')
+  const [bulkFetching, setBulkFetching] = useState(false)
+
+  const missingImageCount = useMemo(
+    () => watches.filter(w => !w.image_url).length,
+    [watches],
+  )
+
+  async function startBulkImageFetch() {
+    setBulkFetching(true)
+    setBulkFetchMsg('')
+    try {
+      const res = await fetch('/api/watches/bulk-fetch-images', { method: 'POST' })
+      const data = await res.json()
+      if (data.started) {
+        setBulkFetchMsg(`Fetching images for ${data.queued} watches in background…`)
+        const poll = setInterval(async () => {
+          const st = await fetch('/api/watches/bulk-fetch-images').then(r => r.json())
+          if (!st.running) {
+            clearInterval(poll)
+            setBulkFetchMsg(`Done — ${st.done} fetched, ${st.failed} skipped`)
+            setBulkFetching(false)
+            fetchWatches()
+          }
+        }, 4000)
+      } else {
+        setBulkFetchMsg(data.message || 'Nothing to fetch')
+        setBulkFetching(false)
+      }
+    } catch {
+      setBulkFetchMsg('Bulk fetch failed')
+      setBulkFetching(false)
+    }
+  }
 
   const fetchWatches = useCallback(async () => {
     try {
@@ -457,6 +492,16 @@ export default function DashboardPage() {
             {!inventoryTvScroll && (
             <>
             <ImportInboxPanel onImported={fetchWatches} />
+
+            {missingImageCount > 0 && (
+              <div className="flex flex-wrap items-center gap-3 mb-4">
+                <button type="button" disabled={bulkFetching} onClick={startBulkImageFetch}
+                  className="btn-ghost text-xs sm:text-sm disabled:opacity-50">
+                  {bulkFetching ? 'Fetching missing images…' : `Fetch missing images (${missingImageCount})`}
+                </button>
+                {bulkFetchMsg && <span className="text-xs text-muted">{bulkFetchMsg}</span>}
+              </div>
+            )}
 
             {/* Stock-first quick entry */}
             <div className="flex gap-2 mb-4">

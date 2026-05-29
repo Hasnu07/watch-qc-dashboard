@@ -17,7 +17,8 @@ interface WatchSellTask {
   is_completed: boolean
   completed_at: string | null
   assigned_to: string | null
-  watch: { id: number; name: string; brand: string | null; model: string | null }
+  created_at?: string
+  watch: { id: number; name: string; brand: string | null; model: string | null; created_at?: string }
 }
 
 export default function WatchSellTaskPanel({ className, focusedWatchId }: { className?: string; focusedWatchId?: number | null }) {
@@ -27,7 +28,7 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
   const [expandedWatchId, setExpandedWatchId] = useState<number | null>(null)
   const {
     myTasksOnly, setMyTasksOnly, myName, setMyName, sort, setSort,
-    filterByAssignee, clearMyTasksFilter,
+    filterByAssignee, clearMyTasksFilter, applyRolePreset,
   } = useWatchTaskFilters()
 
   useEffect(() => {
@@ -138,6 +139,9 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
           teamMembers={teamMembers}
           sort={sort}
           onSortChange={setSort}
+          showRolePresets
+          onRolePreset={applyRolePreset}
+          activeRoleName={myName}
         />
 
         {filteredTasks.length === 0 ? (
@@ -147,6 +151,9 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
           const pending = watchTasks.filter(t => !t.is_completed).length
           const allDone = pending === 0
           const expanded = expandedWatchId === watchId
+          const createdAt = watchTasks[0]?.watch?.created_at
+          const hoursOld = createdAt ? (Date.now() - new Date(createdAt).getTime()) / 3600000 : 0
+          const slaBreached = !allDone && hoursOld >= 24
 
           const deptTasks: Record<string, WatchSellTask[]> = { ACCOUNTING: [], SALES: [], LOGISTICS: [] }
           for (const t of watchTasks) {
@@ -154,14 +161,17 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
           }
 
           return (
-            <div id={`watch-sell-tasks-${watchId}`} key={watchId} className={`rounded-2xl border overflow-hidden mb-3 scroll-mt-4 ${allDone ? 'border-emerald-200' : 'border-accent/30'}`}>
+            <div id={`watch-sell-tasks-${watchId}`} key={watchId} className={`rounded-2xl border overflow-hidden mb-3 scroll-mt-4 ${allDone ? 'border-emerald-200' : slaBreached ? 'border-red-400 ring-1 ring-red-200' : 'border-accent/30'}`}>
               {/* Watch header */}
               <div
-                className={`flex items-center gap-2 px-4 py-3.5 cursor-pointer ${allDone ? 'bg-emerald-50' : 'bg-card'}`}
+                className={`flex items-center gap-2 px-4 py-3.5 cursor-pointer ${allDone ? 'bg-emerald-50' : slaBreached ? 'bg-red-50' : 'bg-card'}`}
                 onClick={() => setExpandedWatchId(prev => prev === watchId ? null : watchId)}
               >
                 <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${allDone ? 'bg-emerald-500' : 'bg-accent'}`} />
-                <span className={`font-display font-bold text-base flex-1 truncate ${allDone ? 'text-emerald-800' : 'text-ink'}`}>{watchName}</span>
+                <span className={`font-display font-bold text-base flex-1 truncate ${allDone ? 'text-emerald-800' : slaBreached ? 'text-red-800' : 'text-ink'}`}>{watchName}</span>
+                {slaBreached && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200 flex-shrink-0">&gt;24h</span>
+                )}
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/30 flex-shrink-0">🏷️ SELL</span>
                 {allDone
                   ? <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">✓ Done</span>
@@ -187,15 +197,21 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
                           </span>
                         </div>
                         <div className="flex flex-col gap-1.5">
-                          {dt.map(task => (
+                          {dt.map(task => {
+                            const taskHours = task.created_at
+                              ? (Date.now() - new Date(task.created_at).getTime()) / 3600000
+                              : hoursOld
+                            const taskSla = !task.is_completed && taskHours >= 24
+                            return (
                             <SellTaskRow
                               key={task.id}
                               task={task}
                               teamMembers={teamMembers}
+                              slaBreached={taskSla}
                               onToggle={toggleTask}
                               onAssign={(name) => assignTask(task.id, name)}
                             />
-                          ))}
+                          )})}
                         </div>
                       </div>
                     )
@@ -212,10 +228,11 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
 }
 
 function SellTaskRow({
-  task, teamMembers, onToggle, onAssign
+  task, teamMembers, slaBreached = false, onToggle, onAssign
 }: {
   task: WatchSellTask
   teamMembers: TeamMember[]
+  slaBreached?: boolean
   onToggle: (task: WatchSellTask) => Promise<void>
   onAssign: (name: string | null) => Promise<void>
 }) {
@@ -228,7 +245,7 @@ function SellTaskRow({
   }
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${task.is_completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-card border-default hover:border-strong'}`}>
+    <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${task.is_completed ? 'bg-emerald-50/50 border-emerald-100' : slaBreached ? 'bg-red-50/60 border-red-200' : 'bg-card border-default hover:border-strong'}`}>
       <div
         onClick={handleToggle}
         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'border-default hover:border-accent bg-card'}`}

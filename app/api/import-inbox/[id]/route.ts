@@ -19,9 +19,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   if (action === 'import') {
+    const force = !!body.force
     const result = await importWatchFromMessage(item.message_text, item.image_url || undefined, {
       source: 'inbox',
-      force: !!body.force,
+      force,
+      forceParse: force || item.skip_reason === 'not_a_transaction',
       inboxId: id,
     })
     if (!result.imported) {

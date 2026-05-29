@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { emitWatchEvent } from '@/lib/events'
 import { findWatchImageUrl } from '@/lib/watch-image-fetch'
+import { logWatchActivity } from '@/lib/watch-activity'
 
 export async function POST(
   req: NextRequest,
@@ -37,6 +38,7 @@ export async function POST(
       data: { image_url: found.url },
     })
 
+    logWatchActivity(id, 'image_fetched', found.source).catch(console.error)
     emitWatchEvent({ type: 'watch_updated', watchId: id })
 
     return NextResponse.json({

@@ -1,6 +1,7 @@
 'use client'
 
-import type { WatchTaskSortMode } from '@/hooks/useWatchTaskFilters'
+import type { RolePreset, WatchTaskSortMode } from '@/hooks/useWatchTaskFilters'
+import { ROLE_PRESETS } from '@/hooks/useWatchTaskFilters'
 
 interface TeamMember {
   id: number
@@ -17,6 +18,9 @@ interface Props {
   teamMembers: TeamMember[]
   sort: WatchTaskSortMode
   onSortChange: (sort: WatchTaskSortMode) => void
+  showRolePresets?: boolean
+  onRolePreset?: (preset: RolePreset) => void
+  activeRoleName?: string | null
 }
 
 const SORT_LABELS: Record<WatchTaskSortMode, string> = {
@@ -35,6 +39,9 @@ export default function WatchTaskToolbar({
   teamMembers,
   sort,
   onSortChange,
+  showRolePresets = false,
+  onRolePreset,
+  activeRoleName,
 }: Props) {
   const chipCls = (active: boolean) =>
     active ? 'chip-active' : 'chip hover:border-accent/40 hover:text-ink'
@@ -50,6 +57,17 @@ export default function WatchTaskToolbar({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        {showRolePresets && onRolePreset && ROLE_PRESETS.map(preset => (
+          <button
+            key={preset.name}
+            type="button"
+            onClick={() => onRolePreset(preset)}
+            className={`${chipCls(activeRoleName === preset.name && myTasksOnly)} text-xs`}
+          >
+            {preset.name}
+          </button>
+        ))}
+
         <button
           type="button"
           onClick={() => onMyTasksOnlyChange(!myTasksOnly)}

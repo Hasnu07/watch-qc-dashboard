@@ -44,13 +44,25 @@ export function enrichWatchMetrics<T extends WatchWithMetrics>(
   const summary = watch.task_summary
   let isStale = false
   let staleReason: string | null = null
-  if (summary && daysInPipeline >= 7) {
-    for (const dept of ['ACCOUNTING', 'SALES', 'LOGISTICS'] as const) {
+  const hoursInPipeline = (Date.now() - created.getTime()) / (1000 * 60 * 60)
+
+  if (summary) {
+    const hasIncomplete = (['ACCOUNTING', 'SALES', 'LOGISTICS'] as const).some(dept => {
       const s = summary[dept]
-      if (s.total > 0 && s.completed < s.total) {
-        isStale = true
-        staleReason = `${dept.charAt(0) + dept.slice(1).toLowerCase()} tasks pending ${daysInPipeline}d`
-        break
+      return s.total > 0 && s.completed < s.total
+    })
+
+    if (watch.watch_type === 'SELL' && hasIncomplete && hoursInPipeline >= 24) {
+      isStale = true
+      staleReason = `Sell tasks incomplete >24h`
+    } else if (hasIncomplete && daysInPipeline >= 7) {
+      for (const dept of ['ACCOUNTING', 'SALES', 'LOGISTICS'] as const) {
+        const s = summary[dept]
+        if (s.total > 0 && s.completed < s.total) {
+          isStale = true
+          staleReason = `${dept.charAt(0) + dept.slice(1).toLowerCase()} tasks pending ${daysInPipeline}d`
+          break
+        }
       }
     }
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { emitWatchEvent } from '@/lib/events'
 import { checkAndUnlockLocation } from '@/lib/watch-tasks'
+import { logWatchActivity } from '@/lib/watch-activity'
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -9,6 +10,9 @@ export async function PATCH(
   try {
     const id = parseInt(params.id, 10)
     const body = await req.json()
+    const existing = await prisma.watch.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = {}
 
@@ -38,9 +42,7 @@ export async function PATCH(
     if (body.location_status !== undefined) {
       data.location_status = body.location_status
       if (body.location_status === 'IN_STOCK') {
-        // Only set received_date once
-        const existing = await prisma.watch.findUnique({ where: { id }, select: { received_date: true } })
-        if (!existing?.received_date) data.received_date = new Date()
+        if (!existing.received_date) data.received_date = new Date()
       }
     }
     if (body.location_from !== undefined)           data.location_from           = body.location_from || null
@@ -51,6 +53,18 @@ export async function PATCH(
     if (body.received_date !== undefined)           data.received_date           = body.received_date ? new Date(body.received_date) : null
 
     const watch = await prisma.watch.update({ where: { id }, data })
+
+    if (data.payment_status !== undefined && data.payment_status !== existing.payment_status) {
+      logWatchActivity(id, 'payment_status', `${existing.payment_status} → ${data.payment_status}`).catch(console.error)
+    }
+    if (data.location_status !== undefined && data.location_status !== existing.location_status) {
+      logWatchActivity(id, 'location_updated', `${existing.location_status} → ${data.location_status}`).catch(console.error)
+    } else if (
+      (data.location_from !== undefined && data.location_from !== existing.location_from) ||
+      (data.location_to !== undefined && data.location_to !== existing.location_to)
+    ) {
+      logWatchActivity(id, 'location_updated', [data.location_from ?? existing.location_from, data.location_to ?? existing.location_to].filter(Boolean).join(' → ')).catch(console.error)
+    }
 
     // If payment status changed, check if location task should unlock
     if (data.payment_status !== undefined) {

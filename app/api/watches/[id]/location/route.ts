@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { emitWatchEvent } from '@/lib/events'
+import { logWatchActivity } from '@/lib/watch-activity'
 
 export async function PATCH(
   req: NextRequest,
@@ -9,14 +10,16 @@ export async function PATCH(
   try {
     const id = parseInt(params.id, 10)
     const body = await req.json()
+    const existing = await prisma.watch.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = {}
 
     if (body.location_status !== undefined) {
       data.location_status = body.location_status
       if (body.location_status === 'IN_STOCK') {
-        const existing = await prisma.watch.findUnique({ where: { id }, select: { received_date: true } })
-        if (!existing?.received_date) data.received_date = new Date()
+        if (!existing.received_date) data.received_date = new Date()
       }
     }
     if (body.location_from !== undefined)           data.location_from           = body.location_from || null
@@ -26,6 +29,16 @@ export async function PATCH(
     if (body.transit_tracking_number !== undefined) data.transit_tracking_number = body.transit_tracking_number || null
 
     const watch = await prisma.watch.update({ where: { id }, data })
+
+    const locParts: string[] = []
+    if (data.location_status) locParts.push(String(data.location_status))
+    if (data.location_from || data.location_to) {
+      locParts.push([data.location_from ?? existing.location_from, data.location_to ?? existing.location_to].filter(Boolean).join(' → '))
+    }
+    if (locParts.length) {
+      logWatchActivity(id, 'location_updated', locParts.join(' · ')).catch(console.error)
+    }
+
     emitWatchEvent({ type: 'watch_updated', watchId: watch.id })
     return NextResponse.json(watch)
   } catch (err) {

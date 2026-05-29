@@ -62,9 +62,9 @@ export default function ImportInboxPanel({ onImported }: Props) {
               </div>
               <p className="text-ink line-clamp-2 font-mono mb-3 opacity-80">{item.message_text.slice(0, 200)}</p>
               <div className="flex gap-2">
-                <button type="button" disabled={loading} onClick={() => act(item.id, 'import', item.skip_reason === 'duplicate')}
+                <button type="button" disabled={loading} onClick={() => act(item.id, 'import', item.skip_reason === 'duplicate' || item.skip_reason === 'not_a_transaction')}
                   className="btn-primary text-xs disabled:opacity-50">
-                  Import{item.skip_reason === 'duplicate' ? ' anyway' : ''}
+                  Import{item.skip_reason === 'duplicate' || item.skip_reason === 'not_a_transaction' ? ' anyway' : ''}
                 </button>
                 <button type="button" disabled={loading} onClick={() => act(item.id, 'dismiss')}
                   className="btn-ghost text-xs">

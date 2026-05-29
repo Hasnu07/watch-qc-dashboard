@@ -2,17 +2,20 @@ import { prisma } from './prisma'
 import { emitWatchEvent } from './events'
 import { createWatchTasks, checkAndUnlockLocation } from './watch-tasks'
 import { createWatchSellTasks } from './sell-tasks'
-import { parseWhatsAppWatch, type ParsedWatch } from './parse-whatsapp-watch'
+import { parseWhatsAppWatch, forceParseSellMessage, type ParsedWatch } from './parse-whatsapp-watch'
 import { enrichFromInventory, lookupInventoryByStockNo } from './inventory-csv'
 import { logWatchActivity } from './watch-activity'
 import { saveImportInbox } from './import-inbox'
 import { hashMessage } from './message-hash'
 import { findWatchImageUrl } from './watch-image-fetch'
+import { sendImportGroupConfirmation } from './import-confirmation'
 
 export interface ImportOptions {
   source?: 'webhook' | 'paste' | 'inbox'
   force?: boolean
+  forceParse?: boolean
   inboxId?: number
+  replyChatId?: string
 }
 
 export interface ImportResult {
@@ -94,7 +97,12 @@ export async function importWatchFromMessage(
     return { imported: false, skipped: 'empty' }
   }
 
-  const parsed: ParsedWatch = parseWhatsAppWatch(trimmed)
+  let parsed: ParsedWatch = parseWhatsAppWatch(trimmed)
+
+  if (parsed.should_import === false && opts.forceParse) {
+    const forced = forceParseSellMessage(trimmed)
+    if (forced) parsed = forced
+  }
 
   if (parsed.should_import === false) {
     if (opts.source === 'webhook' || opts.source === 'paste') {
@@ -256,6 +264,10 @@ export async function importWatchFromMessage(
   emitWatchEvent({ type: 'new_watch', watchId: watch.id })
 
   scheduleBackgroundImageFetch(watch)
+
+  if (opts.replyChatId) {
+    sendImportGroupConfirmation(opts.replyChatId, watch, watchType).catch(console.error)
+  }
 
   if (opts.inboxId) {
     const { markImportInboxImported } = await import('./import-inbox')

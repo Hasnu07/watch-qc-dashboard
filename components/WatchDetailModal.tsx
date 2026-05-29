@@ -77,6 +77,16 @@ interface WatchActivity {
   created_at: string
 }
 
+const ACTION_LABELS: Record<string, string> = {
+  imported: 'Imported',
+  image_fetched: 'Image fetched',
+  sell_linked: 'Sell linked',
+  task_completed: 'Task completed',
+  payment_added: 'Payment recorded',
+  payment_status: 'Payment status changed',
+  location_updated: 'Location updated',
+}
+
 export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdated }: Props) {
   const [tab, setTab] = useState<Tab>('details')
   const [watch, setWatch] = useState<WatchDetail>(initialWatch)
@@ -598,7 +608,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                   {activities.map(a => (
                     <div key={a.id} className="flex gap-3 border-l-2 border-accent/40 pl-3 py-1">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-ink">{a.action.replace(/_/g, ' ')}</p>
+                        <p className="text-sm font-bold text-ink">{ACTION_LABELS[a.action] || a.action.replace(/_/g, ' ')}</p>
                         {a.detail && <p className="text-xs text-muted mt-0.5">{a.detail}</p>}
                         <p className="text-[10px] text-muted mt-1">
                           {new Date(a.created_at).toLocaleString()}

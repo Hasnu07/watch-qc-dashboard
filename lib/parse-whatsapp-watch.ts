@@ -89,7 +89,10 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
     /\bsold\s+(\d+\s+)?to\b/i.test(t) ||
     /\bsold\s+\d+\s+for\b/i.test(t) ||
     /^sold\s+to\s*:/im.test(t) ||
-    /^sold\s+to\s+\S/im.test(t)
+    /^sold\s+to\s+\S/im.test(t) ||
+    /\bsold\s+\d{3,6}\b/i.test(t) ||
+    /^\d{3,6}\s+sold\b/im.test(t) ||
+    /\b\d{3,6}\s*(?:→|->)\s*\S+/i.test(t)
 
   // Informal sell: "1002 for 62000 usdt" on its own line
   const hasStockForPrice = /^\d{3,6}\s+for\s+[\d,.]+\s*(usdt|usd|eur|gbp|aed|hkd)\b/im.test(t)
@@ -115,8 +118,10 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
 
   let sold_to: string | null = null
   if (type === 'SELL') {
+    const arrowTo = t.match(/\b\d{3,6}\s*(?:→|->)\s+(\S+)/i)
     const soldForTo = t.match(/\bsold\s+\d+\s+for\s+[\d,. ]+\s*\w+\s+to\s+(.+?)(?:\n|$)/i)
     const m =
+      arrowTo ||
       soldForTo ||
       t.match(/sold\s+(?:\d+\s+)?to\s+(.+?)(?:\s+for\s+[\d]|\s+@\s*[\d]|\n|$)/i) ||
       t.match(/^sold\s+to\s*:\s*(.+)$/im) ||
@@ -151,9 +156,15 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
   let stock_no: string | null = null
   const stockSoldToMatch = t.match(/\bsold\s+(\d+)\s+to\b/i)
   const stockSoldForMatch = t.match(/\bsold\s+(\d+)\s+for\b/i)
+  const stockSoldBareMatch = t.match(/\bsold\s+(\d{3,6})\b/i)
+  const stockSuffixSoldMatch = t.match(/^(\d{3,6})\s+sold\b/im)
+  const stockArrowMatch = t.match(/\b(\d{3,6})\s*(?:→|->)\s*\S+/i)
   const stockForMatch = t.match(/^(\d{3,6})\s+for\s+[\d,.]+\s*(usdt|usd|eur|gbp|aed|hkd)\b/im)
   if (stockSoldForMatch) stock_no = stockSoldForMatch[1]
   else if (stockSoldToMatch) stock_no = stockSoldToMatch[1]
+  else if (stockSoldBareMatch) stock_no = stockSoldBareMatch[1]
+  else if (stockSuffixSoldMatch) stock_no = stockSuffixSoldMatch[1]
+  else if (stockArrowMatch) stock_no = stockArrowMatch[1]
   else if (stockForMatch) stock_no = stockForMatch[1]
   else stock_no = field(t, 'Stock No', 'Stock Number', 'Stock')
 
@@ -255,6 +266,25 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
     location_from,
     location_to,
     notes,
+  }
+}
+
+/** Last-resort sell parse when user clicks "Import anyway" on skipped inbox items. */
+export function forceParseSellMessage(text: string): ParsedWatch | null {
+  const t = (text || '').trim()
+  if (!t) return null
+
+  const arrowMatch = t.match(/\b(\d{3,6})\s*(?:→|->|to)\s+(\S+)/i)
+  const soldPrefix = t.match(/\bsold\s+(\d{3,6})\b/i)
+  const soldSuffix = t.match(/^(\d{3,6})\s+sold\b/im)
+  const stock = arrowMatch?.[1] || soldPrefix?.[1] || soldSuffix?.[1] || null
+  if (!stock) return null
+
+  return {
+    should_import: true,
+    type: 'SELL',
+    stock_no: stock,
+    sold_to: arrowMatch?.[2] || null,
   }
 }
 

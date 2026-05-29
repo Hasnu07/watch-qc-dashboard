@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logWatchActivity } from '@/lib/watch-activity'
 
 export async function GET(
   _req: NextRequest,
@@ -41,6 +42,12 @@ export async function POST(
         notes: notes || null,
       },
     })
+
+    logWatchActivity(
+      watchId,
+      'payment_added',
+      `${currency || 'USD'} ${parseFloat(amount)} via ${payment_method || 'CASH'}`,
+    ).catch(console.error)
 
     return NextResponse.json(payment, { status: 201 })
   } catch (err) {

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { formatCurrency } from '@/lib/utils'
 import { DEPT_ORDER, type Department } from '@/lib/ui-constants'
+import { getImageQuality, type ImageQuality } from '@/lib/image-quality-badge'
 
 type WatchStage = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
@@ -52,6 +53,7 @@ interface Watch {
   stale_reason?: string | null
   linked_buy_watch_id?: number | null
   fob_url?: string | null
+  linked_buy_image_url?: string | null
 }
 
 interface WatchCardProps {
@@ -77,14 +79,21 @@ function highlightText(text: string, q: string) {
   )
 }
 
-function badge(text: string, variant: 'neutral' | 'accent' | 'warn' | 'ok' = 'neutral') {
+function badge(text: string, variant: 'neutral' | 'accent' | 'warn' | 'ok' | 'image' = 'neutral') {
   const cls = {
     neutral: 'bg-card border-default text-muted',
     accent: 'bg-accent/10 border-accent/30 text-accent',
     warn: 'bg-sand/40 border-default text-ink',
     ok: 'bg-card border-accent/40 text-accent',
+    image: 'bg-ink/80 border-ink/20 text-card',
   }[variant]
   return `text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${cls}`
+}
+
+function imageBadgeVariant(quality: ImageQuality): 'image' | 'ok' | 'warn' | 'neutral' {
+  if (quality === 'Official') return 'ok'
+  if (quality === 'Missing') return 'warn'
+  return 'image'
 }
 
 export default function WatchCard({
@@ -94,6 +103,31 @@ export default function WatchCard({
   const isSell = watch.watch_type === 'SELL'
   const [fetchingImage, setFetchingImage] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [fobSaving, setFobSaving] = useState(false)
+  const imageQuality = getImageQuality(watch)
+
+  async function markFobUpdated(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (fobSaving) return
+    setFobSaving(true)
+    try {
+      const res = await fetch(`/api/watch-tasks?phase=SELL&watch_id=${watch.id}`)
+      if (!res.ok) return
+      const tasks = await res.json()
+      const fobTask = tasks.find((t: { task_type: string; is_completed: boolean }) =>
+        /fob/i.test(t.task_type) && !t.is_completed)
+      if (fobTask) {
+        await fetch(`/api/watch-tasks/${fobTask.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_completed: true }),
+        })
+        onImageFetched?.()
+      }
+    } finally {
+      setFobSaving(false)
+    }
+  }
 
   async function handleFetchImage(e: React.MouseEvent) {
     e.stopPropagation()
@@ -255,6 +289,9 @@ export default function WatchCard({
             </span>
           </div>
         )}
+        <div className="absolute top-3 right-3">
+          <span className={badge(imageQuality, imageBadgeVariant(imageQuality))}>{imageQuality}</span>
+        </div>
       </div>
 
       <div className="p-5 flex flex-col gap-3 flex-1">
@@ -286,6 +323,19 @@ export default function WatchCard({
         )}
 
         {isSell && watch.sold_to && <p className="text-muted text-xs">Sold to {watch.sold_to}</p>}
+        {isSell && watch.fob_url && (
+          <div className="flex flex-wrap gap-2">
+            <a href={watch.fob_url} target="_blank" rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full border border-accent/40 text-accent bg-card hover:bg-accent/5">
+              Open FOB
+            </a>
+            <button type="button" onClick={markFobUpdated} disabled={fobSaving}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full border border-default text-muted bg-panel hover:text-accent disabled:opacity-60">
+              {fobSaving ? '…' : 'Mark FOB updated'}
+            </button>
+          </div>
+        )}
         {!isSell && watch.bought_from && <p className="text-muted text-xs">From {watch.bought_from}</p>}
         {isSell && watch.margin != null && (
           <p className={`text-sm font-semibold ${watch.margin >= 0 ? 'text-accent' : 'text-muted'}`}>
