@@ -7,6 +7,7 @@ import PasteMessageModal from '@/components/PasteMessageModal'
 import WatchDetailModal, { type WatchDetail } from '@/components/WatchDetailModal'
 import WatchTaskPanel from '@/components/WatchTaskPanel'
 import WatchSellTaskPanel from '@/components/WatchSellTaskPanel'
+import PendingTasksPanel from '@/components/PendingTasksPanel'
 import AutoScrollList from '@/components/AutoScrollList'
 import AutoScrollViewport from '@/components/AutoScrollViewport'
 import ConfirmRemoveModal from '@/components/ConfirmRemoveModal'
@@ -99,8 +100,8 @@ export default function DashboardPage() {
   const [showActionSheet, setShowActionSheet] = useState(false)
   const [selectedWatch, setSelectedWatch] = useState<Watch | null>(null)
   const [removeTarget, setRemoveTarget] = useState<Watch | null>(null)
-  const [activeTab, setActiveTab] = useState<'inventory' | 'tasks' | 'sell' | 'add'>('inventory')
-  const [taskTab, setTaskTab] = useState<'buy' | 'sell'>('buy')
+  const [activeTab, setActiveTab] = useState<'inventory' | 'tasks' | 'sell' | 'pending' | 'add'>('inventory')
+  const [taskTab, setTaskTab] = useState<'buy' | 'sell' | 'pending'>('buy')
   const [focusedWatchId, setFocusedWatchId] = useState<number | null>(null)
   const [deptFilter, setDeptFilter] = useState<Department | null>(null)
   const [autoScroll, setAutoScroll] = useState(false)
@@ -234,6 +235,12 @@ export default function DashboardPage() {
     setFocusedWatchId(watch.id)
     setTaskTab(isSell ? 'sell' : 'buy')
     setActiveTab(isSell ? 'sell' : 'tasks')
+  }
+
+  const handleOpenWatchFromPending = (watchId: number, phase: 'BUY' | 'SELL') => {
+    setFocusedWatchId(watchId)
+    setTaskTab(phase === 'SELL' ? 'sell' : 'buy')
+    setActiveTab(phase === 'SELL' ? 'sell' : 'tasks')
   }
 
   const openAddWithStock = (stock: string) => {
@@ -395,14 +402,17 @@ export default function DashboardPage() {
           ['inventory', 'Inventory', watches.length],
           ['tasks', 'Buy Tasks', null],
           ['sell', 'Sell Tasks', null],
+          ['pending', 'Pending', null],
         ] as const).map(([tab, label, count]) => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
+          <button key={tab} onClick={() => { if (tab === 'pending') setTaskTab('pending'); setActiveTab(tab) }}
             className={`flex-1 py-3.5 text-sm font-bold transition-colors flex items-center justify-center gap-1.5 ${
               activeTab === tab
                 ? tab === 'tasks' || tab === 'sell'
                   ? 'text-white bg-accent border-b-2 border-accent'
-                  : 'text-accent border-b-2 border-accent'
-                : tab === 'tasks' || tab === 'sell'
+                  : tab === 'pending'
+                    ? 'text-white bg-accent border-b-2 border-accent'
+                    : 'text-accent border-b-2 border-accent'
+                : tab === 'tasks' || tab === 'sell' || tab === 'pending'
                   ? 'text-ink bg-panel/80'
                   : 'text-muted'
             }`}>
@@ -518,7 +528,7 @@ export default function DashboardPage() {
 
         {/* RIGHT — Tasks sidebar */}
         {showTasksPanel && (
-        <div className={`flex flex-col shrink-0 w-full md:w-[42%] md:max-w-[42%] md:flex-[0_0_42%] border-l border-default bg-surface ${useStickyTasks ? `${viewportHeightClass} overflow-hidden ${pinnedTasksClass}` : usePageScrollLayout ? '' : `${viewportHeightClass} min-h-0 overflow-hidden`} ${activeTab === 'tasks' || activeTab === 'sell' ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`flex flex-col shrink-0 w-full md:w-[42%] md:max-w-[42%] md:flex-[0_0_42%] border-l border-default bg-surface ${useStickyTasks ? `${viewportHeightClass} overflow-hidden ${pinnedTasksClass}` : usePageScrollLayout ? '' : `${viewportHeightClass} min-h-0 overflow-hidden`} ${activeTab === 'tasks' || activeTab === 'sell' || activeTab === 'pending' ? 'flex' : 'hidden'} md:flex`}>
           <div className="flex items-center justify-between px-4 py-4 border-b border-default bg-panel sm:px-6 flex-shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <button type="button" onClick={() => setActiveTab('inventory')}
@@ -531,6 +541,8 @@ export default function DashboardPage() {
                 <p className="text-xs mt-0.5 text-muted truncate max-w-[240px] sm:max-w-none">
                   #{focusedWatch.stock_no || focusedWatch.id} {focusedWatch.brand} {focusedWatch.model}
                 </p>
+              ) : taskTab === 'pending' ? (
+                <p className="text-xs mt-0.5 text-muted">Team + watch tasks by person</p>
               ) : (
                 <p className="text-xs mt-0.5 text-muted">
                   {taskTab === 'sell' ? 'Sell workflow' : 'Buy workflow'}
@@ -559,9 +571,17 @@ export default function DashboardPage() {
               className={`px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${taskTab === 'sell' ? 'border-accent text-ink' : 'border-transparent text-muted'}`}>
               Sell
             </button>
+            <button onClick={() => { setTaskTab('pending'); setActiveTab('pending') }}
+              className={`px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${taskTab === 'pending' ? 'border-accent text-ink' : 'border-transparent text-muted'}`}>
+              Pending
+            </button>
           </div>
 
-          {taskTab === 'buy' ? (
+          {taskTab === 'pending' ? (
+            <TaskListWrapper>
+              <PendingTasksPanel onOpenWatch={handleOpenWatchFromPending} />
+            </TaskListWrapper>
+          ) : taskTab === 'buy' ? (
             <TaskListWrapper>
               <WatchTaskPanel focusedWatchId={taskTab === 'buy' ? focusedWatchId : null} />
             </TaskListWrapper>
@@ -585,12 +605,19 @@ export default function DashboardPage() {
       <div className="fixed bottom-0 left-0 right-0 md:hidden bg-panel border-t border-default z-50 flex">
         {([
           ['inventory', 'Stock', false],
-          ['tasks', 'Buy tasks', true],
-          ['sell', 'Sell tasks', true],
+          ['tasks', 'Buy', true],
+          ['sell', 'Sell', true],
+          ['pending', 'Pending', true],
           ['add', 'Add', false],
         ] as const).map(([tab, label, isTaskTab]) => (
           <button key={tab} type="button"
-            onClick={() => tab === 'add' ? setShowActionSheet(true) : setActiveTab(tab)}
+            onClick={() => {
+              if (tab === 'add') setShowActionSheet(true)
+              else {
+                if (tab === 'pending') setTaskTab('pending')
+                setActiveTab(tab)
+              }
+            }}
             className={`flex-1 py-4 flex flex-col items-center justify-center text-xs font-bold ${
               activeTab === tab
                 ? isTaskTab
