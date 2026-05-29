@@ -12,8 +12,6 @@ ALTER TABLE "TeamMember" ADD COLUMN IF NOT EXISTS "role" "MemberRole" NOT NULL D
 
 UPDATE "TeamMember" SET "login_username" = "name" WHERE "login_username" IS NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS "TeamMember_login_username_key" ON "TeamMember"("login_username");
-
 -- CreateTable
 CREATE TABLE IF NOT EXISTS "MemberSession" (
     "token" TEXT NOT NULL,
