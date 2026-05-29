@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import { getProfileAvatarUrl } from '@/lib/profile-avatars'
+import { getProfileAvatarHoverFallbacks, getProfileAvatarUrl } from '@/lib/profile-avatars'
 
 interface LoginProfile {
   id: number
@@ -63,29 +63,62 @@ function ProfileAvatar({
   role,
   avatarUrl,
   large,
+  hoverable = true,
 }: {
   name: string
   role: string
   avatarUrl: string | null
   large?: boolean
+  hoverable?: boolean
 }) {
   const [imgFailed, setImgFailed] = useState(false)
-  const showImage = Boolean(avatarUrl) && !imgFailed
+  const [hovering, setHovering] = useState(false)
+  const [hoverAttempt, setHoverAttempt] = useState(0)
+  const [animKey, setAnimKey] = useState(0)
+
+  const hoverFallbacks = getProfileAvatarHoverFallbacks(name)
+  const hasHover = hoverable && hoverFallbacks.length > 0
+  const hoverSrc = hovering ? hoverFallbacks[hoverAttempt] ?? null : null
+  const displayUrl = hoverSrc ?? avatarUrl
+  const showImage = Boolean(displayUrl) && !imgFailed
+
+  const handleMouseEnter = () => {
+    if (!hasHover) return
+    setHovering(true)
+    setHoverAttempt(0)
+    setAnimKey(k => k + 1)
+  }
+
+  const handleMouseLeave = () => {
+    setHovering(false)
+    setHoverAttempt(0)
+  }
+
+  const handleImageError = () => {
+    if (hovering && hoverAttempt < hoverFallbacks.length - 1) {
+      setHoverAttempt(i => i + 1)
+      return
+    }
+    if (!hovering) setImgFailed(true)
+  }
 
   return (
     <div
       className={large ? 'netflix-profile__avatar netflix-profile__avatar--large' : 'netflix-profile__avatar'}
       style={showImage ? undefined : { background: profileColor(name) }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      {showImage && avatarUrl ? (
+      {showImage && displayUrl ? (
         <Image
-          src={avatarUrl}
+          key={hovering ? `hover-${animKey}-${hoverAttempt}` : 'static'}
+          src={displayUrl}
           alt=""
           fill
           sizes={large ? '140px' : '120px'}
           className="netflix-profile__avatar-img"
           unoptimized
-          onError={() => setImgFailed(true)}
+          onError={handleImageError}
         />
       ) : (
         <ProfileSmiley large={large} />
