@@ -312,11 +312,12 @@ html { scrollbar-gutter: stable; }
   }
 
   .pending-watch-group {
-    background: #e8e8e8;
+    background: transparent;
     border-radius: 0.75rem;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+    padding: 0;
+    margin-bottom: 1.25rem;
+    border: none;
+    box-shadow: none;
   }
 
   .pending-watch-group-header {
@@ -324,7 +325,7 @@ html { scrollbar-gutter: stable; }
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     margin-left: 0.25rem;
   }
 
@@ -362,10 +363,11 @@ html { scrollbar-gutter: stable; }
     gap: 0.75rem;
     padding: 0.75rem;
     border-radius: 0.75rem;
-    border: 1px solid;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(248, 113, 113, 0.85);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
     transition: transform 0.15s ease;
     cursor: pointer;
+    background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%);
   }
 
   @media (min-width: 640px) {
@@ -469,7 +471,9 @@ html { scrollbar-gutter: stable; }
     flex-shrink: 0;
   }
 
-  .task-strip-overdue .task-strip-timer {
+  .task-strip-overdue .task-strip-timer,
+  .task-strip-red .task-strip-timer,
+  .task-strip .task-strip-timer {
     background: rgba(127, 29, 29, 0.65);
     border: 1px solid rgba(248, 113, 113, 0.35);
     animation: task-strip-badge-pulse 2s ease-in-out infinite;
@@ -482,8 +486,9 @@ html { scrollbar-gutter: stable; }
   }
 
   .task-strip-fresh .task-strip-timer {
-    background: rgba(7, 89, 133, 0.55);
-    border: 1px solid rgba(34, 211, 238, 0.3);
+    background: rgba(127, 29, 29, 0.65);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    animation: task-strip-badge-pulse 2s ease-in-out infinite;
   }
 
   .task-strip-timer-label {
@@ -520,10 +525,14 @@ html { scrollbar-gutter: stable; }
     transform: scale(0.97);
   }
 
-  .task-strip-overdue .task-strip-action {
+  .task-strip-overdue .task-strip-action,
+  .task-strip-red .task-strip-action,
+  .task-strip .task-strip-action {
     color: #dc2626;
   }
-  .task-strip-overdue .task-strip-action:hover {
+  .task-strip-overdue .task-strip-action:hover,
+  .task-strip-red .task-strip-action:hover,
+  .task-strip .task-strip-action:hover {
     background: #fef2f2;
   }
 
@@ -564,8 +573,16 @@ html { scrollbar-gutter: stable; }
 @media (prefers-reduced-motion: reduce) {
   .auto-scroll-content { animation: none !important; }
   .task-strip-shimmer,
+  .task-strip .task-strip-timer,
   .task-strip-overdue .task-strip-timer,
   .task-strip-warning .task-strip-timer,
   .member-overdue-pill { animation: none !important; }
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Pending task strips — outside @layer so red gradient always wins */
+.task-strip-red,
+.task-strip.task-strip-red {
+  background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%) !important;
+  border-color: rgba(248, 113, 113, 0.85) !important;
 }

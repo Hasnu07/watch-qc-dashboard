@@ -10,12 +10,6 @@ const URGENCY_LABELS: Record<PipelineUrgency, string> = {
   overdue: 'Overdue',
 }
 
-const URGENCY_ICONS: Record<PipelineUrgency, string> = {
-  fresh: '⏳',
-  warning: '⚠️',
-  overdue: '⚠️',
-}
-
 interface MemberPending {
   member: { id: number; name: string; department: Department }
   pending_count: number
@@ -56,35 +50,32 @@ function TaskStrip({
   const start = new Date(startedAt)
   const urgency = getPipelineUrgency(start, now)
   const elapsed = formatPipelineElapsed(start, now)
-  const showShimmer = urgency === 'overdue' || urgency === 'warning'
 
   return (
     <div
-      className={`task-strip task-strip-${urgency}`}
+      className="task-strip task-strip-red"
+      style={{
+        background: 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)',
+        borderColor: 'rgba(248, 113, 113, 0.85)',
+      }}
       onClick={onStripClick}
       role="button"
       tabIndex={0}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStripClick?.() }}
     >
-      {showShimmer && (
-        <div
-          className="task-strip-shimmer"
-          style={{ animationDelay: `${shimmerDelay}s` }}
-          aria-hidden
-        />
-      )}
+      <div
+        className="task-strip-shimmer"
+        style={{ animationDelay: `${shimmerDelay}s` }}
+        aria-hidden
+      />
       <div className="task-strip-body">
-        <span className="task-strip-icon" aria-hidden>{URGENCY_ICONS[urgency]}</span>
+        <span className="task-strip-icon" aria-hidden>⚠️</span>
         <span className="task-strip-title">{title}</span>
       </div>
       <div className="task-strip-meta">
         <div
           className="task-strip-timer"
-          style={
-            urgency === 'overdue' || urgency === 'warning'
-              ? { animationDelay: `${shimmerDelay + 0.25}s` }
-              : undefined
-          }
+          style={{ animationDelay: `${shimmerDelay + 0.25}s` }}
         >
           <span className="task-strip-timer-label">{URGENCY_LABELS[urgency]}</span>
           <span className="task-strip-timer-value font-mono-data">{elapsed}</span>
