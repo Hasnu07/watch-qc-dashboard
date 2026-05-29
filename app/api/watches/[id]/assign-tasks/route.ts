@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { assignWatchTasks } from '@/lib/watch-tasks'
+import { requireSession, requireMaster } from '@/lib/auth'
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(req)
+    if (session instanceof NextResponse) return session
+    const forbidden = requireMaster(session)
+    if (forbidden) return forbidden
+
     const watchId = parseInt(params.id, 10)
     const watch = await prisma.watch.findUnique({
       where: { id: watchId },

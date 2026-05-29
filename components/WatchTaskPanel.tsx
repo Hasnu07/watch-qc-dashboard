@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import WatchTaskToolbar, { WatchTaskEmptyFilter } from '@/components/WatchTaskToolbar'
 import { useWatchTaskFilters } from '@/hooks/useWatchTaskFilters'
+import { useCurrentMember } from '@/hooks/useCurrentMember'
 import { DEPT_CONFIG, DEPT_ORDER, type Department } from '@/lib/ui-constants'
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
 type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
@@ -145,12 +146,14 @@ function AssigneePicker({ currentAssignee, teamMembers, onAssign }: AssigneePick
 interface TaskRowProps {
   task: WatchTask
   teamMembers: TeamMember[]
+  canComplete: boolean
+  canAssign: boolean
   onComplete: (taskId: number, metadata?: Record<string, unknown>) => Promise<void>
   onUncomplete: (taskId: number) => Promise<void>
   onAssign: (taskId: number, name: string | null) => Promise<void>
 }
 
-function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: TaskRowProps) {
+function TaskRow({ task, teamMembers, canComplete, canAssign, onComplete, onUncomplete, onAssign }: TaskRowProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [payStatus, setPayStatus] = useState<PaymentStatus>(task.watch.payment_status)
@@ -180,7 +183,7 @@ function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: Task
   const hasInlineForm = ['ACCOUNTING_MARK_PAYMENT', 'SALES_SET_PRICE', 'LOGISTICS_UPDATE_COST', 'LOGISTICS_SET_LOCATION'].includes(task.task_type)
 
   const handleClick = async () => {
-    if (saving) return
+    if (saving || !canComplete) return
     if (task.is_completed) { setSaving(true); try { await onUncomplete(task.id) } finally { setSaving(false) }; return }
     if (SIMPLE_TASKS.includes(task.task_type)) { setSaving(true); try { await onComplete(task.id) } finally { setSaving(false) }; return }
     setOpen(o => !o)
@@ -205,7 +208,7 @@ function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: Task
 
   return (
     <div className={`rounded-xl border transition-all ${task.is_completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-card border-default hover:border-strong'}`}>
-      <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none" onClick={handleClick}>
+      <div className={`flex items-center gap-2 px-3 py-2.5 select-none ${canComplete ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`} onClick={handleClick}>
         {/* Checkbox */}
         <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'border-default hover:border-accent bg-card'}`}>
           {task.is_completed && <span className="text-white text-[10px] font-black leading-none">✓</span>}
@@ -234,11 +237,13 @@ function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: Task
         )}
 
         {/* Assignee picker */}
-        <AssigneePicker
-          currentAssignee={task.assigned_to}
-          teamMembers={teamMembers}
-          onAssign={(name) => onAssign(task.id, name)}
-        />
+        {canAssign && (
+          <AssigneePicker
+            currentAssignee={task.assigned_to}
+            teamMembers={teamMembers}
+            onAssign={(name) => onAssign(task.id, name)}
+          />
+        )}
 
         {/* Expand arrow */}
         {hasInlineForm && !task.is_completed && (
@@ -321,12 +326,14 @@ function TaskRow({ task, teamMembers, onComplete, onUncomplete, onAssign }: Task
 interface AccessoriesGroupProps {
   tasks: WatchTask[]
   teamMembers: TeamMember[]
+  canCompleteTask: (task: WatchTask) => boolean
+  canAssign: boolean
   onComplete: (taskId: number, metadata?: Record<string, unknown>) => Promise<void>
   onUncomplete: (taskId: number) => Promise<void>
   onAssign: (taskId: number, name: string | null) => Promise<void>
 }
 
-function AccessoriesGroup({ tasks, teamMembers, onComplete, onUncomplete, onAssign }: AccessoriesGroupProps) {
+function AccessoriesGroup({ tasks, teamMembers, canCompleteTask, canAssign, onComplete, onUncomplete, onAssign }: AccessoriesGroupProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState<number | null>(null)
   const [savingAll, setSavingAll] = useState(false)
@@ -338,15 +345,17 @@ function AccessoriesGroup({ tasks, teamMembers, onComplete, onUncomplete, onAssi
   const handleMainClick = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (savingAll || saving !== null) return
+    const actionable = tasks.filter(t => canCompleteTask(t))
+    if (actionable.length === 0) return
     setSavingAll(true)
     try {
-      if (allDone) { await Promise.all(tasks.map(t => onUncomplete(t.id))) }
-      else { await Promise.all(tasks.filter(t => !t.is_completed).map(t => onComplete(t.id))) }
+      if (allDone) { await Promise.all(actionable.map(t => onUncomplete(t.id))) }
+      else { await Promise.all(actionable.filter(t => !t.is_completed).map(t => onComplete(t.id))) }
     } finally { setSavingAll(false) }
   }
 
   const handleToggle = async (task: WatchTask) => {
-    if (saving !== null || savingAll) return
+    if (saving !== null || savingAll || !canCompleteTask(task)) return
     setSaving(task.id)
     try {
       if (task.is_completed) await onUncomplete(task.id)
@@ -380,11 +389,13 @@ function AccessoriesGroup({ tasks, teamMembers, onComplete, onUncomplete, onAssi
         </span>
 
         {/* Group assignee picker */}
-        <AssigneePicker
-          currentAssignee={groupAssignee}
-          teamMembers={teamMembers}
-          onAssign={handleGroupAssign}
-        />
+        {canAssign && (
+          <AssigneePicker
+            currentAssignee={groupAssignee}
+            teamMembers={teamMembers}
+            onAssign={handleGroupAssign}
+          />
+        )}
 
         <span className={`text-muted text-xs transition-transform duration-150 flex-shrink-0 ${open ? 'rotate-180' : ''}`}>▾</span>
       </div>
@@ -392,7 +403,7 @@ function AccessoriesGroup({ tasks, teamMembers, onComplete, onUncomplete, onAssi
       {open && (
         <div className="px-3 pb-3 pt-1 border-t border-default flex flex-col gap-1">
           {tasks.map(task => (
-            <div key={task.id} className="flex items-center gap-2.5 py-1.5 px-1 cursor-pointer rounded-lg hover:bg-panel transition-colors" onClick={() => handleToggle(task)}>
+            <div key={task.id} className={`flex items-center gap-2.5 py-1.5 px-1 rounded-lg transition-colors ${canCompleteTask(task) ? 'cursor-pointer hover:bg-panel' : 'cursor-not-allowed opacity-60'}`} onClick={() => handleToggle(task)}>
               <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'border-default hover:border-accent bg-card'}`}>
                 {task.is_completed && <span className="text-white text-[8px] font-black leading-none">✓</span>}
                 {saving === task.id && !task.is_completed && <span className="text-muted text-[8px] inline-block animate-spin">⟳</span>}
@@ -413,13 +424,15 @@ function AccessoriesGroup({ tasks, teamMembers, onComplete, onUncomplete, onAssi
 interface WatchAccordionProps {
   watchId: number; watchName: string; tasks: WatchTask[]
   teamMembers: TeamMember[]; expanded: boolean; onToggle: () => void
+  canCompleteTask: (task: WatchTask) => boolean
+  canAssign: boolean
   onComplete: (taskId: number, metadata?: Record<string, unknown>) => Promise<void>
   onUncomplete: (taskId: number) => Promise<void>
   onAssign: (taskId: number, name: string | null) => Promise<void>
   onRefresh: () => void
 }
 
-function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onToggle, onComplete, onUncomplete, onAssign, onRefresh }: WatchAccordionProps) {
+function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onToggle, canCompleteTask, canAssign, onComplete, onUncomplete, onAssign, onRefresh }: WatchAccordionProps) {
   const [assigning, setAssigning] = useState(false)
   const [assignDone, setAssignDone] = useState(false)
 
@@ -454,14 +467,16 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onTo
         </button>
 
         {/* Auto assign button */}
-        <button onClick={handleAutoAssign} disabled={assigning}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex-shrink-0 disabled:opacity-50 ${
-            assignDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-accent/10 text-accent border-accent/30 hover:bg-accent/15'
-          }`}>
-          {assigning ? <><span className="animate-spin inline-block">⟳</span> Assigning…</>
-            : assignDone ? <>✓ Assigned</>
-            : <>👤 Auto Assign</>}
-        </button>
+        {canAssign && (
+          <button onClick={handleAutoAssign} disabled={assigning}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex-shrink-0 disabled:opacity-50 ${
+              assignDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-accent/10 text-accent border-accent/30 hover:bg-accent/15'
+            }`}>
+            {assigning ? <><span className="animate-spin inline-block">⟳</span> Assigning…</>
+              : assignDone ? <>✓ Assigned</>
+              : <>👤 Auto Assign</>}
+          </button>
+        )}
 
         {allDone
           ? <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">✓ Done</span>
@@ -496,10 +511,10 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onTo
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {mainTasks.map(task => (
-                    <TaskRow key={task.id} task={task} teamMembers={teamMembers} onComplete={onComplete} onUncomplete={onUncomplete} onAssign={onAssign} />
+                    <TaskRow key={task.id} task={task} teamMembers={teamMembers} canComplete={canCompleteTask(task)} canAssign={canAssign} onComplete={onComplete} onUncomplete={onUncomplete} onAssign={onAssign} />
                   ))}
                   {accessoryTasks.length > 0 && (
-                    <AccessoriesGroup tasks={accessoryTasks} teamMembers={teamMembers} onComplete={onComplete} onUncomplete={onUncomplete} onAssign={onAssign} />
+                    <AccessoriesGroup tasks={accessoryTasks} teamMembers={teamMembers} canCompleteTask={canCompleteTask} canAssign={canAssign} onComplete={onComplete} onUncomplete={onUncomplete} onAssign={onAssign} />
                   )}
                 </div>
               </div>
@@ -522,7 +537,12 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
     myTasksOnly, setMyTasksOnly, myName, setMyName, sort, setSort,
     deptFilter, filterByAssignee, clearMyTasksFilter,
   } = useWatchTaskFilters()
+  const { member, canCompleteWatchTask, canAssignWatchTask } = useCurrentMember()
   const filtersActive = myTasksOnly || !!deptFilter
+
+  useEffect(() => {
+    if (member?.name) setMyName(member.name)
+  }, [member, setMyName])
 
   useEffect(() => {
     if (focusedWatchId != null) {
@@ -665,6 +685,8 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
               teamMembers={teamMembers}
               expanded={expandedWatchId === watchId}
               onToggle={() => setExpandedWatchId(prev => prev === watchId ? null : watchId)}
+              canCompleteTask={canCompleteWatchTask}
+              canAssign={canAssignWatchTask}
               onComplete={completeTask}
               onUncomplete={uncompleteTask}
               onAssign={assignTask}

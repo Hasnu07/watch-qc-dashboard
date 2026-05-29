@@ -45,6 +45,11 @@ enum PaymentMethod {
   CRYPTO
 }
 
+enum MemberRole {
+  MEMBER
+  MASTER
+}
+
 model Watch {
   id             Int        @id @default(autoincrement())
   brand          String?
@@ -143,13 +148,25 @@ model WatchTask {
 }
 
 model TeamMember {
-  id               Int        @id @default(autoincrement())
-  name             String
-  whatsapp_number  String     @unique
-  department       Department @default(LOGISTICS)
-  created_at       DateTime   @default(now())
-  tasks_assigned_to Task[]    @relation("AssignedTo")
-  tasks_assigned_by Task[]    @relation("AssignedBy")
+  id                Int             @id @default(autoincrement())
+  name              String
+  whatsapp_number   String          @unique
+  department        Department      @default(LOGISTICS)
+  login_username    String          @unique
+  password_hash     String
+  role              MemberRole      @default(MEMBER)
+  created_at        DateTime        @default(now())
+  tasks_assigned_to Task[]          @relation("AssignedTo")
+  tasks_assigned_by Task[]          @relation("AssignedBy")
+  sessions          MemberSession[]
+}
+
+model MemberSession {
+  token          String     @id
+  team_member_id Int
+  team_member    TeamMember @relation(fields: [team_member_id], references: [id], onDelete: Cascade)
+  expires_at     DateTime
+  created_at     DateTime   @default(now())
 }
 
 model Task {

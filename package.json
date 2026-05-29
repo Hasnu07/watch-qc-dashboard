@@ -10,6 +10,8 @@
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
+    "db:seed-admin": "node scripts/seed-admin.mjs",
+    "db:seed-members": "node scripts/seed-member-logins.mjs",
     "test:parser": "npx tsx scripts/test-parser.ts"
   },
   "dependencies": {

@@ -3,11 +3,18 @@ import { prisma } from '@/lib/prisma'
 import { emitWatchEvent } from '@/lib/events'
 import { checkAndUnlockLocation } from '@/lib/watch-tasks'
 import { logWatchActivity } from '@/lib/watch-activity'
+import { requireSession, requireMaster } from '@/lib/auth'
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(req)
+    if (session instanceof NextResponse) return session
+    const forbidden = requireMaster(session)
+    if (forbidden) return forbidden
+
     const id = parseInt(params.id, 10)
     const body = await req.json()
     const existing = await prisma.watch.findUnique({ where: { id } })
@@ -81,10 +88,15 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(req)
+    if (session instanceof NextResponse) return session
+    const forbidden = requireMaster(session)
+    if (forbidden) return forbidden
+
     const id = parseInt(params.id, 10)
     await prisma.watch.delete({ where: { id } })
     return NextResponse.json({ ok: true })

@@ -5,6 +5,7 @@ import { createWatchTasks } from '@/lib/watch-tasks'
 import { createWatchSellTasks } from '@/lib/sell-tasks'
 import { getVisibleWatches } from '@/lib/watch-visibility'
 import { enrichWatchMetrics, computePipelineStats } from '@/lib/watch-metrics'
+import { requireSession, requireMaster } from '@/lib/auth'
 
 export async function GET() {
   try {
@@ -86,6 +87,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireSession(req)
+    if (session instanceof NextResponse) return session
+    const forbidden = requireMaster(session)
+    if (forbidden) return forbidden
+
     const body = await req.json()
     const {
       brand, model, ref_no, serial_no, stock_no, watch_date,

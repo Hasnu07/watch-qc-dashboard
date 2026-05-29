@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
+import { hashPassword, defaultMemberPassword, requireSession, requireMaster } from '@/lib/auth'
 
 async function getGreenAPISettings() {
   const [inst, tok, url] = await Promise.all([
@@ -26,6 +27,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireSession(req)
+    if (session instanceof NextResponse) return session
+    const forbidden = requireMaster(session)
+    if (forbidden) return forbidden
+
     const body = await req.json()
     const { name, whatsapp_number, department } = body
 
@@ -37,9 +43,18 @@ export async function POST(req: NextRequest) {
     const dept = validDepts.includes(department) ? department : 'LOGISTICS'
 
     const cleanNumber = whatsapp_number.replace(/[^0-9]/g, '')
+    const loginUsername = name.trim()
+    const password = defaultMemberPassword(name.trim())
 
     const member = await prisma.teamMember.create({
-      data: { name, whatsapp_number: cleanNumber, department: dept },
+      data: {
+        name: loginUsername,
+        whatsapp_number: cleanNumber,
+        department: dept,
+        login_username: loginUsername,
+        password_hash: hashPassword(loginUsername, password),
+        role: 'MEMBER',
+      },
     })
 
     // Fire-and-forget welcome message

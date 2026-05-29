@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Routes that require a logged-in admin. Mirrors the matcher below so the
-// intent is clear in one place. The root '/' (Admin Tasks) is intentionally
-// public so the team can read assigned tasks without signing in.
-const PROTECTED = ['/dashboard', '/history', '/settings']
+const LOGIN_REQUIRED = ['/dashboard', '/pending', '/history']
+const MASTER_ONLY = ['/settings']
+const SESSION_COOKIE = 'qc_member_session'
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Always allow Next internals, the login page, and the auth API
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
@@ -18,14 +16,44 @@ export function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  const isProtected = PROTECTED.some(p => pathname === p || pathname.startsWith(p + '/'))
+  const needsLogin = LOGIN_REQUIRED.some(p => pathname === p || pathname.startsWith(p + '/'))
+  const needsMaster = MASTER_ONLY.some(p => pathname === p || pathname.startsWith(p + '/'))
 
-  if (isProtected) {
-    const token = req.cookies.get('qc_admin_session')?.value
-    if (!token) {
+  if (!needsLogin && !needsMaster) {
+    return NextResponse.next()
+  }
+
+  const token = req.cookies.get(SESSION_COOKIE)?.value
+  if (!token) {
+    const url = req.nextUrl.clone()
+    url.pathname = '/login'
+    url.searchParams.set('next', pathname)
+    return NextResponse.redirect(url)
+  }
+
+  if (needsLogin || needsMaster) {
+    try {
+      const meUrl = new URL('/api/auth/me', req.url)
+      const meRes = await fetch(meUrl, {
+        headers: { cookie: `${SESSION_COOKIE}=${token}` },
+      })
+      if (!meRes.ok) {
+        const url = req.nextUrl.clone()
+        url.pathname = '/login'
+        url.searchParams.set('next', pathname)
+        return NextResponse.redirect(url)
+      }
+      if (needsMaster) {
+        const me = await meRes.json()
+        if (me.role !== 'MASTER') {
+          const url = req.nextUrl.clone()
+          url.pathname = '/dashboard'
+          return NextResponse.redirect(url)
+        }
+      }
+    } catch {
       const url = req.nextUrl.clone()
       url.pathname = '/login'
-      // Remember where the user was heading so we can return them after login
       url.searchParams.set('next', pathname)
       return NextResponse.redirect(url)
     }

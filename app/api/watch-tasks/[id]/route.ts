@@ -3,21 +3,52 @@ import { prisma } from '@/lib/prisma'
 import { emitWatchTaskEvent } from '@/lib/events'
 import { sendTaskCompletedNotification, TASK_LABELS, checkAndUnlockLocation } from '@/lib/watch-tasks'
 import { logWatchActivity } from '@/lib/watch-activity'
+import {
+  canAssignWatchTask,
+  canCompleteWatchTask,
+  requireSession,
+} from '@/lib/auth'
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await requireSession(req)
+    if (session instanceof NextResponse) return session
+
     const id = parseInt(params.id, 10)
     const body = await req.json()
+
+    const existing = await prisma.watchTask.findUnique({
+      where: { id },
+      include: {
+        watch: { select: { id: true, name: true, brand: true, model: true, payment_status: true } },
+      },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    if ('assigned_to' in body && !canAssignWatchTask(session)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const mutatesTask =
+      body.is_completed !== undefined ||
+      body.metadata !== undefined ||
+      body.is_locked !== undefined
+
+    if (mutatesTask && !canCompleteWatchTask(session, existing)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = {}
     if (body.is_completed !== undefined) {
       data.is_completed = body.is_completed
       data.completed_at = body.is_completed ? new Date() : null
-      data.completed_by = body.is_completed ? (body.completed_by || null) : null
+      data.completed_by = body.is_completed ? session.name : null
     }
     if (body.is_locked !== undefined) data.is_locked = body.is_locked
     if (body.metadata !== undefined) data.metadata = body.metadata
@@ -31,9 +62,7 @@ export async function PATCH(
       },
     })
 
-    // Handle metadata side effects
     if (body.metadata) {
-      // Logistics cost → save to watch
       if (body.metadata.logistics_cost !== undefined) {
         await prisma.watch.update({
           where: { id: task.watch_id },
@@ -43,7 +72,6 @@ export async function PATCH(
           },
         })
       }
-      // Price update → save to watch
       if (body.metadata.website_price !== undefined || body.metadata.b2b_price !== undefined) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const priceData: any = {}
@@ -53,7 +81,6 @@ export async function PATCH(
           await prisma.watch.update({ where: { id: task.watch_id }, data: priceData })
         }
       }
-      // Payment status from ACCOUNTING task → update watch + unlock location
       if (task.task_type === 'ACCOUNTING_MARK_PAYMENT' && body.metadata.payment_status) {
         await prisma.watch.update({
           where: { id: task.watch_id },
@@ -61,7 +88,6 @@ export async function PATCH(
         })
         checkAndUnlockLocation(task.watch_id).catch(console.error)
       }
-      // Location from LOGISTICS_SET_LOCATION task → save to watch
       if (task.task_type === 'LOGISTICS_SET_LOCATION') {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const locData: any = {}
@@ -75,9 +101,6 @@ export async function PATCH(
       }
     }
 
-    // Emit SSE so the dashboard refreshes checkmarks. Any toggle of
-    // is_completed needs to fire — true → task_completed (also notifies
-    // WhatsApp), false → task_updated (silent refresh).
     if (body.is_completed === true) {
       emitWatchTaskEvent({
         type: 'task_completed',
@@ -88,7 +111,7 @@ export async function PATCH(
       })
       const watchName = [task.watch.brand, task.watch.model].filter(Boolean).join(' ') || task.watch.name
       const taskLabel = TASK_LABELS[task.task_type] ?? task.task_type
-      logWatchActivity(task.watch_id, 'task_completed', taskLabel, body.completed_by || null).catch(console.error)
+      logWatchActivity(task.watch_id, 'task_completed', taskLabel, session.name).catch(console.error)
       sendTaskCompletedNotification(
         task.department as 'ACCOUNTING' | 'SALES' | 'LOGISTICS',
         watchName,

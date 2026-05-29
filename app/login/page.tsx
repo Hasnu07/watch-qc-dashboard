@@ -56,7 +56,7 @@ export default function LoginPage() {
           <h1 className="font-luxury text-4xl sm:text-5xl text-ink leading-none px-2">
             Purosangue QC Dashboard
           </h1>
-          <p className="text-muted text-sm mt-3">Admin access required</p>
+          <p className="text-muted text-sm mt-3">Team member sign in · Password: YourName@125</p>
         </div>
 
         <div className="card p-8">
@@ -69,7 +69,7 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                placeholder="Enter username"
+                placeholder="e.g. Aleena"
                 autoComplete="username"
                 className="input-field"
                 required
@@ -83,7 +83,7 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="Enter password"
+                  placeholder="e.g. Aleena@125"
                   autoComplete="current-password"
                   className="input-field pr-12"
                   required

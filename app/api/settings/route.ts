@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSession, requireMaster } from '@/lib/auth'
 
 const SETTING_KEYS = [
   'greenapi_instance_id',
@@ -45,6 +46,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireSession(req)
+    if (session instanceof NextResponse) return session
+    const forbidden = requireMaster(session)
+    if (forbidden) return forbidden
+
     const body = await req.json()
 
     const updates = Object.entries(body).filter(([key]) =>

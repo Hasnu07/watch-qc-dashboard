@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { formatPipelineElapsed, getPipelineUrgency, type PipelineUrgency } from '@/lib/pipeline-timer'
+import { useCurrentMember } from '@/hooks/useCurrentMember'
 import type {
   MemberPending,
   PendingFilter,
@@ -115,6 +116,13 @@ export default function PendingQueuePanel({
   onRefresh,
 }: PendingQueuePanelProps) {
   const [toggling, setToggling] = useState<number | null>(null)
+  const { member, isMaster } = useCurrentMember()
+
+  const canInteractWatchItem = (assignee: string) => {
+    if (isMaster) return true
+    if (assignee === 'Unassigned') return false
+    return member?.name.toLowerCase() === assignee.toLowerCase()
+  }
 
   const queue = useMemo(() => {
     const items = buildQueueItems(members, unassigned)
@@ -158,24 +166,30 @@ export default function PendingQueuePanel({
         const urgency = getPipelineUrgency(new Date(item.startedAt), now)
         const elapsed = formatPipelineElapsed(new Date(item.startedAt), now)
         const isWatch = item.watchId != null
+        const watchDisabled = isWatch && !canInteractWatchItem(item.assignee)
 
         return (
           <div
             key={item.key}
-            className={`task-strip ${URGENCY_CLASS[urgency]}`}
+            className={`task-strip ${URGENCY_CLASS[urgency]}${watchDisabled ? ' opacity-60' : ''}`}
             role="button"
             tabIndex={0}
             onClick={() => {
               if (isWatch && item.watchId) {
-                onOpenWatch?.(item.watchId, item.phase ?? 'BUY')
+                if (canInteractWatchItem(item.assignee)) {
+                  onOpenWatch?.(item.watchId, item.phase ?? 'BUY')
+                }
               } else if (item.teamTaskId) {
                 completeTeamTask(item.teamTaskId)
               }
             }}
             onKeyDown={e => {
               if (e.key === 'Enter' || e.key === ' ') {
-                if (isWatch && item.watchId) onOpenWatch?.(item.watchId, item.phase ?? 'BUY')
-                else if (item.teamTaskId) completeTeamTask(item.teamTaskId)
+                if (isWatch && item.watchId) {
+                  if (canInteractWatchItem(item.assignee)) {
+                    onOpenWatch?.(item.watchId, item.phase ?? 'BUY')
+                  }
+                } else if (item.teamTaskId) completeTeamTask(item.teamTaskId)
               }
             }}
           >
@@ -205,11 +219,14 @@ export default function PendingQueuePanel({
               <button
                 type="button"
                 className="task-strip-action"
-                disabled={!isWatch && toggling === item.teamTaskId}
+                disabled={(!isWatch && toggling === item.teamTaskId) || watchDisabled}
                 onClick={e => {
                   e.stopPropagation()
-                  if (isWatch && item.watchId) onOpenWatch?.(item.watchId, item.phase ?? 'BUY')
-                  else if (item.teamTaskId) completeTeamTask(item.teamTaskId)
+                  if (isWatch && item.watchId) {
+                    if (canInteractWatchItem(item.assignee)) {
+                      onOpenWatch?.(item.watchId, item.phase ?? 'BUY')
+                    }
+                  } else if (item.teamTaskId) completeTeamTask(item.teamTaskId)
                 }}
               >
                 {isWatch ? 'Review' : 'Done'}

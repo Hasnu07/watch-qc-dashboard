@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { DEPT_CONFIG, type Department } from '@/lib/ui-constants'
+import { useCurrentMember } from '@/hooks/useCurrentMember'
 import { formatPipelineElapsed, getPipelineUrgency, type PipelineUrgency } from '@/lib/pipeline-timer'
 import type {
   MemberPending,
@@ -69,11 +70,11 @@ function TaskStrip({
 
   return (
     <div
-      className={`task-strip ${URGENCY_CLASS[urgency]}`}
-      onClick={onStripClick}
+      className={`task-strip ${URGENCY_CLASS[urgency]}${actionDisabled ? ' opacity-60' : ''}`}
+      onClick={() => { if (!actionDisabled) onStripClick?.() }}
       role="button"
       tabIndex={0}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStripClick?.() }}
+      onKeyDown={e => { if (!actionDisabled && (e.key === 'Enter' || e.key === ' ')) onStripClick?.() }}
     >
       <div
         className="task-strip-shimmer"
@@ -177,6 +178,7 @@ function MemberCard({
   onCompleteTeamTask,
   onOpenWatch,
   isUnassigned,
+  canInteractWatchTasks,
 }: {
   memberKey: number
   name: string
@@ -192,6 +194,7 @@ function MemberCard({
   onCompleteTeamTask: (id: number) => void
   onOpenWatch?: (watchId: number, phase: 'BUY' | 'SELL') => void
   isUnassigned?: boolean
+  canInteractWatchTasks: boolean
 }) {
   let stripIndex = 0
   const dept = isUnassigned ? 'SALES' : ((department as Department) in DEPT_CONFIG ? (department as Department) : 'SALES')
@@ -305,8 +308,9 @@ function MemberCard({
                                   isBlocking={t.is_blocking}
                                   shimmerDelay={delay}
                                   actionLabel="Review"
-                                  onAction={() => onOpenWatch?.(group.watch_id, phase)}
-                                  onStripClick={() => onOpenWatch?.(group.watch_id, phase)}
+                                  actionDisabled={!canInteractWatchTasks}
+                                  onAction={() => canInteractWatchTasks && onOpenWatch?.(group.watch_id, phase)}
+                                  onStripClick={() => canInteractWatchTasks && onOpenWatch?.(group.watch_id, phase)}
                                 />
                               )
                             })}
@@ -342,6 +346,13 @@ export default function PendingTasksPanel({
   const [toggling, setToggling] = useState<number | null>(null)
   const prevFilter = useRef<PendingFilter>(filter)
   const wasLoading = useRef(true)
+  const { member, isMaster } = useCurrentMember()
+
+  const canInteractWatchFor = (cardName: string, unassigned?: boolean) => {
+    if (isMaster) return true
+    if (unassigned) return false
+    return member?.name.toLowerCase() === cardName.toLowerCase()
+  }
 
   const visibleMembers = members.filter(m => memberMatchesFilter(m, filter))
   const showUnassigned = unassignedMatchesFilter(unassigned, filter)
@@ -445,6 +456,7 @@ export default function PendingTasksPanel({
           toggling={toggling}
           onCompleteTeamTask={completeTeamTask}
           onOpenWatch={onOpenWatch}
+          canInteractWatchTasks={canInteractWatchFor(member.name)}
         />
       ))}
 
@@ -464,6 +476,7 @@ export default function PendingTasksPanel({
           onCompleteTeamTask={completeTeamTask}
           onOpenWatch={onOpenWatch}
           isUnassigned
+          canInteractWatchTasks={canInteractWatchFor('Unassigned', true)}
         />
       )}
     </div>

@@ -1,22 +1,33 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useSseStatus } from '@/components/SseProvider'
 import { useUiSounds } from '@/components/SoundProvider'
+import { useCurrentMember } from '@/hooks/useCurrentMember'
 
 const NAV = [
   { href: '/', label: 'Team' },
   { href: '/dashboard', label: 'Pipeline' },
   { href: '/pending', label: 'Pending' },
   { href: '/history', label: 'History' },
-  { href: '/settings', label: 'Settings' },
+  { href: '/settings', label: 'Settings', masterOnly: true },
 ] as const
 
 export default function NavBar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { connected } = useSseStatus()
   const { enabled, toggle } = useUiSounds()
+  const { member, isMaster, loading } = useCurrentMember()
+
+  const visibleNav = NAV.filter(item => !('masterOnly' in item && item.masterOnly) || isMaster)
+
+  const handleSignOut = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+    router.refresh()
+  }
 
   return (
     <nav className="sticky top-0 z-50 bg-panel border-b border-default">
@@ -26,7 +37,7 @@ export default function NavBar() {
         </Link>
 
         <div className="hidden sm:flex items-center gap-1">
-          {NAV.map(({ href, label }) => {
+          {visibleNav.map(({ href, label }) => {
             const active = pathname === href
             return (
               <Link
@@ -43,6 +54,21 @@ export default function NavBar() {
         </div>
 
         <div className="flex items-center gap-3">
+          {!loading && member && pathname !== '/login' && (
+            <div className="hidden sm:flex items-center gap-2 text-xs text-muted">
+              <span className="text-ink font-medium">{member.name}</span>
+              {isMaster && (
+                <span className="px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold">Master</span>
+              )}
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="text-muted hover:text-ink underline-offset-2 hover:underline"
+              >
+                Sign out
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={toggle}
@@ -57,7 +83,7 @@ export default function NavBar() {
             {connected ? 'Live' : 'Offline'}
           </span>
           <div className="sm:hidden flex gap-0.5 overflow-x-auto">
-            {NAV.map(({ href, label }) => (
+            {visibleNav.map(({ href, label }) => (
               <Link
                 key={href}
                 href={href}

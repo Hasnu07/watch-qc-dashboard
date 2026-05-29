@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { getTaskLabel } from '@/lib/task-labels'
 import WatchTaskToolbar, { WatchTaskEmptyFilter } from '@/components/WatchTaskToolbar'
 import { useWatchTaskFilters } from '@/hooks/useWatchTaskFilters'
+import { useCurrentMember } from '@/hooks/useCurrentMember'
 import { DEPT_CONFIG, DEPT_ORDER } from '@/lib/ui-constants'
 
 interface TeamMember { id: number; name: string; department: string }
@@ -30,7 +31,12 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
     myTasksOnly, setMyTasksOnly, myName, setMyName, sort, setSort,
     deptFilter, filterByAssignee, clearMyTasksFilter, applyRolePreset,
   } = useWatchTaskFilters()
+  const { member, canCompleteWatchTask, canAssignWatchTask } = useCurrentMember()
   const filtersActive = myTasksOnly || !!deptFilter
+
+  useEffect(() => {
+    if (member?.name) setMyName(member.name)
+  }, [member, setMyName])
 
   useEffect(() => {
     if (focusedWatchId != null) {
@@ -211,6 +217,8 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
                               task={task}
                               teamMembers={teamMembers}
                               slaBreached={taskSla}
+                              canComplete={canCompleteWatchTask(task)}
+                              canAssign={canAssignWatchTask}
                               onToggle={toggleTask}
                               onAssign={(name) => assignTask(task.id, name)}
                             />
@@ -231,11 +239,13 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
 }
 
 function SellTaskRow({
-  task, teamMembers, slaBreached = false, onToggle, onAssign
+  task, teamMembers, slaBreached = false, canComplete, canAssign, onToggle, onAssign
 }: {
   task: WatchSellTask
   teamMembers: TeamMember[]
   slaBreached?: boolean
+  canComplete: boolean
+  canAssign: boolean
   onToggle: (task: WatchSellTask) => Promise<void>
   onAssign: (name: string | null) => Promise<void>
 }) {
@@ -243,15 +253,16 @@ function SellTaskRow({
   const [assignOpen, setAssignOpen] = useState(false)
 
   const handleToggle = async () => {
+    if (!canComplete) return
     setSaving(true)
     try { await onToggle(task) } finally { setSaving(false) }
   }
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${task.is_completed ? 'bg-emerald-50/50 border-emerald-100' : slaBreached ? 'bg-red-50/60 border-red-200' : 'bg-card border-default hover:border-strong'}`}>
+    <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${task.is_completed ? 'bg-emerald-50/50 border-emerald-100' : slaBreached ? 'bg-red-50/60 border-red-200' : 'bg-card border-default hover:border-strong'} ${!canComplete ? 'opacity-60' : ''}`}>
       <div
         onClick={handleToggle}
-        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'border-default hover:border-accent bg-card'}`}
+        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${canComplete ? 'cursor-pointer' : 'cursor-not-allowed'} ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'border-default hover:border-accent bg-card'}`}
       >
         {task.is_completed && !saving && <span className="text-white text-[10px] font-black leading-none">✓</span>}
         {saving && <span className="text-muted text-[10px] animate-spin inline-block">⟳</span>}
@@ -260,36 +271,37 @@ function SellTaskRow({
         {getTaskLabel(task.task_type, 'SELL')}
       </span>
 
-      {/* Simple assignee button */}
-      <div className="relative flex-shrink-0">
-        <button
-          onClick={() => setAssignOpen(o => !o)}
-          className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all ${
-            task.assigned_to
-              ? 'bg-accent/10 text-accent border-accent/30 hover:bg-accent/15'
-              : 'bg-panel text-muted border-default hover:border-accent/40 hover:text-accent'
-          }`}
-        >
-          {task.assigned_to ? <>👤 {task.assigned_to}</> : <>+ Assign</>}
-        </button>
-        {assignOpen && (
-          <div className="absolute right-0 top-full mt-1 z-20 bg-card rounded-xl border border-default shadow-lg min-w-[120px] py-1 overflow-hidden">
-            {teamMembers.map(m => (
-              <button key={m.id} onClick={async () => { setAssignOpen(false); await onAssign(m.name) }}
-                className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${task.assigned_to === m.name ? 'bg-accent/10 text-accent font-bold' : 'text-ink hover:bg-panel'}`}>
-                👤 {m.name}
-              </button>
-            ))}
-            {task.assigned_to && (
-              <>
-                <div className="border-t border-default my-1" />
-                <button onClick={async () => { setAssignOpen(false); await onAssign(null) }}
-                  className="w-full text-left px-3 py-1.5 text-xs text-muted hover:bg-panel hover:text-red-500">Remove</button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+      {canAssign && (
+        <div className="relative flex-shrink-0">
+          <button
+            onClick={() => setAssignOpen(o => !o)}
+            className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+              task.assigned_to
+                ? 'bg-accent/10 text-accent border-accent/30 hover:bg-accent/15'
+                : 'bg-panel text-muted border-default hover:border-accent/40 hover:text-accent'
+            }`}
+          >
+            {task.assigned_to ? <>👤 {task.assigned_to}</> : <>+ Assign</>}
+          </button>
+          {assignOpen && (
+            <div className="absolute right-0 top-full mt-1 z-20 bg-card rounded-xl border border-default shadow-lg min-w-[120px] py-1 overflow-hidden">
+              {teamMembers.map(m => (
+                <button key={m.id} onClick={async () => { setAssignOpen(false); await onAssign(m.name) }}
+                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${task.assigned_to === m.name ? 'bg-accent/10 text-accent font-bold' : 'text-ink hover:bg-panel'}`}>
+                  👤 {m.name}
+                </button>
+              ))}
+              {task.assigned_to && (
+                <>
+                  <div className="border-t border-default my-1" />
+                  <button onClick={async () => { setAssignOpen(false); await onAssign(null) }}
+                    className="w-full text-left px-3 py-1.5 text-xs text-muted hover:bg-panel hover:text-red-500">Remove</button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

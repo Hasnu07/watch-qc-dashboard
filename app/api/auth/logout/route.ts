@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from 'next/server'
+import {
+  clearSessionCookie,
+  destroySession,
+  getSessionToken,
+} from '@/lib/auth'
 
-export async function POST() {
-  await prisma.setting.deleteMany({ where: { key: 'admin_session_token' } }).catch(() => {})
+export async function POST(req: NextRequest) {
+  await destroySession(getSessionToken(req))
   const res = NextResponse.json({ ok: true })
-  res.cookies.set('qc_admin_session', '', { maxAge: 0, path: '/' })
+  clearSessionCookie(res)
   return res
 }
