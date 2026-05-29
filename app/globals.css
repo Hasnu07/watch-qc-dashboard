@@ -376,11 +376,10 @@ html { scrollbar-gutter: stable; }
     gap: 0.75rem;
     padding: 0.75rem;
     border-radius: 0.75rem;
-    border: 1px solid rgba(248, 113, 113, 0.85);
-    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+    border: 1px solid transparent;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     transition: transform 0.15s ease;
     cursor: pointer;
-    background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%);
   }
 
   @media (min-width: 640px) {
@@ -412,16 +411,19 @@ html { scrollbar-gutter: stable; }
   .task-strip-overdue {
     background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%);
     border-color: rgba(248, 113, 113, 0.85);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
   }
 
   .task-strip-warning {
     background: linear-gradient(90deg, #c2410c 0%, #f97316 100%);
     border-color: rgba(251, 146, 60, 0.85);
+    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
   }
 
   .task-strip-fresh {
     background: linear-gradient(90deg, #0369a1 0%, #00bcd4 100%);
     border-color: rgba(34, 211, 238, 0.55);
+    box-shadow: 0 4px 12px rgba(3, 105, 161, 0.3);
   }
 
   .task-strip-body {
@@ -485,8 +487,7 @@ html { scrollbar-gutter: stable; }
   }
 
   .task-strip-overdue .task-strip-timer,
-  .task-strip-red .task-strip-timer,
-  .task-strip .task-strip-timer {
+  .member-strip-red .task-strip-timer {
     background: rgba(127, 29, 29, 0.65);
     border: 1px solid rgba(248, 113, 113, 0.35);
     animation: task-strip-badge-pulse 2s ease-in-out infinite;
@@ -499,8 +500,8 @@ html { scrollbar-gutter: stable; }
   }
 
   .task-strip-fresh .task-strip-timer {
-    background: rgba(127, 29, 29, 0.65);
-    border: 1px solid rgba(248, 113, 113, 0.35);
+    background: rgba(8, 47, 73, 0.65);
+    border: 1px solid rgba(34, 211, 238, 0.35);
     animation: task-strip-badge-pulse 2s ease-in-out infinite;
   }
 
@@ -538,14 +539,10 @@ html { scrollbar-gutter: stable; }
     transform: scale(0.97);
   }
 
-  .task-strip-overdue .task-strip-action,
-  .task-strip-red .task-strip-action,
-  .task-strip .task-strip-action {
+  .task-strip-overdue .task-strip-action {
     color: #dc2626;
   }
-  .task-strip-overdue .task-strip-action:hover,
-  .task-strip-red .task-strip-action:hover,
-  .task-strip .task-strip-action:hover {
+  .task-strip-overdue .task-strip-action:hover {
     background: #fef2f2;
   }
 
@@ -581,6 +578,160 @@ html { scrollbar-gutter: stable; }
     border: 1px solid rgba(248, 113, 113, 0.6);
     animation: pulse 2s infinite;
   }
+
+  .task-strip-blocking-chip {
+    display: inline-block;
+    margin-top: 0.25rem;
+    font-size: 0.5625rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: #fff;
+  }
+
+  .pending-filter-chip {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.375rem 0.875rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-card);
+    color: var(--color-muted);
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  .pending-filter-chip-active {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+  }
+
+  .pending-ops-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 80rem;
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  @media (min-width: 1024px) {
+    .pending-ops-layout {
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 1.5rem;
+      padding: 0 1.25rem 1.5rem;
+    }
+
+    .pending-ops-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .pending-ops-aside {
+      width: 18rem;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0.75rem;
+    }
+  }
+
+  .pending-ops-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  @media (min-width: 1024px) {
+    .pending-ops-sidebar {
+      padding: 0.5rem 0 0;
+    }
+  }
+
+  .pending-ops-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    padding: 1rem;
+  }
+
+  .pending-ops-card-label {
+    font-size: 0.625rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .pending-ops-gauge-wrap {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding-top: 0.25rem;
+  }
+
+  .pending-ops-gauge {
+    width: 100%;
+    max-width: 140px;
+    height: auto;
+  }
+
+  .pending-ops-gauge-value {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+  }
+
+  .pending-ops-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .pending-ops-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .pending-ops-stat-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .pending-ops-stat-value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pending-ops-dept-track {
+    height: 0.375rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+
+  .pending-ops-dept-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--color-accent), #00bcd4);
+    transition: width 0.3s ease;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -593,9 +744,7 @@ html { scrollbar-gutter: stable; }
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
-/* Pending task strips — outside @layer so red gradient always wins */
-.task-strip-red,
-.task-strip.task-strip-red,
+/* Pending member headers — red gradient when tasks pending */
 .member-strip-red {
   background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%) !important;
   border: 1px solid rgba(248, 113, 113, 0.85) !important;

@@ -1,8 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { DEPT_CONFIG, type Department } from '@/lib/ui-constants'
-import { formatPipelineElapsed, getPipelineUrgency, isOverPipelineSla, type PipelineUrgency } from '@/lib/pipeline-timer'
+import { formatPipelineElapsed, getPipelineUrgency, type PipelineUrgency } from '@/lib/pipeline-timer'
+import type {
+  MemberPending,
+  PendingFilter,
+  UnassignedPending,
+} from '@/lib/pending-dashboard'
+import { memberMatchesFilter, unassignedMatchesFilter } from '@/lib/pending-dashboard'
+
+const UNASSIGNED_KEY = -1
 
 const URGENCY_LABELS: Record<PipelineUrgency, string> = {
   fresh: 'Waiting',
@@ -10,26 +18,29 @@ const URGENCY_LABELS: Record<PipelineUrgency, string> = {
   overdue: 'Overdue',
 }
 
-interface MemberPending {
-  member: { id: number; name: string; department: Department }
-  pending_count: number
-  team_tasks: Array<{ id: number; message_text: string; date: string; created_at: string; pipeline_started_at: string }>
-  watch_groups: Array<{
-    watch_id: number
-    watch_label: string
-    phase: string
-    tasks: Array<{ id: number; task_type: string; label: string; department: string; phase: string; pipeline_started_at: string }>
-  }>
+const URGENCY_CLASS: Record<PipelineUrgency, string> = {
+  fresh: 'task-strip-fresh',
+  warning: 'task-strip-warning',
+  overdue: 'task-strip-overdue',
 }
 
 interface PendingTasksPanelProps {
+  members: MemberPending[]
+  unassigned: UnassignedPending
+  filter: PendingFilter
+  onFilterChange: (filter: PendingFilter) => void
+  loading?: boolean
+  now: Date
   onOpenWatch?: (watchId: number, phase: 'BUY' | 'SELL') => void
+  onRefresh?: () => void
 }
 
 interface TaskStripProps {
   title: string
+  subtitle?: string | null
   startedAt: string
   now: Date
+  isBlocking?: boolean
   shimmerDelay?: number
   actionLabel?: string
   actionDisabled?: boolean
@@ -39,8 +50,10 @@ interface TaskStripProps {
 
 function TaskStrip({
   title,
+  subtitle,
   startedAt,
   now,
+  isBlocking = false,
   shimmerDelay = 0,
   actionLabel = 'Review',
   actionDisabled = false,
@@ -53,11 +66,7 @@ function TaskStrip({
 
   return (
     <div
-      className="task-strip task-strip-red"
-      style={{
-        background: 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)',
-        borderColor: 'rgba(248, 113, 113, 0.85)',
-      }}
+      className={`task-strip ${URGENCY_CLASS[urgency]}`}
       onClick={onStripClick}
       role="button"
       tabIndex={0}
@@ -70,7 +79,15 @@ function TaskStrip({
       />
       <div className="task-strip-body">
         <span className="task-strip-icon" aria-hidden>⚠️</span>
-        <span className="task-strip-title">{title}</span>
+        <div className="min-w-0 flex-1">
+          <span className="task-strip-title">{title}</span>
+          {subtitle && (
+            <p className="text-xs text-white/75 mt-0.5 truncate font-medium">{subtitle}</p>
+          )}
+          {isBlocking && (
+            <span className="task-strip-blocking-chip">Blocking</span>
+          )}
+        </div>
       </div>
       <div className="task-strip-meta">
         <div
@@ -96,24 +113,14 @@ function TaskStrip({
   )
 }
 
-function countOverdueTasks(
-  teamTasks: MemberPending['team_tasks'],
-  watchGroups: MemberPending['watch_groups'],
-  now: Date,
-): number {
-  let count = 0
-  for (const t of teamTasks) {
-    if (isOverPipelineSla(new Date(t.pipeline_started_at), now)) count++
+function MemberAvatar({ name, department, unassigned }: { name: string; department: Department; unassigned?: boolean }) {
+  if (unassigned) {
+    return (
+      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 bg-zinc-600">
+        ?
+      </div>
+    )
   }
-  for (const g of watchGroups) {
-    for (const t of g.tasks) {
-      if (isOverPipelineSla(new Date(t.pipeline_started_at), now)) count++
-    }
-  }
-  return count
-}
-
-function MemberAvatar({ name, department }: { name: string; department: Department }) {
   return (
     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${DEPT_CONFIG[department].solid}`}>
       {name.charAt(0).toUpperCase()}
@@ -121,48 +128,231 @@ function MemberAvatar({ name, department }: { name: string; department: Departme
   )
 }
 
-export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProps) {
-  const [data, setData] = useState<MemberPending[]>([])
-  const [loading, setLoading] = useState(true)
+const FILTER_OPTIONS: { id: PendingFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'overdue', label: 'Overdue' },
+  { id: 'due_soon', label: 'Due soon' },
+]
+
+function buildExpandedIds(
+  filter: PendingFilter,
+  members: MemberPending[],
+  unassigned: UnassignedPending,
+): Set<number> {
+  const ids = new Set<number>()
+  if (filter === 'overdue') {
+    for (const m of members) {
+      if (m.overdue_count > 0) ids.add(m.member.id)
+    }
+    if (unassigned.overdue_count > 0) ids.add(UNASSIGNED_KEY)
+  } else if (filter === 'due_soon') {
+    for (const m of members) {
+      if (m.due_soon_count > 0) ids.add(m.member.id)
+    }
+    if (unassigned.due_soon_count > 0) ids.add(UNASSIGNED_KEY)
+  } else {
+    for (const m of members) {
+      if (m.pending_count > 0) ids.add(m.member.id)
+    }
+    if (unassigned.pending_count > 0) ids.add(UNASSIGNED_KEY)
+  }
+  return ids
+}
+
+function MemberCard({
+  memberKey,
+  name,
+  department,
+  pending_count,
+  overdue_count,
+  team_tasks,
+  watch_groups,
+  isOpen,
+  onToggle,
+  now,
+  toggling,
+  onCompleteTeamTask,
+  onOpenWatch,
+  isUnassigned,
+}: {
+  memberKey: number
+  name: string
+  department: Department | string
+  pending_count: number
+  overdue_count: number
+  team_tasks: MemberPending['team_tasks']
+  watch_groups: MemberPending['watch_groups']
+  isOpen: boolean
+  onToggle: () => void
+  now: Date
+  toggling: number | null
+  onCompleteTeamTask: (id: number) => void
+  onOpenWatch?: (watchId: number, phase: 'BUY' | 'SELL') => void
+  isUnassigned?: boolean
+}) {
+  let stripIndex = 0
+  const dept = isUnassigned ? 'SALES' : ((department as Department) in DEPT_CONFIG ? (department as Department) : 'SALES')
+
+  return (
+    <section className="pending-member-card rounded-xl shadow-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`member-strip w-full flex items-center gap-3 px-4 py-3.5 text-left ${
+          isOpen ? 'member-strip-open' : 'member-strip-closed'
+        } ${pending_count > 0 ? 'member-strip-red' : 'member-strip-empty'}`}
+        style={
+          pending_count > 0
+            ? { background: 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)' }
+            : undefined
+        }
+      >
+        {pending_count > 0 && (
+          <div className="task-strip-shimmer member-strip-shimmer" aria-hidden />
+        )}
+        <MemberAvatar name={name} department={dept} unassigned={isUnassigned} />
+        <div className="flex-1 min-w-0 relative z-10">
+          <p className={`font-bold truncate ${pending_count > 0 ? 'text-white text-glow' : 'text-ink'}`}>
+            {name}
+          </p>
+          <p className={`text-xs capitalize ${pending_count > 0 ? 'text-white/75' : 'text-muted'}`}>
+            {String(department).toLowerCase()}
+          </p>
+        </div>
+        {pending_count > 0 && (
+          <div className="relative z-10 flex items-center gap-2 flex-shrink-0">
+            <div className="task-strip-timer">
+              <span className="task-strip-timer-label">
+                {overdue_count > 0
+                  ? overdue_count === pending_count
+                    ? 'Overdue'
+                    : `${overdue_count} overdue`
+                  : 'Pending'}
+              </span>
+              <span className="task-strip-timer-value font-mono-data">{pending_count}</span>
+            </div>
+          </div>
+        )}
+        {pending_count === 0 && (
+          <span className="text-sm text-muted">Clear</span>
+        )}
+        <span className={`relative z-10 text-xs ${pending_count > 0 ? 'text-white/90' : 'text-muted'}`}>
+          {isOpen ? '▾' : '▸'}
+        </span>
+      </button>
+
+      {isOpen && (
+        <div className="pending-member-body">
+          {pending_count === 0 ? (
+            <p className="text-sm text-white/70 py-1">No pending tasks</p>
+          ) : (
+            <>
+              {team_tasks.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="pending-section-title">Team Tasks</h4>
+                  <div className="task-strip-list">
+                    {team_tasks.map(t => {
+                      const delay = stripIndex * 0.5
+                      stripIndex++
+                      return (
+                        <TaskStrip
+                          key={t.id}
+                          title={t.message_text}
+                          startedAt={t.pipeline_started_at}
+                          now={now}
+                          shimmerDelay={delay}
+                          actionLabel="Done"
+                          actionDisabled={toggling === t.id}
+                          onAction={() => onCompleteTeamTask(t.id)}
+                          onStripClick={() => onCompleteTeamTask(t.id)}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {watch_groups.length > 0 && (
+                <div>
+                  <h4 className="pending-section-title">Watch Tasks</h4>
+                  <div className="space-y-4">
+                    {watch_groups.map(group => {
+                      const phase = group.phase === 'SELL' ? 'SELL' : 'BUY'
+                      const phaseClass = phase === 'SELL' ? 'text-sell' : 'text-buy'
+                      const stockRef = group.stock_no ? `#${group.stock_no}` : null
+                      return (
+                        <div key={group.watch_id} className="pending-watch-group">
+                          <div className="pending-watch-group-header">
+                            <h4 className={`pending-watch-group-title ${phaseClass}`}>
+                              {group.watch_label}
+                            </h4>
+                            <span className={`pending-watch-group-phase ${phaseClass}`}>{phase}</span>
+                          </div>
+                          <div className="task-strip-list">
+                            {group.tasks.map(t => {
+                              const delay = stripIndex * 0.5
+                              stripIndex++
+                              return (
+                                <TaskStrip
+                                  key={t.id}
+                                  title={t.label}
+                                  subtitle={stockRef}
+                                  startedAt={t.pipeline_started_at}
+                                  now={now}
+                                  isBlocking={t.is_blocking}
+                                  shimmerDelay={delay}
+                                  actionLabel="Review"
+                                  onAction={() => onOpenWatch?.(group.watch_id, phase)}
+                                  onStripClick={() => onOpenWatch?.(group.watch_id, phase)}
+                                />
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+export default function PendingTasksPanel({
+  members,
+  unassigned,
+  filter,
+  onFilterChange,
+  loading,
+  now,
+  onOpenWatch,
+  onRefresh,
+}: PendingTasksPanelProps) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [toggling, setToggling] = useState<number | null>(null)
-  const [now, setNow] = useState(() => new Date())
+  const hasInitialExpanded = useRef(false)
+  const prevFilter = useRef<PendingFilter>(filter)
 
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await fetch('/api/pending-tasks-by-member')
-      if (!res.ok) throw new Error('fetch failed')
-      const json: MemberPending[] = await res.json()
-      setData(json)
-      setExpanded(prev => {
-        if (prev.size > 0) return prev
-        const withTasks = json.filter(m => m.pending_count > 0).map(m => m.member.id)
-        return new Set(withTasks.length > 0 ? withTasks : json.slice(0, 3).map(m => m.member.id))
-      })
-    } catch {
-      setData([])
-    } finally {
-      setLoading(false)
+  const visibleMembers = members.filter(m => memberMatchesFilter(m, filter))
+  const showUnassigned = unassignedMatchesFilter(unassigned, filter)
+
+  useEffect(() => {
+    if (loading) return
+
+    const filterChanged = prevFilter.current !== filter
+    const isInitial = !hasInitialExpanded.current
+
+    if (isInitial || filterChanged) {
+      const sourceMembers = filter === 'all' ? members : visibleMembers
+      setExpanded(buildExpandedIds(filter, sourceMembers, unassigned))
+      hasInitialExpanded.current = true
+      prevFilter.current = filter
     }
-  }, [])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 15_000)
-    return () => clearInterval(id)
-  }, [])
-
-  useEffect(() => {
-    let es: EventSource | null = null
-    try {
-      es = new EventSource('/api/sse')
-      es.onmessage = () => fetchData()
-    } catch { /* ignore */ }
-    return () => es?.close()
-  }, [fetchData])
+  }, [filter, loading, members, unassigned, visibleMembers])
 
   const toggleExpanded = (id: number) => {
     setExpanded(prev => {
@@ -181,17 +371,15 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_completed: true }),
       })
-      await fetchData()
+      onRefresh?.()
     } finally {
       setToggling(null)
     }
   }
 
-  const totalPending = data.reduce((sum, m) => sum + m.pending_count, 0)
-
   if (loading) {
     return (
-      <div className="p-4 space-y-3">
+      <div className="pending-people-list p-4 space-y-3">
         {[1, 2, 3].map(i => (
           <div key={i} className="h-16 rounded-xl bg-panel animate-pulse" />
         ))}
@@ -199,146 +387,64 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
     )
   }
 
-  if (data.length === 0) {
-    return (
-      <div className="p-6 text-center text-muted">
-        <p className="font-semibold">No team members found</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="p-4 sm:p-5 space-y-3 max-w-3xl mx-auto w-full">
-      <p className="text-xs text-muted mb-1">
-        {totalPending} pending across {data.filter(m => m.pending_count > 0).length} people
-      </p>
+    <div className="pending-people-list p-4 sm:p-5 space-y-3 w-full">
+      <div className="pending-filter-chips flex flex-wrap gap-2 mb-2">
+        {FILTER_OPTIONS.map(opt => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onFilterChange(opt.id)}
+            className={`pending-filter-chip ${filter === opt.id ? 'pending-filter-chip-active' : ''}`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
 
-      {data.map(({ member, pending_count, team_tasks, watch_groups }) => {
-        const isOpen = expanded.has(member.id)
-        const overdueCount = countOverdueTasks(team_tasks, watch_groups, now)
-        let stripIndex = 0
+      {visibleMembers.length === 0 && !showUnassigned && (
+        <div className="py-8 text-center text-muted">
+          <p className="font-semibold">No tasks match this filter</p>
+        </div>
+      )}
 
-        return (
-          <section key={member.id} className="pending-member-card rounded-xl shadow-lg overflow-hidden">
-            <button
-              type="button"
-              onClick={() => toggleExpanded(member.id)}
-              className={`member-strip w-full flex items-center gap-3 px-4 py-3.5 text-left ${
-                isOpen ? 'member-strip-open' : 'member-strip-closed'
-              } ${pending_count > 0 ? 'member-strip-red' : 'member-strip-empty'}`}
-              style={
-                pending_count > 0
-                  ? { background: 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)' }
-                  : undefined
-              }
-            >
-              {pending_count > 0 && (
-                <div className="task-strip-shimmer member-strip-shimmer" aria-hidden />
-              )}
-              <MemberAvatar name={member.name} department={member.department} />
-              <div className="flex-1 min-w-0 relative z-10">
-                <p className={`font-bold truncate ${pending_count > 0 ? 'text-white text-glow' : 'text-ink'}`}>
-                  {member.name}
-                </p>
-                <p className={`text-xs capitalize ${pending_count > 0 ? 'text-white/75' : 'text-muted'}`}>
-                  {member.department.toLowerCase()}
-                </p>
-              </div>
-              {pending_count > 0 && (
-                <div className="relative z-10 flex items-center gap-2 flex-shrink-0">
-                  <div className="task-strip-timer">
-                    <span className="task-strip-timer-label">
-                      {overdueCount === pending_count ? 'Overdue' : `${overdueCount} overdue`}
-                    </span>
-                    <span className="task-strip-timer-value font-mono-data">{pending_count}</span>
-                  </div>
-                </div>
-              )}
-              {pending_count === 0 && (
-                <span className="text-sm text-muted">Clear</span>
-              )}
-              <span className={`relative z-10 text-xs ${pending_count > 0 ? 'text-white/90' : 'text-muted'}`}>
-                {isOpen ? '▾' : '▸'}
-              </span>
-            </button>
+      {visibleMembers.map(({ member, pending_count, overdue_count, team_tasks, watch_groups }) => (
+        <MemberCard
+          key={member.id}
+          memberKey={member.id}
+          name={member.name}
+          department={member.department}
+          pending_count={pending_count}
+          overdue_count={overdue_count}
+          team_tasks={team_tasks}
+          watch_groups={watch_groups}
+          isOpen={expanded.has(member.id)}
+          onToggle={() => toggleExpanded(member.id)}
+          now={now}
+          toggling={toggling}
+          onCompleteTeamTask={completeTeamTask}
+          onOpenWatch={onOpenWatch}
+        />
+      ))}
 
-            {isOpen && (
-              <div className="pending-member-body">
-                {pending_count === 0 ? (
-                  <p className="text-sm text-white/70 py-1">No pending tasks</p>
-                ) : (
-                  <>
-                    {team_tasks.length > 0 && (
-                      <div className="mb-4">
-                        <h4 className="pending-section-title">Team Tasks</h4>
-                        <div className="task-strip-list">
-                          {team_tasks.map(t => {
-                            const delay = stripIndex * 0.5
-                            stripIndex++
-                            return (
-                              <TaskStrip
-                                key={t.id}
-                                title={t.message_text}
-                                startedAt={t.pipeline_started_at}
-                                now={now}
-                                shimmerDelay={delay}
-                                actionLabel="Done"
-                                actionDisabled={toggling === t.id}
-                                onAction={() => completeTeamTask(t.id)}
-                                onStripClick={() => completeTeamTask(t.id)}
-                              />
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {watch_groups.length > 0 && (
-                      <div>
-                        <h4 className="pending-section-title">Watch Tasks</h4>
-                        <div className="space-y-4">
-                          {watch_groups.map(group => {
-                            const phase = group.phase === 'SELL' ? 'SELL' : 'BUY'
-                            const phaseClass = phase === 'SELL' ? 'text-sell' : 'text-buy'
-                            return (
-                              <div key={group.watch_id} className="pending-watch-group">
-                                <div className="pending-watch-group-header">
-                                  <h4 className={`pending-watch-group-title ${phaseClass}`}>
-                                    {group.watch_label}
-                                  </h4>
-                                  <span className={`pending-watch-group-phase ${phaseClass}`}>{phase}</span>
-                                </div>
-                                <div className="task-strip-list">
-                                  {group.tasks.map(t => {
-                                    const delay = stripIndex * 0.5
-                                    stripIndex++
-                                    return (
-                                      <TaskStrip
-                                        key={t.id}
-                                        title={t.label}
-                                        startedAt={t.pipeline_started_at}
-                                        now={now}
-                                        shimmerDelay={delay}
-                                        actionLabel="Review"
-                                        onAction={() => onOpenWatch?.(group.watch_id, phase)}
-                                        onStripClick={() => onOpenWatch?.(group.watch_id, phase)}
-                                      />
-                                    )
-                                  })}
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </section>
-        )
-      })}
+      {showUnassigned && (
+        <MemberCard
+          memberKey={UNASSIGNED_KEY}
+          name="Unassigned"
+          department="—"
+          pending_count={unassigned.pending_count}
+          overdue_count={unassigned.overdue_count}
+          team_tasks={unassigned.team_tasks}
+          watch_groups={unassigned.watch_groups}
+          isOpen={expanded.has(UNASSIGNED_KEY)}
+          onToggle={() => toggleExpanded(UNASSIGNED_KEY)}
+          now={now}
+          toggling={toggling}
+          onCompleteTeamTask={completeTeamTask}
+          onOpenWatch={onOpenWatch}
+          isUnassigned
+        />
+      )}
     </div>
   )
 }
