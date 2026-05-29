@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { getTaskLabel } from '@/lib/task-labels'
 import WatchTaskToolbar, { WatchTaskEmptyFilter } from '@/components/WatchTaskToolbar'
 import { useWatchTaskFilters } from '@/hooks/useWatchTaskFilters'
+import { useWatchTasksLoader } from '@/hooks/useWatchTasksLoader'
 import { useCurrentMember } from '@/hooks/useCurrentMember'
 import { DEPT_CONFIG, DEPT_ORDER } from '@/lib/ui-constants'
 
@@ -23,9 +24,9 @@ interface WatchSellTask {
 }
 
 export default function WatchSellTaskPanel({ className, focusedWatchId }: { className?: string; focusedWatchId?: number | null }) {
-  const [tasks, setTasks] = useState<WatchSellTask[]>([])
+  const { tasks: loadedTasks, setTasks, loading, markLocalMutation } = useWatchTasksLoader('SELL')
+  const tasks = loadedTasks as WatchSellTask[]
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
-  const [loading, setLoading] = useState(true)
   const [expandedWatchId, setExpandedWatchId] = useState<number | null>(null)
   const { member, canCompleteWatchTask, canAssignWatchTask, isMaster } = useCurrentMember()
   const {
@@ -46,17 +47,6 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
     }
   }, [focusedWatchId])
 
-  const fetchTasks = useCallback(async () => {
-    try {
-      const res = await fetch('/api/watch-tasks?phase=SELL')
-      if (res.ok) {
-        const data = await res.json()
-        setTasks(data)
-      }
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
-  }, [])
-
   const fetchMembers = useCallback(async () => {
     try {
       const res = await fetch('/api/team-members')
@@ -64,26 +54,10 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
     } catch (err) { console.error(err) }
   }, [])
 
-  useEffect(() => { fetchTasks(); fetchMembers() }, [fetchTasks, fetchMembers])
-
-  // SSE
-  useEffect(() => {
-    let es: EventSource | null = null
-    const connect = () => {
-      es = new EventSource('/api/sse')
-      es.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (['task_completed', 'task_updated', 'watch_sold', 'watch_updated'].includes(data.type)) fetchTasks()
-        } catch { /* ignore */ }
-      }
-      es.onerror = () => { es?.close(); setTimeout(connect, 5000) }
-    }
-    connect()
-    return () => es?.close()
-  }, [fetchTasks])
+  useEffect(() => { fetchMembers() }, [fetchMembers])
 
   const toggleTask = useCallback(async (task: WatchSellTask) => {
+    markLocalMutation(task.id)
     const res = await fetch(`/api/watch-tasks/${task.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -91,9 +65,9 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
     })
     if (res.ok) {
       const updated = await res.json()
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...updated } : t))
+      setTasks(prev => (prev as WatchSellTask[]).map(t => t.id === task.id ? { ...t, ...updated } : t))
     }
-  }, [])
+  }, [markLocalMutation, setTasks])
 
   const assignTask = useCallback(async (taskId: number, name: string | null) => {
     const res = await fetch(`/api/watch-tasks/${taskId}`, {
@@ -101,8 +75,8 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ assigned_to: name }),
     })
-    if (res.ok) setTasks(prev => prev.map(t => t.id === taskId ? { ...t, assigned_to: name } : t))
-  }, [])
+    if (res.ok) setTasks(prev => (prev as WatchSellTask[]).map(t => t.id === taskId ? { ...t, assigned_to: name } : t))
+  }, [setTasks])
 
   const filteredTasks = filterByAssignee(tasks)
 

@@ -19,6 +19,28 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { DEPT_ORDER, type Department } from '@/lib/ui-constants'
 
 type WatchStage = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
+
+function DashboardTaskListWrapper({
+  children,
+  autoScroll,
+  taskPanelLocked,
+}: {
+  children: React.ReactNode
+  autoScroll: boolean
+  taskPanelLocked: boolean
+}) {
+  if (autoScroll) {
+    return (
+      <AutoScrollList className="flex-1 min-h-0" speedPxPerSec={50} enabled={autoScroll}>
+        {children}
+      </AutoScrollList>
+    )
+  }
+  if (taskPanelLocked) {
+    return <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
+  }
+  return <div>{children}</div>
+}
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
 type LocationStatus = 'INCOMING' | 'IN_TRANSIT' | 'IN_STOCK'
 
@@ -301,15 +323,6 @@ export default function DashboardPage() {
   const useStickyTasks = showTasksPanel && tasksPinned && usePageScrollLayout
   const taskPanelLocked = useStickyTasks || (!usePageScrollLayout && showTasksPanel)
 
-  const TaskListWrapper = ({ children }: { children: React.ReactNode }) =>
-    autoScroll ? (
-      <AutoScrollList className="flex-1 min-h-0" speedPxPerSec={50} enabled={autoScroll}>{children}</AutoScrollList>
-    ) : taskPanelLocked ? (
-      <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
-    ) : (
-      <div>{children}</div>
-    )
-
   const viewportHeightClass = 'h-[calc(100dvh-3rem)] max-h-[calc(100dvh-3rem)]'
   const splitRowClass = usePageScrollLayout
     ? 'flex w-full'
@@ -581,13 +594,13 @@ export default function DashboardPage() {
           </div>
 
           {taskTab === 'buy' ? (
-            <TaskListWrapper>
+            <DashboardTaskListWrapper autoScroll={autoScroll} taskPanelLocked={taskPanelLocked}>
               <WatchTaskPanel focusedWatchId={taskTab === 'buy' ? focusedWatchId : null} />
-            </TaskListWrapper>
+            </DashboardTaskListWrapper>
           ) : (
-            <TaskListWrapper>
+            <DashboardTaskListWrapper autoScroll={autoScroll} taskPanelLocked={taskPanelLocked}>
               <WatchSellTaskPanel focusedWatchId={taskTab === 'sell' ? focusedWatchId : null} />
-            </TaskListWrapper>
+            </DashboardTaskListWrapper>
           )}
         </div>
         )}

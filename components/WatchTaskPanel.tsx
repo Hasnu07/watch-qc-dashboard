@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import WatchTaskToolbar, { WatchTaskEmptyFilter } from '@/components/WatchTaskToolbar'
 import { useWatchTaskFilters } from '@/hooks/useWatchTaskFilters'
+import { useWatchTasksLoader } from '@/hooks/useWatchTasksLoader'
 import { useCurrentMember } from '@/hooks/useCurrentMember'
 import { DEPT_CONFIG, DEPT_ORDER, type Department } from '@/lib/ui-constants'
 type PaymentStatus = 'NOT_PAID' | 'PARTIAL' | 'PAID'
@@ -429,10 +430,10 @@ interface WatchAccordionProps {
   onComplete: (taskId: number, metadata?: Record<string, unknown>) => Promise<void>
   onUncomplete: (taskId: number) => Promise<void>
   onAssign: (taskId: number, name: string | null) => Promise<void>
-  onRefresh: () => void
+  onRefreshWatch: (watchId: number) => void
 }
 
-function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onToggle, canCompleteTask, canAssign, onComplete, onUncomplete, onAssign, onRefresh }: WatchAccordionProps) {
+function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onToggle, canCompleteTask, canAssign, onComplete, onUncomplete, onAssign, onRefreshWatch }: WatchAccordionProps) {
   const [assigning, setAssigning] = useState(false)
   const [assignDone, setAssignDone] = useState(false)
 
@@ -452,7 +453,7 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onTo
     try {
       await fetch(`/api/watches/${watchId}/assign-tasks`, { method: 'POST' })
       setAssignDone(true)
-      onRefresh()
+      onRefreshWatch(watchId)
       setTimeout(() => setAssignDone(false), 3000)
     } finally { setAssigning(false) }
   }
@@ -529,9 +530,9 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onTo
 // ── Main panel ─────────────────────────────────────────────────────────────
 
 export default function WatchTaskPanel({ className, focusedWatchId }: { className?: string; focusedWatchId?: number | null }) {
-  const [tasks, setTasks] = useState<WatchTask[]>([])
+  const { tasks: loadedTasks, setTasks, loading, refreshWatchTasks, markLocalMutation } = useWatchTasksLoader()
+  const tasks = loadedTasks as WatchTask[]
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
-  const [loading, setLoading] = useState(true)
   const [expandedWatchId, setExpandedWatchId] = useState<number | null>(null)
   const { member, canCompleteWatchTask, canAssignWatchTask, isMaster } = useCurrentMember()
   const {
@@ -552,14 +553,6 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
     }
   }, [focusedWatchId])
 
-  const fetchTasks = useCallback(async () => {
-    try {
-      const res = await fetch('/api/watch-tasks')
-      if (res.ok) setTasks(await res.json())
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
-  }, [])
-
   const fetchMembers = useCallback(async () => {
     try {
       const res = await fetch('/api/team-members')
@@ -567,32 +560,17 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
     } catch (err) { console.error(err) }
   }, [])
 
-  useEffect(() => { fetchTasks(); fetchMembers() }, [fetchTasks, fetchMembers])
-
-  useEffect(() => {
-    let es: EventSource | null = null
-    const connect = () => {
-      es = new EventSource('/api/sse')
-      es.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (['task_completed', 'task_unlocked', 'task_updated', 'new_watch', 'watch_updated', 'watch_sold'].includes(data.type)) fetchTasks()
-        } catch { /* ignore pings */ }
-      }
-      es.onerror = () => { es?.close(); setTimeout(connect, 5000) }
-    }
-    connect()
-    return () => es?.close()
-  }, [fetchTasks])
+  useEffect(() => { fetchMembers() }, [fetchMembers])
 
   const completeTask = useCallback(async (taskId: number, metadata?: Record<string, unknown>) => {
+    markLocalMutation(taskId)
     const res = await fetch(`/api/watch-tasks/${taskId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_completed: true, ...(metadata ? { metadata } : {}) }),
     })
     if (res.ok) {
       const updated = await res.json()
-      setTasks(prev => prev.map(t => {
+      setTasks(prev => (prev as WatchTask[]).map(t => {
         if (t.id !== taskId) return t
         const watchUpdates: Partial<WatchInfo> = {}
         if (metadata?.payment_status) watchUpdates.payment_status = metadata.payment_status as PaymentStatus
@@ -602,20 +580,28 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
         if (metadata?.logistics_cost_currency) watchUpdates.logistics_cost_currency = metadata.logistics_cost_currency as string
         return { ...t, ...updated, watch: { ...t.watch, ...watchUpdates } }
       }))
-      if (updated.task_type === 'ACCOUNTING_MARK_PAYMENT') fetchTasks()
+      const payStatus = metadata?.payment_status as PaymentStatus | undefined
+      if (updated.task_type === 'ACCOUNTING_MARK_PAYMENT' && payStatus && (payStatus === 'PAID' || payStatus === 'PARTIAL')) {
+        setTasks(prev => (prev as WatchTask[]).map(t =>
+          t.watch_id === updated.watch_id && t.task_type === 'LOGISTICS_SET_LOCATION'
+            ? { ...t, is_locked: false }
+            : t
+        ))
+      }
     }
-  }, [fetchTasks])
+  }, [markLocalMutation, setTasks])
 
   const uncompleteTask = useCallback(async (taskId: number) => {
+    markLocalMutation(taskId)
     const res = await fetch(`/api/watch-tasks/${taskId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_completed: false }),
     })
     if (res.ok) {
       const updated = await res.json()
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updated } : t))
+      setTasks(prev => (prev as WatchTask[]).map(t => t.id === taskId ? { ...t, ...updated } : t))
     }
-  }, [])
+  }, [markLocalMutation, setTasks])
 
   const assignTask = useCallback(async (taskId: number, name: string | null) => {
     const res = await fetch(`/api/watch-tasks/${taskId}`, {
@@ -623,9 +609,9 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
       body: JSON.stringify({ assigned_to: name }),
     })
     if (res.ok) {
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, assigned_to: name } : t))
+      setTasks(prev => (prev as WatchTask[]).map(t => t.id === taskId ? { ...t, assigned_to: name } : t))
     }
-  }, [])
+  }, [setTasks])
 
   // Group by watch
   const filteredTasks = filterByAssignee(tasks)
@@ -690,7 +676,7 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
               onComplete={completeTask}
               onUncomplete={uncompleteTask}
               onAssign={assignTask}
-              onRefresh={fetchTasks}
+              onRefreshWatch={refreshWatchTasks}
             />
           ))
         )}
