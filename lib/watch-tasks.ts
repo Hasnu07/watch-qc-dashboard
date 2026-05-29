@@ -7,6 +7,11 @@ type Dept = 'ACCOUNTING' | 'SALES' | 'LOGISTICS'
 
 const APP_LINK = 'https://qc-dashboard-q907.onrender.com'
 
+/** Built-in assignee when no settings override and no dept fallback desired */
+const BUILTIN_TASK_ASSIGNEES: Record<string, string> = {
+  SALES_UPLOAD_STOCK_GROUP: 'Hasnain Graphics',
+}
+
 const WATCH_TASKS = [
   { department: 'ACCOUNTING' as const, task_type: 'ACCOUNTING_MARK_PAYMENT' as const, is_locked: false },
   { department: 'ACCOUNTING' as const, task_type: 'ACCOUNTING_ADD_STOCK_FOB' as const, is_locked: false },
@@ -75,14 +80,34 @@ async function getMembersByDept() {
 
 async function getTaskDefaults(): Promise<Record<string, string>> {
   const setting = await prisma.setting.findUnique({ where: { key: 'task_assignment_defaults' } })
-  if (!setting?.value) return {}
-  try { return JSON.parse(setting.value) } catch { return {} }
+  let defaults: Record<string, string> = {}
+  if (setting?.value) {
+    try { defaults = JSON.parse(setting.value) } catch { /* ignore */ }
+  }
+  const stockAssignee = defaults.SALES_UPLOAD_STOCK_GROUP
+  if (!stockAssignee || stockAssignee === 'Aleena') {
+    defaults.SALES_UPLOAD_STOCK_GROUP = BUILTIN_TASK_ASSIGNEES.SALES_UPLOAD_STOCK_GROUP
+  }
+  return defaults
+}
+
+/** Update legacy Aleena assignments for WhatsApp stock photo uploads */
+export async function ensureStockGroupAssigneeDefault() {
+  await prisma.watchTask.updateMany({
+    where: {
+      task_type: 'SALES_UPLOAD_STOCK_GROUP',
+      is_completed: false,
+      OR: [{ assigned_to: 'Aleena' }, { assigned_to: null }],
+    },
+    data: { assigned_to: BUILTIN_TASK_ASSIGNEES.SALES_UPLOAD_STOCK_GROUP },
+  })
 }
 
 function resolveAssignee(taskType: string, dept: string, taskDefaults: Record<string, string>, membersByDept: Record<string, string>): string | null {
-  // Per-task default wins; accessories share one key; fall back to dept member
+  // Per-task default wins; accessories share one key; built-in; fall back to dept member
   if (taskDefaults[taskType]) return taskDefaults[taskType]
   if (taskType.startsWith('LOGISTICS_ACCESSORIES') && taskDefaults['LOGISTICS_ACCESSORIES']) return taskDefaults['LOGISTICS_ACCESSORIES']
+  if (BUILTIN_TASK_ASSIGNEES[taskType]) return BUILTIN_TASK_ASSIGNEES[taskType]
   return membersByDept[dept] ?? null
 }
 
@@ -117,6 +142,7 @@ async function notifyAssignedPersons(
 }
 
 export async function assignWatchTasks(watchId: number, watchName: string, silent = false) {
+  await ensureStockGroupAssigneeDefault()
   const [membersByDept, taskDefaults] = await Promise.all([getMembersByDept(), getTaskDefaults()])
 
   const tasks = await prisma.watchTask.findMany({ where: { watch_id: watchId } })
@@ -137,6 +163,7 @@ export async function createWatchTasks(watchId: number, watchName: string) {
   const existing = await prisma.watchTask.count({ where: { watch_id: watchId } })
   if (existing > 0) return
 
+  await ensureStockGroupAssigneeDefault()
   const [membersByDept, taskDefaults] = await Promise.all([getMembersByDept(), getTaskDefaults()])
 
   const taskData = WATCH_TASKS.map(t => ({

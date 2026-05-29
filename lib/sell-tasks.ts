@@ -7,7 +7,7 @@ export const DEFAULT_BUY_TEMPLATES = [
   { label: 'Mark Payment Status', department: 'ACCOUNTING', task_type_key: 'ACCOUNTING_MARK_PAYMENT', is_locked: false, is_builtin: true, default_assignee: null, order: 0 },
   { label: 'Set Price', department: 'SALES', task_type_key: 'SALES_SET_PRICE', is_locked: false, is_builtin: true, default_assignee: null, order: 1 },
   { label: 'Upload to Drive', department: 'SALES', task_type_key: 'SALES_UPLOAD_DRIVE', is_locked: false, is_builtin: true, default_assignee: null, order: 2 },
-  { label: 'Upload Photos To Whatsapp Stock Photos', department: 'SALES', task_type_key: 'SALES_UPLOAD_STOCK_GROUP', is_locked: false, is_builtin: true, default_assignee: null, order: 3 },
+  { label: 'Upload Photos To Whatsapp Stock Photos', department: 'SALES', task_type_key: 'SALES_UPLOAD_STOCK_GROUP', is_locked: false, is_builtin: true, default_assignee: 'Hasnain Graphics', order: 3 },
   { label: 'Research B2B Price', department: 'SALES', task_type_key: 'SALES_UPDATE_B2B', is_locked: false, is_builtin: true, default_assignee: null, order: 4 },
   { label: 'Get B2C Prices from Josh', department: 'SALES', task_type_key: 'SALES_GET_B2C_PRICES', is_locked: false, is_builtin: true, default_assignee: null, order: 5 },
   { label: 'Set Location', department: 'LOGISTICS', task_type_key: 'LOGISTICS_SET_LOCATION', is_locked: true, is_builtin: true, default_assignee: null, order: 6 },

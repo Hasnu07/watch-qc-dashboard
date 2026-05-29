@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { visibleWatchFilter } from '@/lib/watch-visibility'
+import { ensureStockGroupAssigneeDefault } from '@/lib/watch-tasks'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   try {
+    await ensureStockGroupAssigneeDefault()
     const { searchParams } = new URL(req.url)
     const department = searchParams.get('department')
     const watchId = searchParams.get('watch_id')
