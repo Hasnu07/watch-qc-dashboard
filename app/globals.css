@@ -183,23 +183,17 @@ html { scrollbar-gutter: stable; }
   }
 
   .section-buy {
-    @apply rounded-2xl p-4 sm:p-5;
-    background: linear-gradient(180deg, var(--color-buy-muted) 0%, rgba(0, 188, 212, 0.04) 100%);
-    border: 1px solid var(--color-buy-border);
+    @apply mb-10;
   }
-  .section-buy-header h3 {
+  .text-buy-title {
     color: var(--color-buy);
-    text-shadow: 0 0 20px rgba(0, 188, 212, 0.35);
+  }
+  .text-sell-title {
+    color: var(--color-sell);
   }
 
-  .section-sell {
-    @apply rounded-2xl p-4 sm:p-5;
-    background: linear-gradient(180deg, var(--color-sell-muted) 0%, rgba(255, 152, 0, 0.04) 100%);
-    border: 1px solid var(--color-sell-border);
-  }
-  .section-sell-header h3 {
-    color: var(--color-sell);
-    text-shadow: 0 0 20px rgba(255, 152, 0, 0.35);
+  .inventory-section {
+    @apply mb-10 last:mb-0;
   }
 
   .inventory-list-buy {
@@ -212,16 +206,16 @@ html { scrollbar-gutter: stable; }
   }
 
   .watch-card-tile {
-    @apply rounded-xl border bg-card overflow-hidden shadow-md;
+    @apply rounded-xl border bg-card overflow-hidden;
     border-color: var(--color-border-strong);
-    max-width: 280px;
     width: 100%;
+    min-height: 280px;
   }
   .watch-card-tile-buy {
-    border-top: 3px solid var(--color-buy);
+    border-left: 4px solid var(--color-buy);
   }
   .watch-card-tile-sell {
-    border-top: 3px solid var(--color-sell);
+    border-left: 4px solid var(--color-sell);
   }
 
   .card {

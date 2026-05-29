@@ -297,9 +297,9 @@ export default function DashboardPage() {
     ? 'flex w-full'
     : 'flex flex-1 overflow-hidden min-h-0 h-full w-full'
   const pinnedTasksClass = 'md:fixed md:top-12 md:right-0 md:w-[42%] md:max-w-[42%] md:z-30'
-  const inventoryContentClass = showTasksPanel ? 'max-w-3xl w-full' : 'max-w-4xl w-full'
+  const inventoryContentClass = 'w-full'
   const inventoryCardGridClass =
-    'grid gap-4 grid-cols-[repeat(auto-fill,minmax(260px,280px))] justify-start w-full'
+    'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 w-full'
   const inventoryListBuyClass = compactMode
     ? 'inventory-list-buy rounded-xl border overflow-hidden bg-card divide-y divide-default w-full'
     : inventoryCardGridClass
@@ -336,9 +336,9 @@ export default function DashboardPage() {
       </div>
     ) : (
       <>
-        <section className="section-buy mb-8">
-          <div className="section-buy-header flex items-center justify-between mb-3 px-1">
-            <h3 className="text-base font-bold tracking-wide">Buy</h3>
+        <section className="inventory-section mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-buy-title text-lg font-bold">Buy</h3>
             <span className="text-xs text-muted font-medium">{buyWatches.length} watches</span>
           </div>
           {buyWatches.length === 0 ? (
@@ -359,9 +359,9 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
-        <section className="section-sell">
-          <div className="section-sell-header flex items-center justify-between mb-3 px-1">
-            <h3 className="text-base font-bold tracking-wide">Sell</h3>
+        <section className="inventory-section">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sell-title text-lg font-bold">Sell</h3>
             <span className="text-xs text-muted font-medium">{sellWatches.length} watches</span>
           </div>
           {sellWatches.length === 0 ? (
