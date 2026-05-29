@@ -297,11 +297,15 @@ export default function DashboardPage() {
     ? 'flex w-full'
     : 'flex flex-1 overflow-hidden min-h-0 h-full w-full'
   const pinnedTasksClass = 'md:fixed md:top-12 md:right-0 md:w-[42%] md:max-w-[42%] md:z-30'
-  const inventoryGridClass = compactMode
-    ? 'rounded-xl border border-default overflow-hidden bg-card divide-y divide-default'
+  const inventoryContentClass = showTasksPanel ? 'max-w-3xl w-full' : 'max-w-4xl w-full'
+  const inventoryListBuyClass = compactMode
+    ? 'inventory-list-buy rounded-xl border overflow-hidden bg-card divide-y divide-default w-full'
     : !showTasksPanel
-      ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 sm:gap-4'
-      : 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4'
+      ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 w-full max-w-3xl'
+      : 'grid grid-cols-1 gap-3 sm:gap-4 w-full max-w-md'
+  const inventoryListSellClass = compactMode
+    ? 'inventory-list-sell rounded-xl border overflow-hidden bg-card divide-y divide-default w-full'
+    : inventoryListBuyClass
   const leftWidthClass = showTasksPanel
     ? 'w-full md:w-[58%] md:max-w-[58%] md:flex-[0_0_58%] shrink-0'
     : 'w-full flex-1 min-w-0'
@@ -311,7 +315,7 @@ export default function DashboardPage() {
 
   const renderInventoryBody = () => (
     loading ? (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+      <div className={`grid grid-cols-1 gap-3 sm:gap-4 ${compactMode ? 'w-full' : inventoryListBuyClass}`}>
         {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
       </div>
     ) : watches.length === 0 ? (
@@ -332,17 +336,17 @@ export default function DashboardPage() {
       </div>
     ) : (
       <>
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-2 px-1">
-            <h3 className="text-sm font-semibold text-ink">Buy</h3>
-            <span className="text-xs text-muted">{buyWatches.length} watches</span>
+        <section className="section-buy mb-8">
+          <div className="section-buy-header flex items-center justify-between mb-3 px-1">
+            <h3 className="text-base font-bold tracking-wide">Buy</h3>
+            <span className="text-xs text-muted font-medium">{buyWatches.length} watches</span>
           </div>
           {buyWatches.length === 0 ? (
-            <p className="text-sm text-muted px-4 py-8 text-center rounded-3xl border border-dashed border-default bg-panel">
+            <p className="text-sm text-muted px-4 py-8 text-center rounded-3xl border border-dashed border-buy bg-panel/60">
               No buy watches match — paste a purchase message or add stock #
             </p>
           ) : (
-            <div className={inventoryGridClass}>
+            <div className={inventoryListBuyClass}>
               {buyWatches.map(watch => (
                 <WatchCard key={watch.id} watch={watch} compact={compactMode}
                   highlighted={focusedWatchId === watch.id}
@@ -355,17 +359,17 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
-        <section>
-          <div className="flex items-center justify-between mb-2 px-1">
-            <h3 className="text-sm font-semibold text-accent">Sell</h3>
-            <span className="text-xs text-muted">{sellWatches.length} watches</span>
+        <section className="section-sell">
+          <div className="section-sell-header flex items-center justify-between mb-3 px-1">
+            <h3 className="text-base font-bold tracking-wide">Sell</h3>
+            <span className="text-xs text-muted font-medium">{sellWatches.length} watches</span>
           </div>
           {sellWatches.length === 0 ? (
-            <p className="text-sm text-muted px-4 py-8 text-center rounded-3xl border border-dashed border-default bg-panel">
+            <p className="text-sm text-muted px-4 py-8 text-center rounded-3xl border border-dashed border-sell bg-panel/60">
               No sell watches match — paste a sold message
             </p>
           ) : (
-            <div className={inventoryGridClass}>
+            <div className={inventoryListSellClass}>
               {sellWatches.map(watch => (
                 <WatchCard key={watch.id} watch={watch} compact={compactMode}
                   highlighted={focusedWatchId === watch.id}
@@ -393,8 +397,14 @@ export default function DashboardPage() {
           ['sell', 'Sell Tasks', null],
         ] as const).map(([tab, label, count]) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-3 text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-              activeTab === tab ? 'text-accent border-b-2 border-accent' : 'text-muted'
+            className={`flex-1 py-3.5 text-sm font-bold transition-colors flex items-center justify-center gap-1.5 ${
+              activeTab === tab
+                ? tab === 'tasks' || tab === 'sell'
+                  ? 'text-white bg-accent border-b-2 border-accent'
+                  : 'text-accent border-b-2 border-accent'
+                : tab === 'tasks' || tab === 'sell'
+                  ? 'text-ink bg-panel/80'
+                  : 'text-muted'
             }`}>
             {label}
             {count != null && (
@@ -484,15 +494,19 @@ export default function DashboardPage() {
           <AutoScrollViewport
             enabled={inventoryTvScroll}
             className=""
-            innerClassName="p-4 sm:p-8 space-y-10"
+            innerClassName="p-4 sm:p-6"
             speedPxPerSec={45}
             pauseMs={2500}
           >
-            {renderInventoryBody()}
+            <div className={`${inventoryContentClass} space-y-8`}>
+              {renderInventoryBody()}
+            </div>
           </AutoScrollViewport>
           ) : (
-            <div className="p-4 sm:p-8 space-y-10">
-              {renderInventoryBody()}
+            <div className="p-4 sm:p-6">
+              <div className={`${inventoryContentClass} space-y-8`}>
+                {renderInventoryBody()}
+              </div>
             </div>
           )}
         </div>
@@ -561,23 +575,31 @@ export default function DashboardPage() {
 
         {!showTasksPanel && !inventoryTvScroll && (
           <button type="button" onClick={toggleShowTasksPanel}
-            className="hidden md:flex fixed right-6 top-24 z-40 items-center gap-2 px-4 py-2.5 rounded-full border-2 border-sell bg-card text-sm font-semibold text-accent shadow-lg hover:bg-accent/5 transition-colors">
+            className="btn-tasks hidden md:inline-flex fixed right-6 top-20 z-40 px-6 py-3 text-base shadow-2xl">
             Show tasks
           </button>
         )}
       </div>
 
       {/* Mobile bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 md:hidden bg-card/95 backdrop-blur-sm border-t border-default z-50 flex">
+      <div className="fixed bottom-0 left-0 right-0 md:hidden bg-panel border-t border-default z-50 flex">
         {([
-          ['inventory', 'Stock'],
-          ['tasks', 'Buy'],
-          ['sell', 'Sell'],
-          ['add', 'Add'],
-        ] as const).map(([tab, label]) => (
+          ['inventory', 'Stock', false],
+          ['tasks', 'Buy tasks', true],
+          ['sell', 'Sell tasks', true],
+          ['add', 'Add', false],
+        ] as const).map(([tab, label, isTaskTab]) => (
           <button key={tab} type="button"
             onClick={() => tab === 'add' ? setShowActionSheet(true) : setActiveTab(tab)}
-            className={`flex-1 py-3 flex flex-col items-center text-[10px] font-semibold uppercase tracking-wider ${activeTab === tab ? 'text-accent' : 'text-muted'}`}>
+            className={`flex-1 py-4 flex flex-col items-center justify-center text-xs font-bold ${
+              activeTab === tab
+                ? isTaskTab
+                  ? 'text-white bg-accent'
+                  : 'text-accent bg-card'
+                : isTaskTab
+                  ? 'text-ink bg-card/60'
+                  : 'text-muted'
+            }`}>
             {label}
           </button>
         ))}

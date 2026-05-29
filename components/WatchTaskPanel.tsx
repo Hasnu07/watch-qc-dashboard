@@ -520,8 +520,9 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
   const [expandedWatchId, setExpandedWatchId] = useState<number | null>(null)
   const {
     myTasksOnly, setMyTasksOnly, myName, setMyName, sort, setSort,
-    filterByAssignee, clearMyTasksFilter,
+    deptFilter, filterByAssignee, clearMyTasksFilter,
   } = useWatchTaskFilters()
+  const filtersActive = myTasksOnly || !!deptFilter
 
   useEffect(() => {
     if (focusedWatchId != null) {
@@ -648,6 +649,8 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
           teamMembers={teamMembers}
           sort={sort}
           onSortChange={setSort}
+          filtersActive={filtersActive}
+          onShowAllTasks={clearMyTasksFilter}
         />
 
         {filteredTasks.length === 0 ? (

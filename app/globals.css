@@ -6,22 +6,30 @@
 
 :root {
   --scroll-speed: 40;
-  /* Calm pro palette — TradingView-inspired, low visual noise */
-  --color-ink: #d1d4dc;
-  --color-muted: #787b86;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-strong: rgba(255, 255, 255, 0.14);
+  /* High-contrast pro palette — easy to read at a glance */
+  --color-ink: #f4f6fb;
+  --color-muted: #b2bac8;
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-border-strong: rgba(255, 255, 255, 0.22);
   --color-surface: #131722;
   --color-panel: #1e222d;
   --color-card: #2a2e39;
-  --color-accent: #2962ff;
-  --color-accent-dark: #1e53e5;
-  --color-positive: #26a69a;
-  --color-negative: #ef5350;
-  --color-sand: rgba(255, 167, 38, 0.15);
-  --color-buy: #787b86;
-  --color-sell: #ffa726;
-  --color-highlight: rgba(41, 98, 255, 0.12);
+  --color-accent: #448aff;
+  --color-accent-dark: #2979ff;
+  --color-positive: #00e676;
+  --color-negative: #ff5252;
+  --color-sand: rgba(255, 183, 77, 0.2);
+  --color-buy: #00bcd4;
+  --color-buy-dark: #00acc1;
+  --color-buy-muted: rgba(0, 188, 212, 0.14);
+  --color-buy-border: rgba(0, 188, 212, 0.45);
+  --color-buy-hover: rgba(0, 188, 212, 0.1);
+  --color-sell: #ff9800;
+  --color-sell-dark: #f57c00;
+  --color-sell-muted: rgba(255, 152, 0, 0.14);
+  --color-sell-border: rgba(255, 152, 0, 0.45);
+  --color-sell-hover: rgba(255, 152, 0, 0.1);
+  --color-highlight: rgba(68, 138, 255, 0.22);
 }
 
 * { box-sizing: border-box; }
@@ -74,6 +82,7 @@ html { scrollbar-gutter: stable; }
 
 .text-ink { color: var(--color-ink); }
 .text-muted { color: var(--color-muted); }
+.text-subtitle { color: #cdd3de; }
 .text-positive { color: var(--color-positive); }
 .text-negative { color: var(--color-negative); }
 .bg-surface { background-color: var(--color-surface); }
@@ -81,34 +90,125 @@ html { scrollbar-gutter: stable; }
 .bg-card { background-color: var(--color-card); }
 .border-default { border-color: var(--color-border); }
 .border-strong { border-color: var(--color-border-strong); }
-.border-buy { border-color: var(--color-buy); }
-.border-sell { border-color: var(--color-sell); }
+.border-buy { border-color: var(--color-buy-border); }
+.border-sell { border-color: var(--color-sell-border); }
+.text-buy { color: var(--color-buy); }
+.text-sell { color: var(--color-sell); }
 .text-accent { color: var(--color-accent); }
 .bg-accent { background-color: var(--color-accent); }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-sm text-white transition-colors;
-    background-color: var(--color-accent);
+    @apply inline-flex items-center justify-center gap-1.5 px-5 py-2.5 min-h-[44px] rounded-lg font-bold text-sm transition-all;
+    color: #ffffff;
+    background: linear-gradient(180deg, var(--color-accent) 0%, var(--color-accent-dark) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 2px 10px rgba(68, 138, 255, 0.4);
   }
-  .btn-primary:hover { background-color: var(--color-accent-dark); }
+  .btn-primary:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 4px 16px rgba(68, 138, 255, 0.5);
+  }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-sm transition-colors border;
-    background-color: var(--color-panel);
+    @apply inline-flex items-center justify-center gap-1.5 px-5 py-2.5 min-h-[44px] rounded-lg font-bold text-sm transition-all border;
+    background-color: var(--color-card);
     border-color: var(--color-border-strong);
     color: var(--color-ink);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   }
-  .btn-secondary:hover { background-color: var(--color-card); }
+  .btn-secondary:hover {
+    background-color: #343a48;
+    border-color: rgba(255, 255, 255, 0.3);
+  }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-medium text-sm transition-colors border bg-transparent;
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] rounded-lg font-semibold text-sm transition-colors border;
     border-color: var(--color-border-strong);
     color: var(--color-muted);
+    background: transparent;
   }
   .btn-ghost:hover {
     background-color: var(--color-panel);
     color: var(--color-ink);
+    border-color: rgba(255, 255, 255, 0.28);
+  }
+
+  .btn-tasks {
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[44px] min-w-[5.5rem] rounded-lg font-bold text-sm transition-all shrink-0;
+    color: #ffffff;
+    background: linear-gradient(180deg, var(--color-accent) 0%, var(--color-accent-dark) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: 0 2px 12px rgba(68, 138, 255, 0.45);
+  }
+  .btn-tasks:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 18px rgba(68, 138, 255, 0.55);
+  }
+  .btn-tasks:active {
+    transform: scale(0.98);
+  }
+  .btn-tasks-active {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 4px 18px rgba(68, 138, 255, 0.55);
+  }
+
+  .btn-tasks-buy {
+    @apply inline-flex items-center justify-center gap-1.5 px-5 py-2.5 min-h-[44px] min-w-[5.5rem] rounded-lg font-bold text-sm transition-all shrink-0;
+    color: #ffffff;
+    background: linear-gradient(180deg, var(--color-buy) 0%, var(--color-buy-dark) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 2px 12px rgba(0, 188, 212, 0.5);
+  }
+  .btn-tasks-buy:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 18px rgba(0, 188, 212, 0.65);
+  }
+  .btn-tasks-buy:active {
+    transform: scale(0.98);
+  }
+
+  .btn-tasks-sell {
+    @apply inline-flex items-center justify-center gap-1.5 px-5 py-2.5 min-h-[44px] min-w-[5.5rem] rounded-lg font-bold text-sm transition-all shrink-0;
+    color: #ffffff;
+    background: linear-gradient(180deg, var(--color-sell) 0%, var(--color-sell-dark) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 2px 12px rgba(255, 152, 0, 0.5);
+  }
+  .btn-tasks-sell:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 18px rgba(255, 152, 0, 0.65);
+  }
+  .btn-tasks-sell:active {
+    transform: scale(0.98);
+  }
+
+  .section-buy {
+    @apply rounded-2xl p-4 sm:p-5;
+    background: linear-gradient(180deg, var(--color-buy-muted) 0%, rgba(0, 188, 212, 0.04) 100%);
+    border: 1px solid var(--color-buy-border);
+  }
+  .section-buy-header h3 {
+    color: var(--color-buy);
+    text-shadow: 0 0 20px rgba(0, 188, 212, 0.35);
+  }
+
+  .section-sell {
+    @apply rounded-2xl p-4 sm:p-5;
+    background: linear-gradient(180deg, var(--color-sell-muted) 0%, rgba(255, 152, 0, 0.04) 100%);
+    border: 1px solid var(--color-sell-border);
+  }
+  .section-sell-header h3 {
+    color: var(--color-sell);
+    text-shadow: 0 0 20px rgba(255, 152, 0, 0.35);
+  }
+
+  .inventory-list-buy {
+    border-color: var(--color-buy-border);
+    box-shadow: inset 3px 0 0 var(--color-buy);
+  }
+  .inventory-list-sell {
+    border-color: var(--color-sell-border);
+    box-shadow: inset 3px 0 0 var(--color-sell);
   }
 
   .card {
@@ -127,12 +227,12 @@ html { scrollbar-gutter: stable; }
   .input-field::placeholder { color: var(--color-muted); }
 
   .chip {
-    @apply px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors;
+    @apply px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors;
     border-color: var(--color-border-strong);
     color: var(--color-muted);
     background: var(--color-panel);
   }
-  .chip:hover { color: var(--color-ink); }
+  .chip:hover { color: var(--color-ink); border-color: rgba(255, 255, 255, 0.28); }
   .chip-active {
     @apply chip text-white;
     background-color: var(--color-accent);
@@ -149,9 +249,41 @@ html { scrollbar-gutter: stable; }
   }
 
   .list-row {
-    @apply flex items-center gap-3 px-4 py-3 border-b border-default cursor-pointer transition-colors;
+    @apply flex items-center gap-2 px-3 py-2 sm:px-3.5 border-b border-default cursor-pointer transition-colors;
+  }
+  .list-row-text {
+    @apply min-w-0 flex-[1_1_auto];
+  }
+  .list-row-image {
+    @apply flex-shrink-0;
+  }
+  .list-row .btn-tasks-buy,
+  .list-row .btn-tasks-sell {
+    @apply px-2.5 py-1 min-h-0 text-xs shrink-0;
   }
   .list-row:hover { background-color: var(--color-panel); }
+  .list-row-buy {
+    border-left: 4px solid var(--color-buy);
+  }
+  .list-row-buy:hover {
+    background-color: var(--color-buy-hover);
+  }
+  .list-row-buy.list-row-active {
+    background-color: rgba(0, 188, 212, 0.18);
+    border-left: 4px solid var(--color-buy);
+    box-shadow: inset 0 0 0 1px rgba(0, 188, 212, 0.25);
+  }
+  .list-row-sell {
+    border-left: 4px solid var(--color-sell);
+  }
+  .list-row-sell:hover {
+    background-color: var(--color-sell-hover);
+  }
+  .list-row-sell.list-row-active {
+    background-color: rgba(255, 152, 0, 0.18);
+    border-left: 4px solid var(--color-sell);
+    box-shadow: inset 0 0 0 1px rgba(255, 152, 0, 0.25);
+  }
   .list-row-active {
     background-color: var(--color-highlight);
     border-left: 3px solid var(--color-accent);

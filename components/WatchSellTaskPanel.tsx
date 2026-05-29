@@ -28,8 +28,9 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
   const [expandedWatchId, setExpandedWatchId] = useState<number | null>(null)
   const {
     myTasksOnly, setMyTasksOnly, myName, setMyName, sort, setSort,
-    filterByAssignee, clearMyTasksFilter, applyRolePreset,
+    deptFilter, filterByAssignee, clearMyTasksFilter, applyRolePreset,
   } = useWatchTaskFilters()
+  const filtersActive = myTasksOnly || !!deptFilter
 
   useEffect(() => {
     if (focusedWatchId != null) {
@@ -142,6 +143,8 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
           showRolePresets
           onRolePreset={applyRolePreset}
           activeRoleName={myName}
+          filtersActive={filtersActive}
+          onShowAllTasks={clearMyTasksFilter}
         />
 
         {filteredTasks.length === 0 ? (

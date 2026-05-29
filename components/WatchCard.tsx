@@ -83,6 +83,8 @@ export default function WatchCard<W extends Watch>({
   onCardClick, onOpenTasks, onImageFetched,
 }: WatchCardProps<W>) {
   const isSell = watch.watch_type === 'SELL'
+  const rowClass = isSell ? 'list-row-sell' : 'list-row-buy'
+  const tasksBtnClass = isSell ? 'btn-tasks-sell' : 'btn-tasks-buy'
   const [fetchingImage, setFetchingImage] = useState(false)
 
   const summary: TaskSummary = watch.task_summary ?? {
@@ -123,56 +125,55 @@ export default function WatchCard<W extends Watch>({
     return (
       <div
         onClick={() => onCardClick(watch)}
-        className={`list-row ${highlighted ? 'list-row-active' : ''}`}
-        style={{ borderLeftWidth: highlighted ? undefined : 3, borderLeftColor: isSell ? 'var(--color-sell)' : 'var(--color-buy)' }}
+        className={`list-row ${rowClass} ${highlighted ? 'list-row-active' : ''}`}
       >
-        <div className="relative w-11 h-11 rounded-lg bg-white flex-shrink-0 overflow-hidden border border-default">
+        <div className="list-row-image relative w-7 h-7 rounded bg-white overflow-hidden border border-default/40 opacity-75">
           {watch.image_url ? (
-            <Image src={watch.image_url} alt="" fill className="object-contain p-0.5" unoptimized />
+            <Image src={watch.image_url} alt="" fill className="object-contain p-px" unoptimized />
           ) : (
             <button type="button" onClick={handleFetchImage} disabled={fetchingImage}
-              className="absolute inset-0 flex items-center justify-center text-muted text-xs hover:text-accent"
+              className="absolute inset-0 flex items-center justify-center text-muted text-[9px] hover:text-accent"
               title="Fetch image">
               {fetchingImage ? '…' : '⌚'}
             </button>
           )}
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2">
+        <div className="list-row-text">
+          <div className="flex items-baseline gap-1.5 min-w-0">
             {watch.stock_no && (
-              <span className="font-mono-data text-sm font-semibold text-ink shrink-0">
+              <span className="font-mono-data text-base sm:text-lg font-bold text-ink shrink-0">
                 {searchHighlight ? highlightText(`#${watch.stock_no}`, searchHighlight) : `#${watch.stock_no}`}
               </span>
             )}
-            <span className="text-sm font-medium text-ink truncate">{watch.model || watch.name}</span>
+            <span className="text-base sm:text-lg font-bold text-ink leading-snug truncate sm:whitespace-normal sm:line-clamp-2">
+              {watch.model || watch.name}
+            </span>
           </div>
-          <p className="text-xs text-muted truncate mt-0.5">{subtitle}</p>
-        </div>
-
-        <div className="text-right shrink-0 min-w-[5.5rem]">
-          <div className="font-mono-data text-sm font-semibold text-ink">
-            {formatCurrency(watch.website_price)}
+          <div className="flex items-baseline gap-2 min-w-0 mt-0.5">
+            <p className="text-sm text-subtitle truncate min-w-0 flex-1">{subtitle}</p>
+            <span className="font-mono-data text-xs sm:text-sm text-subtitle shrink-0">
+              {formatCurrency(watch.website_price)}
+              {isSell && watch.margin != null && (
+                <span className={`ml-1.5 ${watch.margin >= 0 ? 'text-positive' : 'text-negative'}`}>
+                  {watch.margin >= 0 ? '+' : ''}{formatCurrency(watch.margin)}
+                </span>
+              )}
+            </span>
           </div>
-          {isSell && watch.margin != null && (
-            <div className={`text-xs font-medium ${watch.margin >= 0 ? 'text-positive' : 'text-negative'}`}>
-              {watch.margin >= 0 ? '+' : ''}{formatCurrency(watch.margin)}
-            </div>
-          )}
-        </div>
-
-        <div className="w-14 shrink-0 hidden sm:block">
           {taskTotal > 0 && (
-            <div className="h-1.5 rounded-full bg-panel overflow-hidden">
-              <div className={`h-full rounded-full ${allDone ? 'bg-positive' : 'bg-accent'}`} style={{ width: `${taskPct}%` }} />
+            <div className="hidden md:flex items-center gap-1.5 mt-1">
+              <div className="h-1 flex-1 max-w-[5rem] rounded-full bg-panel overflow-hidden">
+                <div className={`h-full rounded-full ${allDone ? 'bg-positive' : 'bg-accent'}`} style={{ width: `${taskPct}%` }} />
+              </div>
+              <span className="text-[10px] text-muted shrink-0">{allDone ? 'Done' : `${taskPct}%`}</span>
             </div>
           )}
-          <p className="text-[10px] text-muted text-center mt-1">{allDone ? 'Done' : taskTotal ? `${taskPct}%` : '—'}</p>
         </div>
 
         {onOpenTasks && (
           <button type="button" onClick={e => { e.stopPropagation(); onOpenTasks(watch) }}
-            className="btn-ghost text-xs px-2 py-1 shrink-0 hidden md:inline-flex">
+            className={tasksBtnClass}>
             Tasks
           </button>
         )}
@@ -183,53 +184,56 @@ export default function WatchCard<W extends Watch>({
   /* ── Card view (optional) ── */
   return (
     <div onClick={() => onCardClick(watch)}
-      className={`card cursor-pointer flex flex-col ${highlighted ? 'ring-2 ring-accent' : ''}`}
-      style={{ borderLeftWidth: 3, borderLeftColor: isSell ? 'var(--color-sell)' : 'var(--color-buy)' }}>
+      className={`card cursor-pointer flex flex-col ${isSell ? 'border-sell' : 'border-buy'} ${highlighted ? 'ring-2 ring-offset-1 ring-offset-surface' : ''}`}
+      style={{
+        borderLeftWidth: 4,
+        borderLeftColor: isSell ? 'var(--color-sell)' : 'var(--color-buy)',
+        ...(highlighted ? { boxShadow: `0 0 0 2px ${isSell ? 'var(--color-sell)' : 'var(--color-buy)'}` } : {}),
+      }}>
 
-      <div className="relative w-full aspect-[4/3] bg-white border-b border-default">
+      <div className="p-4 pb-3 flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2 mb-0.5">
+            {watch.stock_no && (
+              <span className="font-mono-data text-sm font-bold text-ink">#{watch.stock_no}</span>
+            )}
+            <p className="text-sm text-subtitle truncate">{watch.brand}{isSell ? ' · Sell' : ' · Buy'}</p>
+          </div>
+          <h3 className="text-lg font-bold text-ink leading-snug line-clamp-2">{watch.model || watch.name}</h3>
+          <div className="flex items-baseline gap-2 mt-1.5">
+            <span className="font-mono-data text-xl font-semibold text-ink">{formatCurrency(watch.website_price)}</span>
+            {isSell && watch.margin != null && (
+              <span className={`text-sm font-medium ${watch.margin >= 0 ? 'text-positive' : 'text-negative'}`}>
+                {watch.margin >= 0 ? '+' : ''}{formatCurrency(watch.margin)}
+              </span>
+            )}
+          </div>
+        </div>
+        {onOpenTasks && (
+          <button type="button" onClick={e => { e.stopPropagation(); onOpenTasks(watch) }}
+            className={tasksBtnClass}>Tasks</button>
+        )}
+      </div>
+
+      <div className="relative w-full h-32 bg-white border-y border-default opacity-90">
         {watch.image_url ? (
-          <Image src={watch.image_url} alt={watch.name} fill className="object-contain p-4" unoptimized />
+          <Image src={watch.image_url} alt={watch.name} fill className="object-contain p-3" unoptimized />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-muted">
-            <span className="text-3xl opacity-40 mb-2">⌚</span>
+            <span className="text-xl opacity-40 mb-1">⌚</span>
             <button type="button" onClick={handleFetchImage} disabled={fetchingImage}
               className="text-xs font-medium text-accent hover:underline">
               {fetchingImage ? 'Finding…' : 'Fetch image'}
             </button>
           </div>
         )}
-        {watch.stock_no && (
-          <span className="absolute top-3 left-3 text-xs font-mono-data font-semibold px-2 py-1 rounded bg-ink/80 text-white">
-            #{watch.stock_no}
-          </span>
-        )}
-        <span className="absolute top-3 right-3 text-[10px] px-2 py-0.5 rounded bg-panel/90 text-muted border border-default">
+        <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded bg-panel/90 text-muted border border-default">
           {imageQuality}
         </span>
       </div>
 
-      <div className="p-4 flex flex-col gap-2 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-xs text-muted">{watch.brand}{isSell ? ' · Sell' : ' · Buy'}</p>
-            <h3 className="text-base font-semibold text-ink leading-snug">{watch.model || watch.name}</h3>
-          </div>
-          {onOpenTasks && (
-            <button type="button" onClick={e => { e.stopPropagation(); onOpenTasks(watch) }}
-              className="btn-ghost text-xs px-2 py-1 shrink-0">Tasks</button>
-          )}
-        </div>
-
-        <p className="text-xs text-muted">{subtitle}</p>
-
-        <div className="flex items-baseline justify-between mt-1">
-          <span className="font-mono-data text-xl font-semibold text-ink">{formatCurrency(watch.website_price)}</span>
-          {isSell && watch.margin != null && (
-            <span className={`text-sm font-medium ${watch.margin >= 0 ? 'text-positive' : 'text-negative'}`}>
-              {formatCurrency(watch.margin)}
-            </span>
-          )}
-        </div>
+      <div className="p-4 pt-3 flex flex-col gap-2 flex-1">
+        <p className="text-sm text-subtitle">{subtitle}</p>
 
         {taskTotal > 0 && (
           <div>
@@ -237,7 +241,7 @@ export default function WatchCard<W extends Watch>({
               <span>Tasks</span>
               <span>{allDone ? 'Complete' : `${taskDone} of ${taskTotal}`}</span>
             </div>
-            <div className="h-2 rounded-full bg-panel overflow-hidden">
+            <div className="h-1.5 rounded-full bg-panel overflow-hidden">
               <div className={`h-full rounded-full ${allDone ? 'bg-positive' : 'bg-accent'}`} style={{ width: `${taskPct}%` }} />
             </div>
           </div>
@@ -245,7 +249,7 @@ export default function WatchCard<W extends Watch>({
 
         {isSell && watch.fob_url && (
           <a href={watch.fob_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-            className="text-xs text-accent hover:underline mt-1">
+            className="text-xs text-accent hover:underline">
             Open FOB →
           </a>
         )}

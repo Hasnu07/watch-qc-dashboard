@@ -21,6 +21,8 @@ interface Props {
   showRolePresets?: boolean
   onRolePreset?: (preset: RolePreset) => void
   activeRoleName?: string | null
+  filtersActive?: boolean
+  onShowAllTasks?: () => void
 }
 
 const SORT_LABELS: Record<WatchTaskSortMode, string> = {
@@ -42,18 +44,32 @@ export default function WatchTaskToolbar({
   showRolePresets = false,
   onRolePreset,
   activeRoleName,
+  filtersActive = false,
+  onShowAllTasks,
 }: Props) {
   const chipCls = (active: boolean) =>
     active ? 'chip-active' : 'chip hover:border-accent/40 hover:text-ink'
+  const showingAll = !filtersActive
 
   return (
     <div className="mb-4 space-y-2.5">
-      <div className="px-4 py-2.5 bg-panel rounded-2xl border border-default">
-        <span className="text-sm font-medium text-ink">
+      <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-panel rounded-2xl border border-default">
+        <span className="text-sm font-semibold text-ink">
           {totalPending === 0 && !myTasksOnly
             ? 'All tasks complete'
             : `${totalPending} pending · ${watchCount} watch${watchCount !== 1 ? 'es' : ''}`}
         </span>
+        {onShowAllTasks && (
+          <button
+            type="button"
+            onClick={onShowAllTasks}
+            disabled={showingAll}
+            className={showingAll ? 'btn-tasks btn-tasks-active text-xs px-3 py-1.5 shrink-0' : 'btn-tasks text-xs px-3 py-1.5 shrink-0'}
+            title={showingAll ? 'Showing all tasks' : 'Clear filters and show all tasks'}
+          >
+            All tasks
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
