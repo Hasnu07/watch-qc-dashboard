@@ -1767,7 +1767,38 @@ html { scrollbar-gutter: stable; }
 }
 
 .netflix-profile__avatar-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+}
+
+.netflix-profile__avatar-static {
+  opacity: 1;
+  transition: opacity 0.12s ease;
+}
+
+.netflix-profile__avatar-static--hidden {
+  opacity: 0;
+}
+
+.netflix-profile__avatar-hover {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+
+.netflix-profile__avatar-hover--visible {
+  opacity: 1;
+}
+
+.group:hover .netflix-profile__avatar--has-hover .netflix-profile__avatar-hover {
+  opacity: 1;
+}
+
+.group:hover .netflix-profile__avatar--has-hover .netflix-profile__avatar-static {
+  opacity: 0;
 }
 
 .netflix-profile__smiley {

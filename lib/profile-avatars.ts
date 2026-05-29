@@ -66,5 +66,5 @@ export function getProfileAvatarHoverUrl(name: string): string | null {
 export function getProfileAvatarHoverFallbacks(name: string): string[] {
   const slug = PROFILE_AVATAR_HOVER_SLUGS[normalizeMemberName(name)]
   if (!slug) return []
-  return [`/profiles/${slug}.jpg`, `/profiles/${slug}.gif`, `/profiles/${slug}.png`]
+  return [`/profiles/${slug}.gif`, `/profiles/${slug}.webp`, `/profiles/${slug}.jpg`, `/profiles/${slug}.png`]
 }

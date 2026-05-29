@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getProfileAvatarHoverFallbacks, getProfileAvatarUrl } from '@/lib/profile-avatars'
 
 interface LoginProfile {
@@ -64,71 +64,106 @@ function ProfileAvatar({
   avatarUrl,
   large,
   hoverable = true,
+  isHovered = false,
 }: {
   name: string
   role: string
   avatarUrl: string | null
   large?: boolean
   hoverable?: boolean
+  isHovered?: boolean
 }) {
-  const [imgFailed, setImgFailed] = useState(false)
-  const [hovering, setHovering] = useState(false)
-  const [hoverAttempt, setHoverAttempt] = useState(0)
-  const [animKey, setAnimKey] = useState(0)
+  const [staticFailed, setStaticFailed] = useState(false)
+  const [hoverSrc, setHoverSrc] = useState<string | null>(null)
+  const hoverRef = useRef<HTMLImageElement>(null)
 
-  const hoverFallbacks = getProfileAvatarHoverFallbacks(name)
+  const hoverFallbacks = useMemo(() => getProfileAvatarHoverFallbacks(name), [name])
   const hasHover = hoverable && hoverFallbacks.length > 0
-  const hoverSrc = hovering ? hoverFallbacks[hoverAttempt] ?? null : null
-  const displayUrl = hoverSrc ?? avatarUrl
-  const showImage = Boolean(displayUrl) && !imgFailed
 
-  const handleMouseEnter = () => {
+  useEffect(() => {
     if (!hasHover) return
-    setHovering(true)
-    setHoverAttempt(0)
-    setAnimKey(k => k + 1)
-  }
-
-  const handleMouseLeave = () => {
-    setHovering(false)
-    setHoverAttempt(0)
-  }
-
-  const handleImageError = () => {
-    if (hovering && hoverAttempt < hoverFallbacks.length - 1) {
-      setHoverAttempt(i => i + 1)
-      return
+    let cancelled = false
+    const tryNext = (index: number) => {
+      if (cancelled || index >= hoverFallbacks.length) return
+      const img = new window.Image()
+      img.onload = () => {
+        if (!cancelled) setHoverSrc(hoverFallbacks[index])
+      }
+      img.onerror = () => tryNext(index + 1)
+      img.src = hoverFallbacks[index]
     }
-    if (!hovering) setImgFailed(true)
-  }
+    tryNext(0)
+    return () => { cancelled = true }
+  }, [hasHover, hoverFallbacks])
+
+  useEffect(() => {
+    if (!isHovered || !hoverRef.current || !hoverSrc) return
+    const base = hoverSrc.split('?')[0]
+    hoverRef.current.src = `${base}?t=${Date.now()}`
+  }, [isHovered, hoverSrc])
+
+  const showStatic = Boolean(avatarUrl) && !staticFailed
+  const showHover = Boolean(hoverSrc) && isHovered
 
   return (
     <div
-      className={large ? 'netflix-profile__avatar netflix-profile__avatar--large' : 'netflix-profile__avatar'}
-      style={showImage ? undefined : { background: profileColor(name) }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      className={[
+        large ? 'netflix-profile__avatar netflix-profile__avatar--large' : 'netflix-profile__avatar',
+        hasHover && hoverSrc ? 'netflix-profile__avatar--has-hover' : '',
+      ].filter(Boolean).join(' ')}
+      style={showStatic || showHover ? undefined : { background: profileColor(name) }}
     >
-      {showImage && displayUrl ? (
-        <Image
-          key={hovering ? `hover-${animKey}-${hoverAttempt}` : 'static'}
-          src={displayUrl}
+      {showStatic && avatarUrl && (
+        <img
+          src={avatarUrl}
           alt=""
-          fill
-          sizes={large ? '140px' : '120px'}
-          className="netflix-profile__avatar-img"
-          unoptimized
-          onError={handleImageError}
+          className={`netflix-profile__avatar-img netflix-profile__avatar-static${showHover ? ' netflix-profile__avatar-static--hidden' : ''}`}
+          onError={() => setStaticFailed(true)}
         />
-      ) : (
-        <ProfileSmiley large={large} />
       )}
+      {hasHover && hoverSrc && (
+        <img
+          ref={hoverRef}
+          src={hoverSrc}
+          alt=""
+          className={`netflix-profile__avatar-img netflix-profile__avatar-hover${showHover ? ' netflix-profile__avatar-hover--visible' : ''}`}
+        />
+      )}
+      {!showStatic && !showHover && <ProfileSmiley large={large} />}
       {role === 'MASTER' && (
         <span className="netflix-profile__badge" title="Master">
           ★
         </span>
       )}
     </div>
+  )
+}
+
+function ProfilePickButton({
+  profile,
+  onPick,
+}: {
+  profile: LoginProfile
+  onPick: (profile: LoginProfile) => void
+}) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <button
+      type="button"
+      className="netflix-profile group"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => onPick(profile)}
+    >
+      <ProfileAvatar
+        name={profile.name}
+        role={profile.role}
+        avatarUrl={profileAvatarSrc(profile)}
+        isHovered={hovered}
+      />
+      <span className="netflix-profile__name">{profile.name}</span>
+    </button>
   )
 }
 
@@ -227,19 +262,7 @@ export default function LoginPage() {
           ) : (
             <div className="netflix-login__grid">
               {profiles.map(profile => (
-                <button
-                  key={profile.id}
-                  type="button"
-                  className="netflix-profile"
-                  onClick={() => pickProfile(profile)}
-                >
-                  <ProfileAvatar
-                    name={profile.name}
-                    role={profile.role}
-                    avatarUrl={profileAvatarSrc(profile)}
-                  />
-                  <span className="netflix-profile__name">{profile.name}</span>
-                </button>
+                <ProfilePickButton key={profile.id} profile={profile} onPick={pickProfile} />
               ))}
             </div>
           )}
