@@ -31,3 +31,16 @@ export function isOverPipelineSla(
 ): boolean {
   return now.getTime() - startedAt.getTime() >= slaHours * 60 * 60 * 1000
 }
+
+export type PipelineUrgency = 'fresh' | 'warning' | 'overdue'
+
+export function getPipelineUrgency(
+  startedAt: Date,
+  now = new Date(),
+  slaHours = PIPELINE_SLA_HOURS,
+): PipelineUrgency {
+  const hours = Math.max(0, now.getTime() - startedAt.getTime()) / 3_600_000
+  if (hours >= slaHours) return 'overdue'
+  if (hours >= slaHours * 0.5) return 'warning'
+  return 'fresh'
+}

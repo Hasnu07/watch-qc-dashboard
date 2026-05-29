@@ -295,9 +295,84 @@ html { scrollbar-gutter: stable; }
     background-color: var(--color-highlight);
     border-left: 3px solid var(--color-accent);
   }
+
+  .pending-task-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.625rem;
+    border: 1px solid var(--color-border);
+    background: rgba(0, 0, 0, 0.18);
+  }
+
+  .pending-task-row-overdue {
+    border-color: rgba(255, 82, 82, 0.45);
+    background: rgba(255, 82, 82, 0.08);
+  }
+
+  .pipeline-timer {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 4.75rem;
+    padding: 0.4rem 0.55rem;
+    border-radius: 0.5rem;
+    border: 2px solid;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  .pipeline-timer-label {
+    font-size: 0.5625rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.9;
+  }
+
+  .pipeline-timer-value {
+    font-size: 0.9375rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-top: 0.125rem;
+  }
+
+  .pipeline-timer-fresh {
+    color: #90caf9;
+    background: rgba(68, 138, 255, 0.16);
+    border-color: rgba(68, 138, 255, 0.55);
+  }
+
+  .pipeline-timer-warning {
+    color: #ffb74d;
+    background: rgba(255, 152, 0, 0.2);
+    border-color: rgba(255, 152, 0, 0.65);
+    box-shadow: 0 0 12px rgba(255, 152, 0, 0.15);
+  }
+
+  .pipeline-timer-overdue {
+    color: #fff;
+    background: linear-gradient(180deg, #ff5252 0%, #d32f2f 100%);
+    border-color: #ff8a80;
+    box-shadow: 0 0 0 2px rgba(255, 82, 82, 0.35), 0 4px 14px rgba(255, 82, 82, 0.35);
+    animation: pipeline-timer-pulse 1.8s ease-in-out infinite;
+  }
+
+  .pipeline-timer-overdue .pipeline-timer-label {
+    color: #ffcdd2;
+  }
+
+  @keyframes pipeline-timer-pulse {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(255, 82, 82, 0.35), 0 4px 14px rgba(255, 82, 82, 0.35); }
+    50% { box-shadow: 0 0 0 5px rgba(255, 82, 82, 0.5), 0 4px 20px rgba(255, 82, 82, 0.55); }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .auto-scroll-content { animation: none !important; }
+  .pipeline-timer-overdue { animation: none !important; }
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

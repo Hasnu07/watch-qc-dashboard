@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { DEPT_CONFIG, type Department } from '@/lib/ui-constants'
-import { formatPipelineElapsed, isOverPipelineSla } from '@/lib/pipeline-timer'
+import { formatPipelineElapsed, getPipelineUrgency, isOverPipelineSla, type PipelineUrgency } from '@/lib/pipeline-timer'
+
+const URGENCY_LABELS: Record<PipelineUrgency, string> = {
+  fresh: 'Waiting',
+  warning: 'Due soon',
+  overdue: 'Overdue',
+}
 
 interface MemberPending {
   member: { id: number; name: string; department: Department }
@@ -24,23 +30,40 @@ function PipelineTimer({ startedAt }: { startedAt: string }) {
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 30_000)
+    const id = setInterval(() => setNow(new Date()), 15_000)
     return () => clearInterval(id)
   }, [])
 
   const start = new Date(startedAt)
-  const overSla = isOverPipelineSla(start, now)
+  const urgency = getPipelineUrgency(start, now)
+  const elapsed = formatPipelineElapsed(start, now)
 
   return (
     <span
-      className={`flex-shrink-0 text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded ${
-        overSla ? 'text-negative bg-negative/10' : 'text-muted bg-panel'
-      }`}
-      title="Time in pipeline"
+      className={`pipeline-timer pipeline-timer-${urgency}`}
+      title={`In pipeline for ${elapsed}${isOverPipelineSla(start, now) ? ' — past 24h SLA' : ''}`}
     >
-      {formatPipelineElapsed(start, now)}
+      <span className="pipeline-timer-label">{URGENCY_LABELS[urgency]}</span>
+      <span className="pipeline-timer-value font-mono-data">{elapsed}</span>
     </span>
   )
+}
+
+function countOverdueTasks(
+  teamTasks: MemberPending['team_tasks'],
+  watchGroups: MemberPending['watch_groups'],
+  now: Date,
+): number {
+  let count = 0
+  for (const t of teamTasks) {
+    if (isOverPipelineSla(new Date(t.pipeline_started_at), now)) count++
+  }
+  for (const g of watchGroups) {
+    for (const t of g.tasks) {
+      if (isOverPipelineSla(new Date(t.pipeline_started_at), now)) count++
+    }
+  }
+  return count
 }
 
 function MemberAvatar({ name, department }: { name: string; department: Department }) {
@@ -56,6 +79,7 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [toggling, setToggling] = useState<number | null>(null)
+  const [now, setNow] = useState(() => new Date())
 
   const fetchData = useCallback(async () => {
     try {
@@ -78,6 +102,11 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 15_000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     let es: EventSource | null = null
@@ -139,6 +168,7 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
 
       {data.map(({ member, pending_count, team_tasks, watch_groups }) => {
         const isOpen = expanded.has(member.id)
+        const overdueCount = countOverdueTasks(team_tasks, watch_groups, now)
         return (
           <section key={member.id} className="rounded-xl border border-default bg-card overflow-hidden">
             <button
@@ -151,6 +181,11 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
                 <p className="font-bold text-ink truncate">{member.name}</p>
                 <p className="text-xs text-muted capitalize">{member.department.toLowerCase()}</p>
               </div>
+              {overdueCount > 0 && (
+                <span className="pipeline-timer pipeline-timer-overdue !min-w-0 !px-2.5 !py-1.5">
+                  <span className="pipeline-timer-label !text-[0.5rem]">{overdueCount} overdue</span>
+                </span>
+              )}
               <span className={`text-sm font-bold tabular-nums ${pending_count > 0 ? 'text-accent' : 'text-muted'}`}>
                 {pending_count} Remain
               </span>
@@ -166,20 +201,25 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
                     {team_tasks.length > 0 && (
                       <div>
                         <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">Team tasks</h4>
-                        <ul className="space-y-1.5">
-                          {team_tasks.map(t => (
-                            <li key={t.id} className="flex items-start gap-2 text-sm">
+                        <ul className="space-y-2">
+                          {team_tasks.map(t => {
+                            const overdue = isOverPipelineSla(new Date(t.pipeline_started_at), now)
+                            return (
+                            <li
+                              key={t.id}
+                              className={`pending-task-row ${overdue ? 'pending-task-row-overdue' : ''}`}
+                            >
+                              <PipelineTimer startedAt={t.pipeline_started_at} />
                               <button
                                 type="button"
                                 disabled={toggling === t.id}
                                 onClick={() => completeTeamTask(t.id)}
-                                className="mt-0.5 w-4 h-4 rounded border border-default flex-shrink-0 hover:border-accent disabled:opacity-50"
+                                className="w-5 h-5 rounded border-2 border-default flex-shrink-0 hover:border-accent disabled:opacity-50"
                                 aria-label="Mark complete"
                               />
-                              <span className="text-ink leading-snug flex-1 min-w-0">{t.message_text}</span>
-                              <PipelineTimer startedAt={t.pipeline_started_at} />
+                              <span className="text-ink leading-snug flex-1 min-w-0 font-medium">{t.message_text}</span>
                             </li>
-                          ))}
+                          )})}
                         </ul>
                       </div>
                     )}
@@ -200,14 +240,18 @@ export default function PendingTasksPanel({ onOpenWatch }: PendingTasksPanelProp
                                 {group.watch_label}
                                 <span className="ml-2 text-[10px] font-bold uppercase opacity-70">{group.phase}</span>
                               </button>
-                              <ul className="px-3 py-2 space-y-1">
-                                {group.tasks.map(t => (
-                                  <li key={t.id} className="text-sm text-ink flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
-                                    <span className="flex-1 min-w-0">{t.label}</span>
+                              <ul className="px-2 py-2 space-y-2">
+                                {group.tasks.map(t => {
+                                  const overdue = isOverPipelineSla(new Date(t.pipeline_started_at), now)
+                                  return (
+                                  <li
+                                    key={t.id}
+                                    className={`pending-task-row ${overdue ? 'pending-task-row-overdue' : ''}`}
+                                  >
                                     <PipelineTimer startedAt={t.pipeline_started_at} />
+                                    <span className="flex-1 min-w-0 font-medium text-ink">{t.label}</span>
                                   </li>
-                                ))}
+                                )})}
                               </ul>
                             </div>
                           ))}
