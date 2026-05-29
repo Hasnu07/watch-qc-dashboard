@@ -1,38 +1,56 @@
 import { prisma } from '@/lib/prisma'
 import { defaultMemberPassword, hashPassword } from '@/lib/auth'
 
-const MASTER_NAMES = new Set(['jhonny', 'johnny'])
+const MASTER_LOGIN = 'Master'
+const LEGACY_MASTER_NAMES = new Set(['jhonny', 'johnny'])
+
+function isLegacyMaster(member: { name: string; login_username: string | null; role: string }) {
+  const name = member.name.trim().toLowerCase()
+  const login = (member.login_username || '').trim().toLowerCase()
+  return member.role === 'MASTER' || LEGACY_MASTER_NAMES.has(name) || LEGACY_MASTER_NAMES.has(login)
+}
 
 export async function seedMemberLogins() {
   const members = await prisma.teamMember.findMany({ orderBy: { id: 'asc' } })
-  let jhonnyExists = members.some(m => MASTER_NAMES.has(m.name.toLowerCase()))
+  let masterExists = false
+  const masterPassword = defaultMemberPassword(MASTER_LOGIN)
+  const masterPasswordHash = hashPassword(MASTER_LOGIN, masterPassword)
 
   for (const member of members) {
-    const isMaster = MASTER_NAMES.has(member.name.toLowerCase())
+    if (isLegacyMaster(member)) {
+      masterExists = true
+      await prisma.teamMember.update({
+        where: { id: member.id },
+        data: {
+          name: MASTER_LOGIN,
+          login_username: MASTER_LOGIN,
+          password_hash: masterPasswordHash,
+          role: 'MASTER',
+        },
+      })
+      continue
+    }
+
     const loginUsername = member.login_username?.trim() || member.name.trim()
     const password = defaultMemberPassword(member.name.trim())
-    const passwordHash = hashPassword(loginUsername, password)
-
     await prisma.teamMember.update({
       where: { id: member.id },
       data: {
         login_username: loginUsername,
-        password_hash: passwordHash,
-        role: isMaster ? 'MASTER' : 'MEMBER',
+        password_hash: hashPassword(loginUsername, password),
+        role: 'MEMBER',
       },
     })
   }
 
-  if (!jhonnyExists) {
-    const loginUsername = 'Jhonny'
-    const password = defaultMemberPassword('Jhonny')
+  if (!masterExists) {
     await prisma.teamMember.create({
       data: {
-        name: 'Jhonny',
+        name: MASTER_LOGIN,
         whatsapp_number: '0000000000',
         department: 'LOGISTICS',
-        login_username: loginUsername,
-        password_hash: hashPassword(loginUsername, password),
+        login_username: MASTER_LOGIN,
+        password_hash: masterPasswordHash,
         role: 'MASTER',
       },
     })
