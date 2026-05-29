@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const LOGIN_REQUIRED = ['/dashboard', '/pending', '/history', '/settings']
+const LOGIN_REQUIRED = ['/dashboard', '/pending', '/history', '/settings', '/slideshow']
 const SESSION_COOKIE = 'qc_member_session'
 
 export function middleware(req: NextRequest) {
