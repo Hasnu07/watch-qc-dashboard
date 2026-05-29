@@ -1,36 +1,99 @@
 'use client'
 
 import Image from 'next/image'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+
+interface LoginProfile {
+  id: number
+  name: string
+  department: string
+  role: string
+  login_username: string | null
+}
+
+const PROFILE_COLORS = [
+  'linear-gradient(145deg, #e50914 0%, #831010 100%)',
+  'linear-gradient(145deg, #0080ff 0%, #004999 100%)',
+  'linear-gradient(145deg, #46d369 0%, #1e7a34 100%)',
+  'linear-gradient(145deg, #ff9f0a 0%, #c67600 100%)',
+  'linear-gradient(145deg, #bf5af2 0%, #7a2eb8 100%)',
+  'linear-gradient(145deg, #00c7be 0%, #007a75 100%)',
+  'linear-gradient(145deg, #ff375f 0%, #b81845 100%)',
+  'linear-gradient(145deg, #ffd60a 0%, #b89200 100%)',
+  'linear-gradient(145deg, #64d2ff 0%, #0077b6 100%)',
+  'linear-gradient(145deg, #ac8e68 0%, #6b5344 100%)',
+]
+
+function profileColor(name: string) {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return PROFILE_COLORS[Math.abs(hash) % PROFILE_COLORS.length]
+}
+
+function profileInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return name.trim().slice(0, 2).toUpperCase()
+}
+
+function redirectAfterLogin() {
+  const params = new URLSearchParams(window.location.search)
+  const next = params.get('next')
+  const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard'
+  window.location.href = safeNext
+}
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('')
+  const [profiles, setProfiles] = useState<LoginProfile[]>([])
+  const [loadingProfiles, setLoadingProfiles] = useState(true)
+  const [selected, setSelected] = useState<LoginProfile | null>(null)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    fetch('/api/auth/profiles')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setProfiles(Array.isArray(data) ? data : []))
+      .catch(() => setProfiles([]))
+      .finally(() => setLoadingProfiles(false))
+  }, [])
+
+  const pickProfile = (profile: LoginProfile) => {
+    setSelected(profile)
+    setPassword('')
+    setError('')
+    setShowPassword(false)
+  }
+
+  const backToProfiles = () => {
+    setSelected(null)
+    setPassword('')
+    setError('')
+  }
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!selected) return
     setError('')
     setLoading(true)
     try {
+      const username = selected.login_username?.trim() || selected.name.trim()
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ username: username.trim(), password }),
+        body: JSON.stringify({ username, password }),
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
-        const params = new URLSearchParams(window.location.search)
-        const next = params.get('next')
-        const safeNext =
-          next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard'
-        window.location.href = safeNext
+        redirectAfterLogin()
         return
       }
-      setError(typeof data.error === 'string' ? data.error : 'Invalid credentials')
+      setError(typeof data.error === 'string' ? data.error : 'Incorrect password')
     } catch {
       setError('Connection error. Please try again.')
     } finally {
@@ -39,85 +102,106 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border border-default mx-auto mb-6 bg-card flex items-center justify-center p-4">
-            <Image
-              src="/purosangue-qc-logo.png"
-              alt="Purosangue QC"
-              width={112}
-              height={112}
-              className="w-full h-full object-contain"
-              priority
-            />
-          </div>
-          <h1 className="font-luxury text-4xl sm:text-5xl text-ink leading-none px-2">
-            Purosangue QC Dashboard
-          </h1>
-          <p className="text-muted text-sm mt-3">Team member sign in · Password: YourName@125</p>
+    <div className="netflix-login">
+      <div className="netflix-login__logo">
+        <Image
+          src="/purosangue-qc-logo.png"
+          alt="Purosangue QC"
+          width={72}
+          height={72}
+          className="netflix-login__logo-img"
+          priority
+        />
+      </div>
+
+      {!selected ? (
+        <div className="netflix-login__pick">
+          <h1 className="netflix-login__title">Who&apos;s working?</h1>
+          <p className="netflix-login__subtitle">Select your profile to continue</p>
+
+          {loadingProfiles ? (
+            <div className="netflix-login__grid">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="netflix-profile netflix-profile--skeleton">
+                  <div className="netflix-profile__avatar" />
+                  <div className="netflix-profile__name-skeleton" />
+                </div>
+              ))}
+            </div>
+          ) : profiles.length === 0 ? (
+            <p className="netflix-login__error">Could not load team profiles. Refresh the page.</p>
+          ) : (
+            <div className="netflix-login__grid">
+              {profiles.map(profile => (
+                <button
+                  key={profile.id}
+                  type="button"
+                  className="netflix-profile"
+                  onClick={() => pickProfile(profile)}
+                >
+                  <div
+                    className="netflix-profile__avatar"
+                    style={{ background: profileColor(profile.name) }}
+                  >
+                    <span className="netflix-profile__initials">{profileInitials(profile.name)}</span>
+                    {profile.role === 'MASTER' && (
+                      <span className="netflix-profile__badge" title="Master">★</span>
+                    )}
+                  </div>
+                  <span className="netflix-profile__name">{profile.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+      ) : (
+        <div className="netflix-login__password-step">
+          <button type="button" className="netflix-login__back" onClick={backToProfiles}>
+            ← Profiles
+          </button>
 
-        <div className="card p-8">
-          <h2 className="font-display text-lg font-semibold text-ink mb-6 tracking-wide">Sign in</h2>
+          <div
+            className="netflix-profile__avatar netflix-profile__avatar--large"
+            style={{ background: profileColor(selected.name) }}
+          >
+            <span className="netflix-profile__initials">{profileInitials(selected.name)}</span>
+          </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            <div>
-              <label className="section-label block mb-2">Username</label>
+          <h2 className="netflix-login__profile-name">{selected.name}</h2>
+          <p className="netflix-login__subtitle">Enter your password</p>
+
+          <form onSubmit={handleLogin} className="netflix-login__form">
+            <div className="netflix-login__password-wrap">
               <input
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                placeholder="e.g. Aleena"
-                autoComplete="username"
-                className="input-field"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Password"
+                autoComplete="current-password"
+                className="netflix-login__password-input"
+                autoFocus
                 required
               />
+              <button
+                type="button"
+                className="netflix-login__eye"
+                onClick={() => setShowPassword(v => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? '🙈' : '👁'}
+              </button>
             </div>
 
-            <div>
-              <label className="section-label block mb-2">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="e.g. Aleena@125"
-                  autoComplete="current-password"
-                  className="input-field pr-12"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors p-1"
-                >
-                  {showPassword ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
+            {error && <p className="netflix-login__error">{error}</p>}
 
-            {error && (
-              <div className="rounded-2xl px-4 py-3 text-sm text-accent font-medium border border-accent/30 bg-accent/5">
-                {error}
-              </div>
-            )}
-
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-base disabled:opacity-50 mt-1">
-              {loading ? 'Signing in…' : 'Sign in'}
+            <button type="submit" disabled={loading} className="netflix-login__submit">
+              {loading ? 'Signing in…' : 'Continue'}
             </button>
           </form>
+
+          <p className="netflix-login__hint">Default: {selected.name}@125</p>
         </div>
-      </div>
+      )}
     </div>
   )
 }

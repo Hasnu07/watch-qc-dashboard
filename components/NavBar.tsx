@@ -24,7 +24,7 @@ export default function NavBar() {
 
   const visibleNav = NAV.filter(item => !('masterOnly' in item && item.masterOnly) || isMaster)
 
-  if (pathname === '/slideshow') return null
+  if (pathname === '/slideshow' || pathname === '/login') return null
 
   const handleSignOut = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
