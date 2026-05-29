@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import {
   createSession,
-  hashPassword,
   setSessionCookie,
 } from '@/lib/auth'
+import { verifyMemberPassword } from '@/lib/seed-member-logins'
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,16 +13,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing credentials' }, { status: 400 })
     }
 
+    const trimmed = String(username).trim()
     const member = await prisma.teamMember.findFirst({
-      where: { login_username: { equals: username, mode: 'insensitive' } },
+      where: {
+        OR: [
+          { login_username: { equals: trimmed, mode: 'insensitive' } },
+          { name: { equals: trimmed, mode: 'insensitive' } },
+        ],
+      },
     })
 
-    if (!member || !member.password_hash) {
-      return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 })
-    }
-
-    const expectedHash = hashPassword(member.login_username ?? member.name, password)
-    if (member.password_hash !== expectedHash) {
+    if (!member || !verifyMemberPassword(member, password)) {
       return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 })
     }
 

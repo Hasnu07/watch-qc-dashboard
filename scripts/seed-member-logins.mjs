@@ -1,6 +1,5 @@
-// Seed login_username + password_hash for all team members.
+// Seed login_username + password_hash for all team members (build step).
 // Password pattern: {name}@125  (e.g. Aleena / Aleena@125)
-// Jhonny (case-insensitive) gets MASTER role.
 import crypto from 'crypto'
 import { PrismaClient } from '@prisma/client'
 
@@ -12,16 +11,16 @@ function hashPassword(username, password) {
 }
 
 function memberPassword(name) {
-  return `${name}@125`
+  return `${name.trim()}@125`
 }
 
 async function main() {
   const members = await prisma.teamMember.findMany({ orderBy: { id: 'asc' } })
-  let jhonnyExists = members.some(m => MASTER_NAMES.includes(m.name.toLowerCase()))
+  const jhonnyExists = members.some(m => MASTER_NAMES.includes(m.name.toLowerCase()))
 
   for (const member of members) {
     const isMaster = MASTER_NAMES.includes(member.name.toLowerCase())
-    const loginUsername = member.login_username || member.name
+    const loginUsername = (member.login_username || member.name).trim()
     const password = memberPassword(member.name)
     const passwordHash = hashPassword(loginUsername, password)
 
@@ -51,11 +50,6 @@ async function main() {
     })
     console.log(`  Created Jhonny → login: Jhonny / ${password} (MASTER)`)
   }
-
-  // Clear legacy single-admin session keys
-  await prisma.setting.deleteMany({
-    where: { key: { in: ['admin_session_token', 'admin_username', 'admin_password_hash'] } },
-  }).catch(() => {})
 
   console.log('Done.')
 }
