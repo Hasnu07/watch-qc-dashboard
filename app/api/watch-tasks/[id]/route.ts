@@ -112,11 +112,7 @@ export async function PATCH(
       const watchName = [task.watch.brand, task.watch.model].filter(Boolean).join(' ') || task.watch.name
       const taskLabel = TASK_LABELS[task.task_type] ?? task.task_type
       logWatchActivity(task.watch_id, 'task_completed', taskLabel, session.name).catch(console.error)
-      sendTaskCompletedNotification(
-        task.department as 'ACCOUNTING' | 'SALES' | 'LOGISTICS',
-        watchName,
-        taskLabel
-      ).catch(console.error)
+      sendTaskCompletedNotification(task.assigned_to, watchName, taskLabel).catch(console.error)
     } else if (body.is_completed === false || body.metadata) {
       emitWatchTaskEvent({
         type: 'task_updated',

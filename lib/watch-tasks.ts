@@ -3,8 +3,6 @@ import { getVisibleWatches } from './watch-visibility'
 import { sendWhatsAppMessage, toChatId } from './greenapi'
 import { emitWatchTaskEvent } from './events'
 
-type Dept = 'ACCOUNTING' | 'SALES' | 'LOGISTICS'
-
 const APP_LINK = 'https://qc-dashboard-q907.onrender.com'
 
 /** Built-in assignee when no settings override and no dept fallback desired */
@@ -60,14 +58,22 @@ async function getGreenAPISettings() {
   }
 }
 
-export async function notifyDept(dept: Dept, message: string) {
+/** Send WhatsApp only to the named assignee — never broadcast to a whole department. */
+export async function notifyAssignee(assigneeName: string | null | undefined, message: string) {
+  const name = assigneeName?.trim()
+  if (!name) return
   const settings = await getGreenAPISettings()
   if (!settings) return
-  const members = await prisma.teamMember.findMany({ where: { department: dept } })
-  await Promise.allSettled(
-    members.map(m =>
-      sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(m.whatsapp_number), message, settings.apiUrl)
-    )
+  const member = await prisma.teamMember.findFirst({
+    where: { name: { equals: name, mode: 'insensitive' } },
+  })
+  if (!member?.whatsapp_number) return
+  await sendWhatsAppMessage(
+    settings.instanceId,
+    settings.token,
+    toChatId(member.whatsapp_number),
+    message,
+    settings.apiUrl,
   )
 }
 
@@ -193,13 +199,23 @@ export async function checkAndUnlockLocation(watchId: number) {
       await prisma.watchTask.update({ where: { id: task.id }, data: { is_locked: false } })
       emitWatchTaskEvent({ type: 'task_unlocked', watch_task_id: task.id, watch_id: watchId })
       const watchLabel = [watch.brand, watch.model].filter(Boolean).join(' ') || watch.name
-      notifyDept('LOGISTICS', `${watchLabel} is ready for location update. Payment has been confirmed.\n\n🔗 ${APP_LINK}`).catch(console.error)
+      notifyAssignee(
+        task.assigned_to,
+        `${watchLabel} is ready for location update. Payment has been confirmed.\n\n🔗 ${APP_LINK}`,
+      ).catch(console.error)
     }
   }
 }
 
-export async function sendTaskCompletedNotification(dept: Dept, watchName: string, taskLabel: string) {
-  notifyDept(dept, `${watchName} — ${taskLabel} has been marked complete.\n\n🔗 ${APP_LINK}`).catch(console.error)
+export async function sendTaskCompletedNotification(
+  assigneeName: string | null,
+  watchName: string,
+  taskLabel: string,
+) {
+  notifyAssignee(
+    assigneeName,
+    `${watchName} — ${taskLabel} has been marked complete.\n\n🔗 ${APP_LINK}`,
+  ).catch(console.error)
 }
 
 export async function sendPendingTaskReminders() {
