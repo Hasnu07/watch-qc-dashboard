@@ -211,6 +211,19 @@ html { scrollbar-gutter: stable; }
     box-shadow: inset 3px 0 0 var(--color-sell);
   }
 
+  .watch-card-tile {
+    @apply rounded-xl border bg-card overflow-hidden shadow-md;
+    border-color: var(--color-border-strong);
+    max-width: 280px;
+    width: 100%;
+  }
+  .watch-card-tile-buy {
+    border-top: 3px solid var(--color-buy);
+  }
+  .watch-card-tile-sell {
+    border-top: 3px solid var(--color-sell);
+  }
+
   .card {
     @apply rounded-xl border bg-card overflow-hidden;
     border-color: var(--color-border);

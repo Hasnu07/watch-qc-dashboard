@@ -298,14 +298,14 @@ export default function DashboardPage() {
     : 'flex flex-1 overflow-hidden min-h-0 h-full w-full'
   const pinnedTasksClass = 'md:fixed md:top-12 md:right-0 md:w-[42%] md:max-w-[42%] md:z-30'
   const inventoryContentClass = showTasksPanel ? 'max-w-3xl w-full' : 'max-w-4xl w-full'
+  const inventoryCardGridClass =
+    'grid gap-4 grid-cols-[repeat(auto-fill,minmax(260px,280px))] justify-start w-full'
   const inventoryListBuyClass = compactMode
     ? 'inventory-list-buy rounded-xl border overflow-hidden bg-card divide-y divide-default w-full'
-    : !showTasksPanel
-      ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 w-full max-w-3xl'
-      : 'grid grid-cols-1 gap-3 sm:gap-4 w-full max-w-md'
+    : inventoryCardGridClass
   const inventoryListSellClass = compactMode
     ? 'inventory-list-sell rounded-xl border overflow-hidden bg-card divide-y divide-default w-full'
-    : inventoryListBuyClass
+    : inventoryCardGridClass
   const leftWidthClass = showTasksPanel
     ? 'w-full md:w-[58%] md:max-w-[58%] md:flex-[0_0_58%] shrink-0'
     : 'w-full flex-1 min-w-0'
