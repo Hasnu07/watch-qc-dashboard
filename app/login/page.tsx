@@ -2,10 +2,8 @@
 
 import Image from 'next/image'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -20,18 +18,19 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        credentials: 'same-origin',
+        body: JSON.stringify({ username: username.trim(), password }),
       })
+      const data = await res.json().catch(() => ({}))
       if (res.ok) {
         const params = new URLSearchParams(window.location.search)
         const next = params.get('next')
-        const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
-        router.push(safeNext)
-        router.refresh()
-      } else {
-        const data = await res.json()
-        setError(data.error || 'Invalid credentials')
+        const safeNext =
+          next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard'
+        window.location.href = safeNext
+        return
       }
+      setError(typeof data.error === 'string' ? data.error : 'Invalid credentials')
     } catch {
       setError('Connection error. Please try again.')
     } finally {

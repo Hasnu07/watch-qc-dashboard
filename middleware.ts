@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const LOGIN_REQUIRED = ['/dashboard', '/pending', '/history']
-const MASTER_ONLY = ['/settings']
+const LOGIN_REQUIRED = ['/dashboard', '/pending', '/history', '/settings']
 const SESSION_COOKIE = 'qc_member_session'
 
-export async function middleware(req: NextRequest) {
+export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   if (
@@ -17,9 +16,8 @@ export async function middleware(req: NextRequest) {
   }
 
   const needsLogin = LOGIN_REQUIRED.some(p => pathname === p || pathname.startsWith(p + '/'))
-  const needsMaster = MASTER_ONLY.some(p => pathname === p || pathname.startsWith(p + '/'))
 
-  if (!needsLogin && !needsMaster) {
+  if (!needsLogin) {
     return NextResponse.next()
   }
 
@@ -29,34 +27,6 @@ export async function middleware(req: NextRequest) {
     url.pathname = '/login'
     url.searchParams.set('next', pathname)
     return NextResponse.redirect(url)
-  }
-
-  if (needsLogin || needsMaster) {
-    try {
-      const meUrl = new URL('/api/auth/me', req.url)
-      const meRes = await fetch(meUrl, {
-        headers: { cookie: `${SESSION_COOKIE}=${token}` },
-      })
-      if (!meRes.ok) {
-        const url = req.nextUrl.clone()
-        url.pathname = '/login'
-        url.searchParams.set('next', pathname)
-        return NextResponse.redirect(url)
-      }
-      if (needsMaster) {
-        const me = await meRes.json()
-        if (me.role !== 'MASTER') {
-          const url = req.nextUrl.clone()
-          url.pathname = '/dashboard'
-          return NextResponse.redirect(url)
-        }
-      }
-    } catch {
-      const url = req.nextUrl.clone()
-      url.pathname = '/login'
-      url.searchParams.set('next', pathname)
-      return NextResponse.redirect(url)
-    }
   }
 
   return NextResponse.next()

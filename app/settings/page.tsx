@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useCurrentMember } from '@/hooks/useCurrentMember'
 
 type Department = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 
@@ -84,7 +85,19 @@ const DEPT_ORDER: Department[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
 
 export default function SettingsPage() {
   const router = useRouter()
+  const { member, isMaster, loading: authLoading } = useCurrentMember()
   const [settingsTab, setSettingsTab] = useState<'integrations' | 'tasks' | 'team' | 'webhook'>('integrations')
+
+  useEffect(() => {
+    if (authLoading) return
+    if (!member) {
+      router.replace('/login?next=/settings')
+      return
+    }
+    if (!isMaster) {
+      router.replace('/dashboard')
+    }
+  }, [authLoading, member, isMaster, router])
 
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })

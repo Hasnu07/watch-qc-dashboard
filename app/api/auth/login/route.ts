@@ -4,7 +4,7 @@ import {
   createSession,
   setSessionCookie,
 } from '@/lib/auth'
-import { verifyMemberPassword } from '@/lib/seed-member-logins'
+import { seedMemberLogins, verifyMemberPassword } from '@/lib/seed-member-logins'
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,8 +13,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing credentials' }, { status: 400 })
     }
 
+    // Ensure passwords exist (Render build seed may not reach the DB)
+    await seedMemberLogins().catch(err => console.error('[Login] seed failed:', err))
+
     const trimmed = String(username).trim()
-    const member = await prisma.teamMember.findFirst({
+    let member = await prisma.teamMember.findFirst({
       where: {
         OR: [
           { login_username: { equals: trimmed, mode: 'insensitive' } },
