@@ -18,6 +18,7 @@
  *   hasnain-graphics-hover.png | .jpg
  *   hassan-hover.png | .jpg
  *   johny-hover.png | .jpg
+ *   josh-hover.png | .jpg
  *
  * Lookup is case-insensitive on team member display name.
  */
@@ -28,6 +29,7 @@ const PROFILE_AVATAR_HOVER_SLUGS: Record<string, string> = {
   'hasnain graphics': 'hasnain-graphics-hover',
   hassan: 'hassan-hover',
   johny: 'johny-hover',
+  josh: 'josh-hover',
 }
 
 const PROFILE_AVATAR_SLUGS: Record<string, string> = {
