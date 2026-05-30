@@ -13,12 +13,14 @@
  *   ummay.png
  *
  * Optional hover assets (alternate pose, soft-fade on login hover):
+ *   aleena-hover.png | .jpg
  *   hasnain-graphics-hover.png | .jpg
  *
  * Lookup is case-insensitive on team member display name.
  */
 
 const PROFILE_AVATAR_HOVER_SLUGS: Record<string, string> = {
+  aleena: 'aleena-hover',
   'hasnain graphics': 'hasnain-graphics-hover',
 }
 
@@ -58,7 +60,7 @@ export function getProfileAvatarUrl(name: string): string | null {
   return `/profiles/${slug}.png`
 }
 
-/** Hover avatar URL (GIF preferred). */
+/** Hover avatar URL (static image, soft-fade on login). */
 export function getProfileAvatarHoverUrl(name: string): string | null {
   return getProfileAvatarHoverFallbacks(name)[0] ?? null
 }
