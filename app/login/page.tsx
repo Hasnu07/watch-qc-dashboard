@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getProfileAvatarHoverFallbacks, getProfileAvatarUrl } from '@/lib/profile-avatars'
 
 interface LoginProfile {
@@ -75,7 +75,6 @@ function ProfileAvatar({
 }) {
   const [staticFailed, setStaticFailed] = useState(false)
   const [hoverSrc, setHoverSrc] = useState<string | null>(null)
-  const hoverRef = useRef<HTMLImageElement>(null)
 
   const hoverFallbacks = useMemo(() => getProfileAvatarHoverFallbacks(name), [name])
   const hasHover = hoverable && hoverFallbacks.length > 0
@@ -95,12 +94,6 @@ function ProfileAvatar({
     tryNext(0)
     return () => { cancelled = true }
   }, [hasHover, hoverFallbacks])
-
-  useEffect(() => {
-    if (!isHovered || !hoverRef.current || !hoverSrc) return
-    const base = hoverSrc.split('?')[0]
-    hoverRef.current.src = `${base}?t=${Date.now()}`
-  }, [isHovered, hoverSrc])
 
   const showStatic = Boolean(avatarUrl) && !staticFailed
   const showHover = Boolean(hoverSrc) && isHovered
@@ -123,7 +116,6 @@ function ProfileAvatar({
       )}
       {hasHover && hoverSrc && (
         <img
-          ref={hoverRef}
           src={hoverSrc}
           alt=""
           className={`netflix-profile__avatar-img netflix-profile__avatar-hover${showHover ? ' netflix-profile__avatar-hover--visible' : ''}`}

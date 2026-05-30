@@ -12,8 +12,8 @@
  *   master.png
  *   ummay.png
  *
- * Optional hover assets (animated GIF or alternate pose):
- *   hasnain-graphics-hover.gif | .jpg | .png
+ * Optional hover assets (alternate pose, soft-fade on login hover):
+ *   hasnain-graphics-hover.png | .jpg
  *
  * Lookup is case-insensitive on team member display name.
  */
@@ -66,5 +66,5 @@ export function getProfileAvatarHoverUrl(name: string): string | null {
 export function getProfileAvatarHoverFallbacks(name: string): string[] {
   const slug = PROFILE_AVATAR_HOVER_SLUGS[normalizeMemberName(name)]
   if (!slug) return []
-  return [`/profiles/${slug}.gif`, `/profiles/${slug}.webp`, `/profiles/${slug}.jpg`, `/profiles/${slug}.png`]
+  return [`/profiles/${slug}.png`, `/profiles/${slug}.jpg`, `/profiles/${slug}.webp`]
 }

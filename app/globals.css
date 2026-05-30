@@ -1776,7 +1776,7 @@ html { scrollbar-gutter: stable; }
 
 .netflix-profile__avatar-static {
   opacity: 1;
-  transition: opacity 0.12s ease;
+  transition: opacity 0.45s ease-in-out;
 }
 
 .netflix-profile__avatar-static--hidden {
@@ -1785,7 +1785,7 @@ html { scrollbar-gutter: stable; }
 
 .netflix-profile__avatar-hover {
   opacity: 0;
-  transition: opacity 0.12s ease;
+  transition: opacity 0.45s ease-in-out;
   pointer-events: none;
 }
 
