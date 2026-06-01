@@ -2,7 +2,7 @@ services:
   - type: web
     name: qc-dashboard
     runtime: node
-    buildCommand: npm install --include=dev && npx prisma generate && npx prisma db push --accept-data-loss && node scripts/seed-member-logins.mjs && npm run build
+    buildCommand: bash scripts/render-build.sh
     startCommand: npm start
     envVars:
       - key: DATABASE_URL
