@@ -8,6 +8,7 @@ export function getTodayPKT(): string {
 
 export function formatCurrency(value: number | string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value
+  if (!Number.isFinite(num)) return '—'
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',

@@ -526,11 +526,21 @@ function WatchAccordion({ watchId, watchName, tasks, teamMembers, expanded, onTo
 
 // ── Main panel ─────────────────────────────────────────────────────────────
 
-export default function WatchTaskPanel({ className, focusedWatchId }: { className?: string; focusedWatchId?: number | null }) {
-  const { tasks: loadedTasks, setTasks, loading, refreshWatchTasks, markLocalMutation } = useWatchTasksLoader()
+export default function WatchTaskPanel({
+  className,
+  focusedWatchId,
+  enabled = true,
+}: {
+  className?: string
+  focusedWatchId?: number | null
+  enabled?: boolean
+}) {
+  const { tasks: loadedTasks, setTasks, loading, refreshWatchTasks, markLocalMutation } = useWatchTasksLoader({ enabled })
   const tasks = loadedTasks as WatchTask[]
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [expandedWatchId, setExpandedWatchId] = useState<number | null>(null)
+  const [showAllWatchGroups, setShowAllWatchGroups] = useState(false)
+  const WATCH_GROUP_PAGE = 50
   const { member, canCompleteWatchTask, canAssignWatchTask, isMaster } = useCurrentMember()
   const {
     myTasksOnly, setMyTasksOnly, myName, setMyName, sort, setSort,
@@ -627,8 +637,13 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
   else if (sort === 'pending') watchGroups = watchGroups.sort((a, b) => b.tasks.filter(t => !t.is_completed && !t.is_locked).length - a.tasks.filter(t => !t.is_completed && !t.is_locked).length)
   else watchGroups = watchGroups.sort((a, b) => a.watchName.localeCompare(b.watchName))
 
+  const totalWatchGroups = watchGroups.length
+  const hasMoreWatchGroups = !showAllWatchGroups && totalWatchGroups > WATCH_GROUP_PAGE
+  if (hasMoreWatchGroups) watchGroups = watchGroups.slice(0, WATCH_GROUP_PAGE)
+
   const totalPending = filteredTasks.filter(t => !t.is_completed && !t.is_locked).length
 
+  if (!enabled) return <div className={`flex items-center justify-center h-40 text-muted ${className}`}>Open tasks to load…</div>
   if (loading) return <div className={`flex items-center justify-center h-40 text-muted ${className}`}>Loading tasks…</div>
   if (tasks.length === 0) return (
     <div className={`flex flex-col items-center justify-center h-48 text-muted gap-3 px-6 text-center ${className}`}>
@@ -659,7 +674,8 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
         {filteredTasks.length === 0 ? (
           <WatchTaskEmptyFilter onShowAll={clearMyTasksFilter} memberOnly={memberOnly} />
         ) : (
-          watchGroups.map(({ watchId, watchName, tasks: watchTasks }) => (
+          <>
+          {watchGroups.map(({ watchId, watchName, tasks: watchTasks }) => (
             <WatchAccordion
               key={watchId}
               watchId={watchId}
@@ -675,7 +691,17 @@ export default function WatchTaskPanel({ className, focusedWatchId }: { classNam
               onAssign={assignTask}
               onRefreshWatch={refreshWatchTasks}
             />
-          ))
+          ))}
+          {hasMoreWatchGroups && (
+            <button
+              type="button"
+              onClick={() => setShowAllWatchGroups(true)}
+              className="w-full mt-2 py-3 text-sm font-semibold text-accent border border-dashed border-accent/40 rounded-xl hover:bg-accent/5"
+            >
+              Show all {totalWatchGroups} watches
+            </button>
+          )}
+          </>
         )}
       </div>
     </div>

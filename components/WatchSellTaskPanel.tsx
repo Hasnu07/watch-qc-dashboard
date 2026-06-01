@@ -23,8 +23,16 @@ interface WatchSellTask {
   watch: { id: number; name: string; brand: string | null; model: string | null; created_at?: string }
 }
 
-export default function WatchSellTaskPanel({ className, focusedWatchId }: { className?: string; focusedWatchId?: number | null }) {
-  const { tasks: loadedTasks, setTasks, loading, markLocalMutation } = useWatchTasksLoader('SELL')
+export default function WatchSellTaskPanel({
+  className,
+  focusedWatchId,
+  enabled = true,
+}: {
+  className?: string
+  focusedWatchId?: number | null
+  enabled?: boolean
+}) {
+  const { tasks: loadedTasks, setTasks, loading, markLocalMutation } = useWatchTasksLoader({ phase: 'SELL', enabled })
   const tasks = loadedTasks as WatchSellTask[]
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [expandedWatchId, setExpandedWatchId] = useState<number | null>(null)
@@ -96,6 +104,7 @@ export default function WatchSellTaskPanel({ className, focusedWatchId }: { clas
 
   const totalPending = filteredTasks.filter(t => !t.is_completed).length
 
+  if (!enabled) return <div className={`flex items-center justify-center h-40 text-muted ${className}`}>Open tasks to load…</div>
   if (loading) return <div className={`flex items-center justify-center h-40 text-muted ${className}`}>Loading sell tasks…</div>
 
   if (tasks.length === 0) return (
