@@ -34,6 +34,9 @@ npx prisma generate
 echo "[render-build] Pushing schema (with retry)..."
 retry npx prisma db push --accept-data-loss
 
+echo "[render-build] Restoring QC data — team, watches, tasks (with retry)..."
+retry node scripts/restore-qc-data.mjs
+
 echo "[render-build] Seeding member logins (with retry)..."
 retry node scripts/seed-member-logins.mjs
 

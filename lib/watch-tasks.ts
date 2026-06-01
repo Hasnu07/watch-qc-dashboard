@@ -167,7 +167,7 @@ export async function assignWatchTasks(watchId: number, watchName: string, silen
   }
 }
 
-export async function createWatchTasks(watchId: number, watchName: string) {
+export async function createWatchTasks(watchId: number, watchName: string, silent = false) {
   const existing = await prisma.watchTask.count({ where: { watch_id: watchId } })
   if (existing > 0) return
 
@@ -182,8 +182,10 @@ export async function createWatchTasks(watchId: number, watchName: string) {
 
   await prisma.watchTask.createMany({ data: taskData })
 
-  // Notify each person of their specific assigned tasks
-  notifyAssignedPersons(watchName, taskData, 'New watch added').catch(console.error)
+  if (!silent) {
+    // Notify each person of their specific assigned tasks
+    notifyAssignedPersons(watchName, taskData, 'New watch added').catch(console.error)
+  }
 }
 
 export async function checkAndUnlockLocation(watchId: number) {
