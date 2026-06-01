@@ -4,7 +4,7 @@ import {
   isOverPipelineSla,
   type PipelineUrgency,
 } from '@/lib/pipeline-timer'
-import { SELL_BLOCKING_TASK_LABELS } from '@/lib/sell-tasks'
+import { SELL_BLOCKING_TASK_LABELS } from '@/lib/sell-task-templates'
 
 export type PendingFilter = 'all' | 'overdue' | 'due_soon'
 export type PendingView = 'people' | 'queue'

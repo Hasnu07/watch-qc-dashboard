@@ -1,4 +1,4 @@
-import { DEFAULT_SELL_TEMPLATES } from './sell-tasks'
+import { DEFAULT_SELL_TEMPLATES } from './sell-task-templates'
 import { ACCESSORY_GROUP_LABEL, isAccessoryTaskType } from './accessory-tasks'
 
 export const BUY_TASK_LABELS: Record<string, string> = {

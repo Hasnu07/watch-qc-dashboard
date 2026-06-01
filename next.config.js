@@ -17,10 +17,15 @@ const nextConfig = {
   experimental: {
     instrumentationHook: true,
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname),
+    }
+    // Prevent Prisma from ever being bundled into client JS (crashes React on load).
+    if (!isServer) {
+      config.resolve.alias['@prisma/client'] = false
+      config.resolve.alias['.prisma/client'] = false
     }
     return config
   },
