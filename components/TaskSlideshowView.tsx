@@ -112,7 +112,7 @@ function WatchLeftPanel({ group }: { group: PendingWatchGroup }) {
 }
 
 function SlideContent({ slide, now }: { slide: Slide; now: Date }) {
-  const dept = DEPT_CONFIG[slide.member.department as Department]
+  const dept = DEPT_CONFIG[slide.member.department as Department] ?? DEPT_CONFIG.LOGISTICS
 
   return (
     <div className="slideshow-slide-inner">
@@ -194,8 +194,9 @@ export default function TaskSlideshowView() {
 
   const slide = slides[index]
 
-  return (
-    <div className="task-slideshow-root">
+  try {
+    return (
+      <div className="task-slideshow-root">
       <div className="slideshow-topbar">
         <span className="slideshow-brand">Task Slideshow</span>
         <div className="slideshow-topbar-meta">
@@ -238,6 +239,18 @@ export default function TaskSlideshowView() {
           ))}
         </div>
       )}
-    </div>
-  )
+      </div>
+    )
+  } catch (err) {
+    console.error('[slideshow] render crash', err)
+    return (
+      <div className="task-slideshow-root">
+        <div className="slideshow-empty">
+          <p className="slideshow-empty-title">Slideshow hit an error</p>
+          <p className="slideshow-empty-sub">Please refresh. Pending tasks are still available on /pending.</p>
+          <Link href="/pending" className="slideshow-exit mt-3 inline-flex">Open Pending page</Link>
+        </div>
+      </div>
+    )
+  }
 }
