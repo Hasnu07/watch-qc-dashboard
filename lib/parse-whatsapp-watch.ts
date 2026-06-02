@@ -36,7 +36,8 @@ const BRANDS = [
 
 function field(text: string, ...keys: string[]): string | null {
   for (const key of keys) {
-    const re = new RegExp(`^${key}\\s*:\\s*(.+)$`, 'im')
+    // Accept both "Key: value" and looser OCR/chat variants like "Key value"
+    const re = new RegExp(`^${key}\\s*:?\\s*(.+)$`, 'im')
     const m = text.match(re)
     if (m) return m[1].trim()
   }
@@ -79,6 +80,7 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
   // ── TYPE & IMPORT DETECTION ──────────────────────────────────────────────
   const hasBuySignal =
     /^seller\s*:/im.test(t) ||
+    /^seller\s+\S/im.test(t) ||
     /\bbuy\s+from\b/i.test(t) ||
     /\bbought\s+from\b/i.test(t) ||
     /^purchase\s+price\s*:/im.test(t) ||
@@ -148,6 +150,10 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
 
   // ── REFERENCE ────────────────────────────────────────────────────────────
   let ref_no: string | null = field(t, 'Reference', 'Ref', 'Ref No', 'Ref\\.', 'Reference No')
+  if (!ref_no) {
+    const refFieldNoColon = t.match(/\breference\s*[:\-]?\s*([A-Z0-9][A-Z0-9./-]{3,})\b/i)
+    if (refFieldNoColon) ref_no = refFieldNoColon[1]
+  }
   if (!ref_no) {
     // Fallback: look for a standalone ref-number pattern near top of message
     const m = t.match(/\b([A-Z0-9]{3,}[-/][A-Z0-9]+)\b/)
