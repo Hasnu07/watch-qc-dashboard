@@ -19,6 +19,10 @@ const cases: Array<{ text: string; expect: { type?: string; stock_no?: string; s
     expect: { type: 'SELL', stock_no: '1366', sold_to: 'ali' },
   },
   {
+    text: 'WATCH DATE: 05/2026 — 170100 usdt paid — sold do duncan (ummay sale)\nSTOCK NUMBER: 1302',
+    expect: { type: 'SELL', stock_no: '1302', sold_to: 'duncan (ummay sale)' },
+  },
+  {
     text: 'Seller: Diego Giminez\nModel: Audemars Piguet Royal Oak\nReference: 15407OR.OO.1220OR.01\nStock No: 1377',
     expect: { type: 'BUY', stock_no: '1377' },
   },

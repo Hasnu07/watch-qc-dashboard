@@ -87,9 +87,12 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
 
   const hasSellSignal =
     /\bsold\s+(\d+\s+)?to\b/i.test(t) ||
+    /\bsold\s+(\d+\s+)?do\b/i.test(t) ||
     /\bsold\s+\d+\s+for\b/i.test(t) ||
     /^sold\s+to\s*:/im.test(t) ||
+    /^sold\s+do\s*:/im.test(t) ||
     /^sold\s+to\s+\S/im.test(t) ||
+    /^sold\s+do\s+\S/im.test(t) ||
     /\bsold\s+\d{3,6}\b/i.test(t) ||
     /^\d{3,6}\s+sold\b/im.test(t) ||
     /\b\d{3,6}\s*(?:→|->)\s*\S+/i.test(t)
@@ -124,8 +127,11 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
       arrowTo ||
       soldForTo ||
       t.match(/sold\s+(?:\d+\s+)?to\s+(.+?)(?:\s+for\s+[\d]|\s+@\s*[\d]|\n|$)/i) ||
+      t.match(/sold\s+(?:\d+\s+)?do\s+(.+?)(?:\s+for\s+[\d]|\s+@\s*[\d]|\n|$)/i) ||
       t.match(/^sold\s+to\s*:\s*(.+)$/im) ||
-      t.match(/^sold\s+to\s+(.+)$/im)
+      t.match(/^sold\s+to\s+(.+)$/im) ||
+      t.match(/^sold\s+do\s*:\s*(.+)$/im) ||
+      t.match(/^sold\s+do\s+(.+)$/im)
     if (m) sold_to = m[1].trim()
   }
 
