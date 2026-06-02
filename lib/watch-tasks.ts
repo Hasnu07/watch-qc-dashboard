@@ -80,8 +80,23 @@ export async function notifyAssignee(assigneeName: string | null | undefined, me
 
 async function getMembersByDept() {
   const members = await prisma.teamMember.findMany()
+  // Deterministic dept fallback so extra members (e.g. Kash) don't become the
+  // implicit assignee for all unconfigured task types.
+  const preferredByDept: Record<string, string> = {
+    LOGISTICS: 'Haris',
+    ACCOUNTING: 'Hassan',
+    SALES: 'Aleena',
+  }
   const map: Record<string, string> = {}
-  for (const m of members) map[m.department] = m.name
+  for (const [dept, preferred] of Object.entries(preferredByDept)) {
+    const exact = members.find(m => m.department === dept && m.name.toLowerCase() === preferred.toLowerCase())
+    if (exact) {
+      map[dept] = exact.name
+      continue
+    }
+    const fallback = members.find(m => m.department === dept)
+    if (fallback) map[dept] = fallback.name
+  }
   return map
 }
 
