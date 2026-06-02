@@ -89,6 +89,7 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
     /\bsold\s+(\d+\s+)?to\b/i.test(t) ||
     /\bsold\s+(\d+\s+)?do\b/i.test(t) ||
     /\bsold\s+\d+\s+for\b/i.test(t) ||
+    /\bsold\s+\d{3,6}\s+to\s+\S+[\s\S]*?\bfor\s+[\d,.]+\s*(usdt|usd|eur|gbp|aed|hkd)\b/i.test(t) ||
     /^sold\s+to\s*:/im.test(t) ||
     /^sold\s+do\s*:/im.test(t) ||
     /^sold\s+to\s+\S/im.test(t) ||

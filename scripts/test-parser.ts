@@ -23,6 +23,10 @@ const cases: Array<{ text: string; expect: { type?: string; stock_no?: string; s
     expect: { type: 'SELL', stock_no: '1302', sold_to: 'duncan (ummay sale)' },
   },
   {
+    text: 'Sold 1195 to Winson\nFor 3050.000 Hkd not paid\nHe will collect from RK the watch',
+    expect: { type: 'SELL', stock_no: '1195', sold_to: 'Winson' },
+  },
+  {
     text: 'Seller: Diego Giminez\nModel: Audemars Piguet Royal Oak\nReference: 15407OR.OO.1220OR.01\nStock No: 1377',
     expect: { type: 'BUY', stock_no: '1377' },
   },
