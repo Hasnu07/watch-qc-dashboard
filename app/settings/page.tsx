@@ -18,6 +18,7 @@ interface Settings {
   greenapi_api_token: string
   greenapi_api_url: string
   reminder_interval_minutes: string
+  whatsapp_auto_send: string
   whatsapp_stock_group_name: string
   whatsapp_stock_group_id: string
 }
@@ -109,6 +110,7 @@ export default function SettingsPage() {
     greenapi_api_token: '',
     greenapi_api_url: 'https://api.green-api.com',
     reminder_interval_minutes: '180',
+    whatsapp_auto_send: '1',
     whatsapp_stock_group_name: 'Purosangue team BUY AND SELL',
     whatsapp_stock_group_id: '120363420701421193@g.us',
   })
@@ -201,6 +203,26 @@ export default function SettingsPage() {
     finally { setSaving(false) }
   }
 
+  const toggleWhatsAppAutoSend = async () => {
+    const next = settings.whatsapp_auto_send === '1' ? '0' : '1'
+    setSettings(prev => ({ ...prev, whatsapp_auto_send: next }))
+    setSavedMsg('')
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ whatsapp_auto_send: next }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setSavedMsg(next === '1' ? 'WhatsApp auto-send enabled' : 'WhatsApp auto-send disabled')
+      setTimeout(() => setSavedMsg(''), 2500)
+    } catch {
+      // rollback on failure
+      setSettings(prev => ({ ...prev, whatsapp_auto_send: next === '1' ? '0' : '1' }))
+      setSavedMsg('Error updating WhatsApp auto-send')
+    }
+  }
+
   const addTemplate = async (phase: 'BUY' | 'SELL') => {
     const task = phase === 'BUY' ? newBuyTask : newSellTask
     if (!task.label.trim()) return
@@ -273,12 +295,26 @@ export default function SettingsPage() {
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink tracking-wide mb-1">Settings</h1>
           <p className="text-muted text-sm sm:text-base">Configure integrations and manage your team</p>
         </div>
-        <button onClick={logout} className="btn-ghost text-sm hover:text-accent flex items-center gap-1.5">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          Sign out
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleWhatsAppAutoSend}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+              settings.whatsapp_auto_send === '1'
+                ? 'bg-accent/10 border-accent/30 text-accent'
+                : 'bg-panel border-default text-muted'
+            }`}
+            title="Toggle all WhatsApp auto messages"
+          >
+            {settings.whatsapp_auto_send === '1' ? 'WhatsApp: ON' : 'WhatsApp: OFF'}
+          </button>
+          <button onClick={logout} className="btn-ghost text-sm hover:text-accent flex items-center gap-1.5">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Sign out
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-6">
