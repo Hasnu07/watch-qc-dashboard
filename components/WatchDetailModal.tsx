@@ -56,6 +56,7 @@ interface WatchPayment {
   id: number
   amount: number
   currency: string
+  fx_rate: number | null
   payment_method: PaymentMethod
   payment_date: string
   notes: string | null
@@ -122,7 +123,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
   const [payments, setPayments] = useState<WatchPayment[]>([])
   const [loadingPayments, setLoadingPayments] = useState(false)
   const [newPayment, setNewPayment] = useState({
-    amount: '', currency: 'USD', payment_method: 'CASH' as PaymentMethod,
+    amount: '', currency: 'USD', fx_rate: '', payment_method: 'CASH' as PaymentMethod,
     payment_date: new Date().toISOString().split('T')[0], notes: '',
   })
   const [addingPayment, setAddingPayment] = useState(false)
@@ -254,7 +255,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
         body: JSON.stringify({ ...newPayment, amount: parseFloat(newPayment.amount) }),
       })
       if (!res.ok) throw new Error('Failed')
-      setNewPayment({ amount: '', currency: 'USD', payment_method: 'CASH', payment_date: new Date().toISOString().split('T')[0], notes: '' })
+      setNewPayment({ amount: '', currency: 'USD', fx_rate: '', payment_method: 'CASH', payment_date: new Date().toISOString().split('T')[0], notes: '' })
       fetchPayments()
     } catch { setPaymentError('Failed to add payment') }
     finally { setAddingPayment(false) }
@@ -466,6 +467,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                         <tr className="bg-panel text-muted text-xs uppercase border-b border-default">
                           <th className="text-left px-4 py-2.5 font-semibold">Date</th>
                           <th className="text-left px-4 py-2.5 font-semibold">Amount</th>
+                          <th className="text-left px-4 py-2.5 font-semibold">GBP Value</th>
                           <th className="text-left px-4 py-2.5 font-semibold">Method</th>
                           <th className="text-left px-4 py-2.5 font-semibold">Notes</th>
                         </tr>
@@ -475,6 +477,14 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                           <tr key={p.id} className="bg-card hover:bg-panel">
                             <td className="px-4 py-2.5 text-muted">{new Date(p.payment_date).toLocaleDateString()}</td>
                             <td className="px-4 py-2.5 text-ink font-semibold">{p.currency} {p.amount.toLocaleString()}</td>
+                            <td className="px-4 py-2.5 text-muted text-xs">
+                              {p.currency === 'GBP'
+                                ? <span className="text-emerald-600 font-semibold">£{p.amount.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
+                                : p.fx_rate
+                                  ? <span className="text-emerald-600 font-semibold">£{(+(p.amount * p.fx_rate).toFixed(2)).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
+                                  : <span className="text-muted">—</span>
+                              }
+                            </td>
                             <td className="px-4 py-2.5 text-muted">{PAYMENT_METHOD_LABELS[p.payment_method]}</td>
                             <td className="px-4 py-2.5 text-muted truncate max-w-[120px]">{p.notes || '—'}</td>
                           </tr>
@@ -490,15 +500,48 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                 <p className="section-label mb-3">Add Payment Record</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelCls}>Amount</label>
+                    <label className={labelCls}>Amount Paid</label>
                     <input type="number" value={newPayment.amount} onChange={e => setNewPayment(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" min="0" step="0.01" className={inputCls} />
                   </div>
                   <div>
-                    <label className={labelCls}>Currency</label>
-                    <select value={newPayment.currency} onChange={e => setNewPayment(p => ({ ...p, currency: e.target.value }))} className={inputCls}>
+                    <label className={labelCls}>Paid In</label>
+                    <select value={newPayment.currency} onChange={e => setNewPayment(p => ({ ...p, currency: e.target.value, fx_rate: '' }))} className={inputCls}>
                       {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
+                  {newPayment.currency !== 'GBP' && (
+                    <>
+                      <div className="col-span-2">
+                        <label className={labelCls}>FX Rate · 1 {newPayment.currency} = ? GBP</label>
+                        <input
+                          type="number"
+                          value={newPayment.fx_rate}
+                          onChange={e => setNewPayment(p => ({ ...p, fx_rate: e.target.value }))}
+                          placeholder="e.g. 0.2022"
+                          min="0"
+                          step="0.000001"
+                          className={inputCls}
+                        />
+                      </div>
+                      {(() => {
+                        const amt = parseFloat(newPayment.amount)
+                        const rate = parseFloat(newPayment.fx_rate)
+                        const outstanding = watch.total_amount
+                        if (!amt || !rate) return null
+                        const settledGBP = +(amt * rate).toFixed(2)
+                        return (
+                          <div className="col-span-2 bg-slate-900 rounded-xl px-4 py-3 font-mono text-sm">
+                            <span className="text-blue-400">{newPayment.currency} {amt.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
+                            <span className="text-slate-400"> × {rate} = settles </span>
+                            <span className="text-amber-400">£{settledGBP.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
+                            {outstanding != null && (
+                              <span className="text-slate-500"> of £{outstanding.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </>
+                  )}
                   <div>
                     <label className={labelCls}>Method</label>
                     <select value={newPayment.payment_method} onChange={e => setNewPayment(p => ({ ...p, payment_method: e.target.value as PaymentMethod }))} className={inputCls}>
