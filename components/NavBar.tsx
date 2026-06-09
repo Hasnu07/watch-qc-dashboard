@@ -11,7 +11,6 @@ const NAV = [
   { href: '/', label: 'Team' },
   { href: '/dashboard', label: 'Pipeline' },
   { href: '/pending', label: 'Pending' },
-  { href: '/slideshow', label: 'Task Slideshow' },
   { href: '/history', label: 'History' },
   { href: '/settings', label: 'Settings', masterOnly: true },
 ] as const
@@ -27,7 +26,7 @@ export default function NavBar() {
 
   const visibleNav = NAV.filter(item => !('masterOnly' in item && item.masterOnly) || isMaster)
 
-  if (pathname === '/slideshow' || pathname === '/login') return null
+  if (pathname === '/login') return null
 
   const handleSignOut = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
