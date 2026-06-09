@@ -28,9 +28,30 @@ export async function PATCH(
     if (name) data.name = name
     if (whatsapp_number) data.whatsapp_number = whatsapp_number.replace(/[^0-9]/g, '')
 
+    // Reject duplicate numbers with a clear message (whatsapp_number is unique).
+    if (data.whatsapp_number) {
+      const clash = await prisma.teamMember.findFirst({
+        where: { whatsapp_number: data.whatsapp_number, id: { not: id } },
+        select: { name: true },
+      })
+      if (clash) {
+        return NextResponse.json(
+          { error: `That number is already used by ${clash.name}.` },
+          { status: 409 },
+        )
+      }
+    }
+
     const member = await prisma.teamMember.update({ where: { id }, data })
     return NextResponse.json(member)
   } catch (err) {
+    // Prisma unique-constraint violation (race) → friendly message
+    if (err && typeof err === 'object' && (err as { code?: string }).code === 'P2002') {
+      return NextResponse.json(
+        { error: 'That number is already used by another member.' },
+        { status: 409 },
+      )
+    }
     console.error(err)
     return NextResponse.json({ error: 'Failed to update member' }, { status: 500 })
   }

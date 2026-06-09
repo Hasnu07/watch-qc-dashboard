@@ -303,7 +303,11 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ whatsapp_number: clean }),
       })
-      if (!res.ok) throw new Error('Failed')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setMemberError(data.error || 'Could not update number.')
+        return
+      }
       setEditingMember(null); setEditNumber(''); fetchMembers()
     } catch { setMemberError('Could not update number.') }
     finally { setSavingNumber(false) }
