@@ -129,6 +129,9 @@ export default function SettingsPage() {
   const [addingMember, setAddingMember] = useState(false)
   const [memberError, setMemberError] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [editingMember, setEditingMember] = useState<number | null>(null)
+  const [editNumber, setEditNumber] = useState('')
+  const [savingNumber, setSavingNumber] = useState(false)
   const [templates, setTemplates] = useState<TaskTemplate[]>([])
   const [newBuyTask, setNewBuyTask] = useState({ label: '', department: 'SALES', default_assignee: '' })
   const [newSellTask, setNewSellTask] = useState({ label: '', department: 'SALES', default_assignee: '' })
@@ -282,6 +285,28 @@ export default function SettingsPage() {
       await fetch(`/api/team-members/${id}`, { method: 'DELETE' })
       setDeleteConfirm(null); fetchMembers()
     } catch (err) { console.error(err) }
+  }
+
+  const startEditNumber = (id: number, current: string) => {
+    setDeleteConfirm(null)
+    setEditingMember(id)
+    setEditNumber(current)
+  }
+
+  const saveMemberNumber = async (id: number) => {
+    const clean = editNumber.replace(/[^0-9]/g, '')
+    if (clean.length < 10) { setMemberError('Enter a valid number (country code + number).'); return }
+    setSavingNumber(true); setMemberError('')
+    try {
+      const res = await fetch(`/api/team-members/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ whatsapp_number: clean }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setEditingMember(null); setEditNumber(''); fetchMembers()
+    } catch { setMemberError('Could not update number.') }
+    finally { setSavingNumber(false) }
   }
 
   const inputClass = 'input-field'
@@ -735,30 +760,59 @@ export default function SettingsPage() {
                   {deptMembers.map(member => (
                     <div key={member.id}
                       className="flex items-center justify-between bg-panel rounded-2xl px-4 py-3 border border-default">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-9 h-9 rounded-full flex items-center justify-center text-card font-bold flex-shrink-0 bg-ink">
                           {member.name.charAt(0).toUpperCase()}
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-ink font-medium text-base">{member.name}</p>
-                          <p className="text-muted text-sm">+{member.whatsapp_number}</p>
+                          {editingMember === member.id ? (
+                            <div className="flex items-center gap-2 mt-1">
+                              <input
+                                type="text"
+                                value={editNumber}
+                                autoFocus
+                                onChange={e => setEditNumber(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') saveMemberNumber(member.id); if (e.key === 'Escape') { setEditingMember(null); setMemberError('') } }}
+                                placeholder="923001234567"
+                                className="input-field text-sm py-1 px-2 w-44"
+                              />
+                              <button onClick={() => saveMemberNumber(member.id)} disabled={savingNumber}
+                                className="btn-primary text-xs py-1 px-3 disabled:opacity-50">{savingNumber ? '…' : 'Save'}</button>
+                              <button onClick={() => { setEditingMember(null); setMemberError('') }}
+                                className="btn-ghost text-xs py-1 px-3">Cancel</button>
+                            </div>
+                          ) : (
+                            <p className="text-muted text-sm">+{member.whatsapp_number}</p>
+                          )}
                         </div>
                       </div>
 
-                      {deleteConfirm === member.id ? (
-                        <div className="flex items-center gap-2">
+                      {editingMember === member.id ? null : deleteConfirm === member.id ? (
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           <span className="text-muted text-sm">Remove?</span>
                           <button onClick={() => deleteMember(member.id)} className="btn-primary text-xs py-1 px-3">Yes</button>
                           <button onClick={() => setDeleteConfirm(null)} className="btn-ghost text-xs py-1 px-3">No</button>
                         </div>
                       ) : (
-                        <button onClick={() => setDeleteConfirm(member.id)}
-                          className="text-muted hover:text-accent transition-colors p-2 rounded-full hover:bg-panel">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button onClick={() => startEditNumber(member.id, member.whatsapp_number)}
+                            title="Edit number"
+                            className="text-muted hover:text-ink transition-colors p-2 rounded-full hover:bg-card">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button onClick={() => setDeleteConfirm(member.id)}
+                            title="Remove member"
+                            className="text-muted hover:text-accent transition-colors p-2 rounded-full hover:bg-card">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
