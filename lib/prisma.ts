@@ -4,10 +4,29 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+// Supabase's poolers cap total clients (session pooler = 15). Prisma's default
+// pool (cpu*2+1) plus any other connections can exhaust that, causing
+// "FATAL: max clients reached" → 500s across the app (pending API, slideshow,
+// etc.). Cap our pool small and add a queue timeout so requests wait for a free
+// connection instead of failing. Applied by injecting params into the URL.
+function buildDbUrl(): string | undefined {
+  const raw = process.env.DATABASE_URL
+  if (!raw) return raw
+  try {
+    const url = new URL(raw)
+    if (!url.searchParams.has('connection_limit')) url.searchParams.set('connection_limit', '5')
+    if (!url.searchParams.has('pool_timeout')) url.searchParams.set('pool_timeout', '30')
+    return url.toString()
+  } catch {
+    return raw
+  }
+}
+
 const basePrisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    datasources: { db: { url: buildDbUrl() } },
   })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = basePrisma
@@ -25,6 +44,11 @@ const COLD_START_PATTERNS = [
   /ETIMEDOUT/i,
   /ENOTFOUND/i,
   /EAI_AGAIN/i,
+  // Supabase pooler client-limit exhaustion — transient; retry frees up.
+  /max clients reached/i,
+  /MaxClientsInSessionMode/i,
+  /too many connections/i,
+  /Timed out fetching a new connection from the connection pool/i,
 ]
 
 function isColdStartError(err: unknown): boolean {
