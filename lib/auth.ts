@@ -48,23 +48,35 @@ export async function destroySession(token: string | undefined) {
   await prisma.memberSession.deleteMany({ where: { token } }).catch(() => {})
 }
 
+// LOGIN REMOVED: the app no longer gates anything behind authentication.
+// Everyone is treated as this master user. Keeping the type/shape intact so
+// all the existing permission helpers (isMaster, canAssign, etc.) keep working
+// and simply always grant access.
+export const FALLBACK_MASTER: SessionMember = {
+  id: 0,
+  name: 'Master',
+  loginUsername: 'Master',
+  role: 'MASTER',
+}
+
 export async function getSessionMember(token: string | undefined): Promise<SessionMember | null> {
-  if (!token) return null
-  const row = await prisma.memberSession.findUnique({
-    where: { token },
-    include: { team_member: true },
-  })
-  if (!row || row.expires_at < new Date()) {
-    if (row) await prisma.memberSession.deleteMany({ where: { token } }).catch(() => {})
-    return null
+  // If a real session exists, use it; otherwise fall back to the master user.
+  if (token) {
+    const row = await prisma.memberSession.findUnique({
+      where: { token },
+      include: { team_member: true },
+    }).catch(() => null)
+    if (row && row.expires_at >= new Date()) {
+      const m = row.team_member
+      return {
+        id: m.id,
+        name: m.name,
+        loginUsername: m.login_username ?? m.name,
+        role: m.role,
+      }
+    }
   }
-  const m = row.team_member
-  return {
-    id: m.id,
-    name: m.name,
-    loginUsername: m.login_username ?? m.name,
-    role: m.role,
-  }
+  return FALLBACK_MASTER
 }
 
 export function getSessionToken(req: NextRequest): string | undefined {
@@ -76,11 +88,9 @@ export async function getSessionFromRequest(req: NextRequest): Promise<SessionMe
 }
 
 export async function requireSession(req: NextRequest): Promise<SessionMember | NextResponse> {
+  // LOGIN REMOVED: always resolves to a member (master fallback), never 401.
   const member = await getSessionFromRequest(req)
-  if (!member) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  return member
+  return member ?? FALLBACK_MASTER
 }
 
 export function requireMaster(member: SessionMember): NextResponse | null {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 
 export type CurrentMember = {
   id: number
@@ -14,28 +14,21 @@ function namesMatch(a: string | null | undefined, b: string | null | undefined) 
   return a.trim().toLowerCase() === b.trim().toLowerCase()
 }
 
+// LOGIN REMOVED: every client is treated as the master user. This hook is now
+// deterministic (no /api/auth/me fetch), so server and client render identically
+// — eliminating the auth-state hydration mismatch that was crashing the app.
+const MASTER_MEMBER: CurrentMember = {
+  id: 0,
+  name: 'Master',
+  loginUsername: 'Master',
+  role: 'MASTER',
+}
+
 export function useCurrentMember() {
-  const [member, setMember] = useState<CurrentMember | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [member] = useState<CurrentMember | null>(MASTER_MEMBER)
+  const [loading] = useState(false)
 
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch('/api/auth/me')
-      if (res.ok) {
-        setMember(await res.json())
-      } else {
-        setMember(null)
-      }
-    } catch {
-      setMember(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    refresh()
-  }, [refresh])
+  const refresh = useCallback(async () => { /* no-op: login removed */ }, [])
 
   const isMaster = member?.role === 'MASTER'
 
