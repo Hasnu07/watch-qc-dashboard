@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { useSseStatus } from '@/components/SseProvider'
 import { useUiSounds } from '@/components/SoundProvider'
 import { useCurrentMember } from '@/hooks/useCurrentMember'
@@ -21,6 +22,8 @@ export default function NavBar() {
   const { connected } = useSseStatus()
   const { enabled, toggle } = useUiSounds()
   const { member, isMaster, loading } = useCurrentMember()
+  const [waAutoSend, setWaAutoSend] = useState<'1' | '0'>('1')
+  const [waSaving, setWaSaving] = useState(false)
 
   const visibleNav = NAV.filter(item => !('masterOnly' in item && item.masterOnly) || isMaster)
 
@@ -30,6 +33,36 @@ export default function NavBar() {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
     router.refresh()
+  }
+
+  useEffect(() => {
+    if (!isMaster) return
+    fetch('/api/settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const v = data?.whatsapp_auto_send
+        setWaAutoSend(v === '0' ? '0' : '1')
+      })
+      .catch(() => {})
+  }, [isMaster])
+
+  const toggleWhatsAppAutoSend = async () => {
+    if (!isMaster || waSaving) return
+    const next: '1' | '0' = waAutoSend === '1' ? '0' : '1'
+    setWaAutoSend(next)
+    setWaSaving(true)
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ whatsapp_auto_send: next }),
+      })
+      if (!res.ok) throw new Error('Failed')
+    } catch {
+      setWaAutoSend(next === '1' ? '0' : '1')
+    } finally {
+      setWaSaving(false)
+    }
   }
 
   return (
@@ -57,6 +90,21 @@ export default function NavBar() {
         </div>
 
         <div className="flex items-center gap-3">
+          {!loading && isMaster && (
+            <button
+              type="button"
+              onClick={toggleWhatsAppAutoSend}
+              disabled={waSaving}
+              className={`text-xs px-2.5 py-1 rounded-md border ${
+                waAutoSend === '1'
+                  ? 'border-accent/40 text-accent bg-accent/10'
+                  : 'border-default text-muted bg-panel'
+              } disabled:opacity-60`}
+              title="Toggle WhatsApp auto-send"
+            >
+              {waAutoSend === '1' ? 'WA ON' : 'WA OFF'}
+            </button>
+          )}
           {!loading && member && pathname !== '/login' && (
             <div className="hidden sm:flex items-center gap-2 text-xs text-muted">
               <span className="text-ink font-medium">{member.name}</span>

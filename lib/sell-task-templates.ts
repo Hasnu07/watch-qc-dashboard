@@ -1,7 +1,4 @@
-// Plain data constants for task templates — NO prisma, NO server-only imports.
-// Safe to import from client components. lib/sell-tasks.ts re-exports these for
-// server code, and lib/task-labels.ts imports them directly so the client bundle
-// never pulls in PrismaClient.
+/** Client-safe sell/buy template constants — no Prisma imports. */
 
 export const DEFAULT_BUY_TEMPLATES = [
   { label: 'Mark Payment Status', department: 'ACCOUNTING', task_type_key: 'ACCOUNTING_MARK_PAYMENT', is_locked: false, is_builtin: true, default_assignee: null, order: 0 },
@@ -20,12 +17,12 @@ export const DEFAULT_BUY_TEMPLATES = [
 ]
 
 export const DEFAULT_SELL_TEMPLATES = [
-  { label: 'Logistics Handled',                              department: 'LOGISTICS',  task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Haris', order: 0 },
-  { label: 'Delete from Drive & Stock List',                 department: 'SALES',      task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Aleena',  order: 1 },
-  { label: 'Share Shipment Address to Haris',                department: 'SALES',      task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Aleena',  order: 2 },
-  { label: 'Share Payment Status and Amount to Accounts Team', department: 'SALES',    task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Aleena',  order: 3 },
-  { label: 'Set Status on FOB',                              department: 'ACCOUNTING', task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Hassan',  order: 4 },
-  { label: 'Make Invoice to Client',                         department: 'ACCOUNTING', task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Hassan',  order: 5 },
+  { label: 'Logistics Handled', department: 'LOGISTICS', task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Haris', order: 0 },
+  { label: 'Delete from Drive & Stock List', department: 'SALES', task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Aleena', order: 1 },
+  { label: 'Share Shipment Address to Haris', department: 'SALES', task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Aleena', order: 2 },
+  { label: 'Share Payment Status and Amount to Accounts Team', department: 'SALES', task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Aleena', order: 3 },
+  { label: 'Set Status on FOB', department: 'ACCOUNTING', task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Hassan', order: 4 },
+  { label: 'Make Invoice to Client', department: 'ACCOUNTING', task_type_key: null, is_locked: false, is_builtin: true, default_assignee: 'Hassan', order: 5 },
 ]
 
 /** Sell tasks stored as label in task_type that gate downstream pipeline work. */

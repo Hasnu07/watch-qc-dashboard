@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
     if (watchId) where.watch_id = parseInt(watchId, 10)
 
     const phase = searchParams.get('phase')
+    const watchLimitRaw = searchParams.get('watch_limit')
     const visibleFilter = await visibleWatchFilter()
 
     if (phase) {
@@ -33,6 +34,19 @@ export async function GET(req: NextRequest) {
     } else {
       where.watch = { ...visibleFilter, watch_type: { not: 'SELL' } }
       where.phase = { not: 'SELL' }
+    }
+
+    // Cap payload size — loading 2000+ tasks freezes the browser on login.
+    const watchLimit = watchLimitRaw ? parseInt(watchLimitRaw, 10) : 0
+    if (watchLimit > 0 && !watchId) {
+      const visible = await prisma.watch.findMany({
+        where: where.watch as object,
+        orderBy: { created_at: 'desc' },
+        take: watchLimit,
+        select: { id: true },
+      })
+      const ids = visible.map(w => w.id)
+      where.watch_id = ids.length > 0 ? { in: ids } : { in: [-1] }
     }
 
     const tasks = await prisma.watchTask.findMany({

@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-# Render build script — wraps DB-dependent commands in retry logic so the
-# build survives Neon's free-tier auto-suspend cold starts.
-#
-# Without this, a build that hits a sleeping DB fails instantly with P1001
-# "Can't reach database server" and the deploy never recovers.
+# Render build script.
+# Keep build DB-free by default so deploys don't fail when the hosted pool
+# is saturated (e.g. Supabase pooler "max clients reached").
 set -euo pipefail
 
 retry() {
@@ -31,11 +29,19 @@ npm install --include=dev
 echo "[render-build] Generating Prisma client..."
 npx prisma generate
 
-echo "[render-build] Pushing schema (with retry)..."
-retry npx prisma db push --accept-data-loss
+if [ "${RUN_DB_JOBS_ON_BUILD:-0}" = "1" ]; then
+  echo "[render-build] RUN_DB_JOBS_ON_BUILD=1 -> running DB jobs"
+  echo "[render-build] Pushing schema (with retry)..."
+  retry npx prisma db push --accept-data-loss
 
-echo "[render-build] Seeding member logins (with retry)..."
-retry node scripts/seed-member-logins.mjs
+  echo "[render-build] Restoring QC data — team, watches, tasks (with retry)..."
+  retry node scripts/restore-qc-data.mjs
+
+  echo "[render-build] Seeding member logins (with retry)..."
+  retry node scripts/seed-member-logins.mjs
+else
+  echo "[render-build] Skipping DB jobs during build (safe mode)."
+fi
 
 echo "[render-build] Running Next build..."
 npm run build

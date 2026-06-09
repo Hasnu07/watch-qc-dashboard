@@ -249,12 +249,12 @@ export async function importWatchFromMessage(
   )
 
   if (watchType === 'SELL') {
-    createWatchSellTasks(watch.id, watch.name).catch(console.error)
+    await createWatchSellTasks(watch.id, watch.name)
     if (linkedBuyWatchId) {
       logWatchActivity(linkedBuyWatchId, 'sell_linked', `Sell watch #${watch.id} created for stock #${parsed.stock_no}`).catch(console.error)
     }
   } else {
-    createWatchTasks(watch.id, watch.name).catch(console.error)
+    await createWatchTasks(watch.id, watch.name)
   }
 
   if (paymentStatus === 'PAID' || paymentStatus === 'PARTIAL') {

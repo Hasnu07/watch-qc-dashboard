@@ -15,6 +15,7 @@ import ImportInboxPanel from '@/components/ImportInboxPanel'
 import DashboardToolsMenu from '@/components/DashboardToolsMenu'
 import CommandPalette from '@/components/CommandPalette'
 import SkeletonCard from '@/components/SkeletonCard'
+import ErrorBoundary from '@/components/ErrorBoundary'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { DEPT_ORDER, type Department } from '@/lib/ui-constants'
 
@@ -113,6 +114,16 @@ function matchesSearch(watch: Watch, q: string): boolean {
 }
 
 export default function DashboardPage() {
+  return (
+    <ErrorBoundary fallbackTitle="Dashboard failed to load">
+      <DashboardPageInner />
+    </ErrorBoundary>
+  )
+}
+
+const INVENTORY_PAGE_SIZE = 48
+
+function DashboardPageInner() {
   const [watches, setWatches] = useState<Watch[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddWatch, setShowAddWatch] = useState(false)
@@ -139,6 +150,8 @@ export default function DashboardPage() {
   const [undoRemove, setUndoRemove] = useState<{ id: number; watch: Watch; timer: ReturnType<typeof setTimeout> } | null>(null)
   const [bulkFetchMsg, setBulkFetchMsg] = useState('')
   const [bulkFetching, setBulkFetching] = useState(false)
+  const [buyDisplayLimit, setBuyDisplayLimit] = useState(INVENTORY_PAGE_SIZE)
+  const [sellDisplayLimit, setSellDisplayLimit] = useState(INVENTORY_PAGE_SIZE)
 
   const missingImageCount = useMemo(
     () => watches.filter(w => !w.image_url).length,
@@ -231,8 +244,13 @@ export default function DashboardPage() {
     })
   }, [watches, filters, deptFilter])
 
-  const buyWatches = filteredWatches.filter(w => w.watch_type !== 'SELL')
-  const sellWatches = filteredWatches.filter(w => w.watch_type === 'SELL')
+  const buyWatchesAll = filteredWatches.filter(w => w.watch_type !== 'SELL')
+  const sellWatchesAll = filteredWatches.filter(w => w.watch_type === 'SELL')
+  const buyWatches = buyWatchesAll.slice(0, buyDisplayLimit)
+  const sellWatches = sellWatchesAll.slice(0, sellDisplayLimit)
+  const hasMoreBuy = buyWatchesAll.length > buyWatches.length
+  const hasMoreSell = sellWatchesAll.length > sellWatches.length
+  const tasksPanelEnabled = showTasksPanel && !loading
   const focusedWatch = focusedWatchId ? watches.find(w => w.id === focusedWatchId) : null
 
   const handleRemove = async (id: number) => {
@@ -389,6 +407,15 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
+          {hasMoreBuy && (
+            <button
+              type="button"
+              onClick={() => setBuyDisplayLimit(n => n + INVENTORY_PAGE_SIZE)}
+              className="mt-4 w-full py-3 text-sm font-semibold text-accent border border-dashed border-accent/40 rounded-xl hover:bg-accent/5"
+            >
+              Load more buy watches ({buyWatches.length} of {buyWatchesAll.length})
+            </button>
+          )}
         </section>
         <section className="inventory-section">
           <div className="inventory-section-head inventory-section-head--sell">
@@ -412,6 +439,15 @@ export default function DashboardPage() {
                   onImageFetched={fetchWatches} />
               ))}
             </div>
+          )}
+          {hasMoreSell && (
+            <button
+              type="button"
+              onClick={() => setSellDisplayLimit(n => n + INVENTORY_PAGE_SIZE)}
+              className="mt-4 w-full py-3 text-sm font-semibold text-accent border border-dashed border-accent/40 rounded-xl hover:bg-accent/5"
+            >
+              Load more sell watches ({sellWatches.length} of {sellWatchesAll.length})
+            </button>
           )}
         </section>
       </>
@@ -595,11 +631,11 @@ export default function DashboardPage() {
 
           {taskTab === 'buy' ? (
             <DashboardTaskListWrapper autoScroll={autoScroll} taskPanelLocked={taskPanelLocked}>
-              <WatchTaskPanel focusedWatchId={taskTab === 'buy' ? focusedWatchId : null} />
+              <WatchTaskPanel focusedWatchId={taskTab === 'buy' ? focusedWatchId : null} enabled={tasksPanelEnabled} />
             </DashboardTaskListWrapper>
           ) : (
             <DashboardTaskListWrapper autoScroll={autoScroll} taskPanelLocked={taskPanelLocked}>
-              <WatchSellTaskPanel focusedWatchId={taskTab === 'sell' ? focusedWatchId : null} />
+              <WatchSellTaskPanel focusedWatchId={taskTab === 'sell' ? focusedWatchId : null} enabled={tasksPanelEnabled} />
             </DashboardTaskListWrapper>
           )}
         </div>

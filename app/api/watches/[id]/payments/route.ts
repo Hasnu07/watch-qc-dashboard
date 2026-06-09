@@ -26,7 +26,7 @@ export async function POST(
   try {
     const watchId = parseInt(params.id, 10)
     const body = await req.json()
-    const { amount, currency, payment_method, payment_date, notes } = body
+    const { amount, currency, fx_rate, payment_method, payment_date, notes } = body
 
     if (!amount || isNaN(parseFloat(amount))) {
       return NextResponse.json({ error: 'Amount is required' }, { status: 400 })
@@ -37,6 +37,7 @@ export async function POST(
         watch_id: watchId,
         amount: parseFloat(amount),
         currency: currency || 'USD',
+        fx_rate: fx_rate ? parseFloat(fx_rate) : null,
         payment_method: payment_method || 'CASH',
         payment_date: payment_date ? new Date(payment_date) : new Date(),
         notes: notes || null,

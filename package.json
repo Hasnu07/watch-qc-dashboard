@@ -12,6 +12,7 @@
     "db:studio": "prisma studio",
     "db:seed-admin": "node scripts/seed-admin.mjs",
     "db:seed-members": "node scripts/seed-member-logins.mjs",
+    "db:restore": "node scripts/restore-qc-data.mjs",
     "test:parser": "npx tsx scripts/test-parser.ts"
   },
   "dependencies": {

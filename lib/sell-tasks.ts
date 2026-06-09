@@ -1,15 +1,10 @@
 import { prisma } from './prisma'
 import { sendWhatsAppMessage, toChatId } from './greenapi'
-import {
-  DEFAULT_BUY_TEMPLATES,
-  DEFAULT_SELL_TEMPLATES,
-  SELL_BLOCKING_TASK_LABELS,
-} from './task-templates-data'
+import { DEFAULT_BUY_TEMPLATES, DEFAULT_SELL_TEMPLATES } from './sell-task-templates'
+
+export { DEFAULT_BUY_TEMPLATES, DEFAULT_SELL_TEMPLATES, SELL_BLOCKING_TASK_LABELS } from './sell-task-templates'
 
 const APP_LINK = 'https://qc-dashboard-q907.onrender.com'
-
-// Re-export the plain-data constants so existing server imports keep working.
-export { DEFAULT_BUY_TEMPLATES, DEFAULT_SELL_TEMPLATES, SELL_BLOCKING_TASK_LABELS }
 
 // Ensures builtin templates exist. Only fills in default_assignee on creation
 // or when the existing row has none — never overwrites a user-set assignee.

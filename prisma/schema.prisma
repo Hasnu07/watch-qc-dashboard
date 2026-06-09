@@ -125,6 +125,7 @@ model WatchPayment {
   watch          Watch         @relation(fields: [watch_id], references: [id], onDelete: Cascade)
   amount         Float
   currency       String        @default("USD")
+  fx_rate        Float?
   payment_method PaymentMethod @default(CASH)
   payment_date   DateTime      @default(now())
   notes          String?
