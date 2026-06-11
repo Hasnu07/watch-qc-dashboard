@@ -141,6 +141,7 @@ const FILTER_OPTIONS: { id: PendingFilter; label: string }[] = [
 // Team sections for the Pending page, in display order. A member's `team`
 // field (set in Settings/DB) decides which section they appear under.
 const TEAM_ORDER: { id: string; label: string; icon: string }[] = [
+  { id: 'LOGISTICS', label: 'Logistics', icon: '📦' },
   { id: 'ACCOUNTING', label: 'Accounting', icon: '💰' },
   { id: 'SALES', label: 'Sales', icon: '🤝' },
   { id: 'GRAPHICS', label: 'Graphics', icon: '🎨' },
