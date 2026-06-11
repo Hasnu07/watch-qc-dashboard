@@ -140,7 +140,8 @@ const FILTER_OPTIONS: { id: PendingFilter; label: string }[] = [
 
 // Team sections for the Pending page, in display order. A member's `team`
 // field (set in Settings/DB) decides which section they appear under.
-const TEAM_ORDER: { id: string; label: string; icon: string }[] = [
+// Exported so the Pending page can render a "by team" filter from the same list.
+export const PENDING_TEAMS: { id: string; label: string; icon: string }[] = [
   { id: 'LOGISTICS', label: 'Logistics', icon: '📦' },
   { id: 'ACCOUNTING', label: 'Accounting', icon: '💰' },
   { id: 'SALES', label: 'Sales', icon: '🤝' },
@@ -150,9 +151,9 @@ const TEAM_ORDER: { id: string; label: string; icon: string }[] = [
   { id: 'OTHER', label: 'Other', icon: '👤' },
 ]
 
-function teamOf(member: { team?: string | null }): string {
+export function teamOf(member: { team?: string | null }): string {
   const t = (member.team || '').toUpperCase()
-  return TEAM_ORDER.some(x => x.id === t) ? t : 'OTHER'
+  return PENDING_TEAMS.some(x => x.id === t) ? t : 'OTHER'
 }
 
 function buildExpandedIds(
@@ -457,7 +458,7 @@ export default function PendingTasksPanel({
         </div>
       )}
 
-      {TEAM_ORDER.map(team => {
+      {PENDING_TEAMS.map(team => {
         const teamMembers = visibleMembers.filter(m => teamOf(m.member) === team.id)
         if (teamMembers.length === 0) return null
         return (

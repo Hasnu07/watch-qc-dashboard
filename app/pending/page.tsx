@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import PendingTasksPanel from '@/components/PendingTasksPanel'
+import PendingTasksPanel, { PENDING_TEAMS, teamOf } from '@/components/PendingTasksPanel'
 import PendingQueuePanel from '@/components/PendingQueuePanel'
 import PendingOpsSidebar from '@/components/PendingOpsSidebar'
 import { usePendingDashboard, type PendingFilter } from '@/hooks/usePendingDashboard'
@@ -34,7 +34,21 @@ export default function PendingPage() {
   const { isMaster } = useCurrentMember()
   const [filter, setFilter] = useState<PendingFilter>('all')
   const [view, setView] = useState<PendingView>('people')
+  const [teamFilter, setTeamFilter] = useState<string>('all')
   const [focusUnassigned, setFocusUnassigned] = useState(false)
+
+  // Only show teams that actually have members, so the filter doesn't list empties.
+  const presentTeams = new Set((data?.members ?? []).map(m => teamOf(m.member)))
+  const teamChips = PENDING_TEAMS.filter(t => presentTeams.has(t.id))
+
+  const allMembers = data?.members ?? []
+  const filteredMembers = teamFilter === 'all'
+    ? allMembers
+    : allMembers.filter(m => teamOf(m.member) === teamFilter)
+  // Unassigned tasks belong to no team — hide them when a team is selected.
+  const filteredUnassigned = teamFilter === 'all'
+    ? (data?.unassigned ?? EMPTY_UNASSIGNED)
+    : EMPTY_UNASSIGNED
 
   return (
     <div className="flex flex-col flex-1 min-h-[calc(100dvh-3rem)]">
@@ -78,6 +92,28 @@ export default function PendingPage() {
                 ))}
               </div>
 
+              {/* By-team filter */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted mr-1">Team</span>
+                <button
+                  type="button"
+                  onClick={() => setTeamFilter('all')}
+                  className={`pending-filter-chip ${teamFilter === 'all' ? 'pending-filter-chip-active' : ''}`}
+                >
+                  All teams
+                </button>
+                {teamChips.map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTeamFilter(t.id)}
+                    className={`pending-filter-chip ${teamFilter === t.id ? 'pending-filter-chip-active' : ''}`}
+                  >
+                    {t.icon} {t.label}
+                  </button>
+                ))}
+              </div>
+
               {loading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map(i => (
@@ -86,8 +122,8 @@ export default function PendingPage() {
                 </div>
               ) : view === 'queue' && isMaster ? (
                 <PendingQueuePanel
-                  members={data?.members ?? []}
-                  unassigned={data?.unassigned ?? EMPTY_UNASSIGNED}
+                  members={filteredMembers}
+                  unassigned={filteredUnassigned}
                   filter={filter}
                   now={now}
                   onRefresh={refresh}
@@ -98,8 +134,8 @@ export default function PendingPage() {
                 />
               ) : (
                 <PendingTasksPanel
-                  members={data?.members ?? []}
-                  unassigned={data?.unassigned ?? EMPTY_UNASSIGNED}
+                  members={filteredMembers}
+                  unassigned={filteredUnassigned}
                   filter={filter}
                   hideFilters
                   focusUnassigned={focusUnassigned}
