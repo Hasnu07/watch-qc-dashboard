@@ -7,6 +7,8 @@ import { getVisibleWatches } from '@/lib/watch-visibility'
 import { enrichWatchMetrics, computePipelineStats } from '@/lib/watch-metrics'
 import { requireSession, requireMaster } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const watches = await getVisibleWatches()

@@ -47,7 +47,7 @@ function Avatar({ member, size = 'md', selected = false }: { member: TeamMember;
   const s = size === 'sm' ? 'w-5 h-5 text-[10px]' : 'w-7 h-7 text-xs'
   return (
     <div className={`${s} rounded-full flex items-center justify-center text-white font-black flex-shrink-0 ${selected ? 'bg-white/25' : DEPT_COLORS[member.department]}`}>
-      {member.name.charAt(0).toUpperCase()}
+      {(member.name || '?').charAt(0).toUpperCase()}
     </div>
   )
 }

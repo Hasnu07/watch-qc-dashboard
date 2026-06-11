@@ -766,7 +766,7 @@ export default function SettingsPage() {
                       className="flex items-center justify-between bg-panel rounded-2xl px-4 py-3 border border-default">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-9 h-9 rounded-full flex items-center justify-center text-card font-bold flex-shrink-0 bg-ink">
-                          {member.name.charAt(0).toUpperCase()}
+                          {(member.name || '?').charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-ink font-medium text-base">{member.name}</p>

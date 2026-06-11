@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import WatchCard from '@/components/WatchCard'
 import AddWatchModal from '@/components/AddWatchModal'
 import PasteMessageModal from '@/components/PasteMessageModal'
@@ -158,22 +158,33 @@ function DashboardPageInner() {
     [watches],
   )
 
+  // Track the bulk-fetch poll so it can't leak if the user navigates away mid-run.
+  const bulkPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  useEffect(() => () => { if (bulkPollRef.current) clearInterval(bulkPollRef.current) }, [])
+
   async function startBulkImageFetch() {
     setBulkFetching(true)
     setBulkFetchMsg('')
     try {
       const res = await fetch('/api/watches/bulk-fetch-images', { method: 'POST' })
+      if (!res.ok) { setBulkFetchMsg('Bulk fetch failed'); setBulkFetching(false); return }
       const data = await res.json()
       if (data.started) {
         setBulkFetchMsg(`Fetching images for ${data.queued} watches in background…`)
-        const poll = setInterval(async () => {
-          const st = await fetch('/api/watches/bulk-fetch-images').then(r => r.json())
-          if (!st.running) {
-            clearInterval(poll)
-            setBulkFetchMsg(`Done — ${st.done} fetched, ${st.failed} skipped`)
-            setBulkFetching(false)
-            fetchWatches()
-          }
+        if (bulkPollRef.current) clearInterval(bulkPollRef.current)
+        bulkPollRef.current = setInterval(async () => {
+          try {
+            const r = await fetch('/api/watches/bulk-fetch-images')
+            if (!r.ok) return
+            const st = await r.json()
+            if (!st.running) {
+              if (bulkPollRef.current) clearInterval(bulkPollRef.current)
+              bulkPollRef.current = null
+              setBulkFetchMsg(`Done — ${st.done ?? 0} fetched, ${st.failed ?? 0} skipped`)
+              setBulkFetching(false)
+              fetchWatches()
+            }
+          } catch { /* keep polling; transient */ }
         }, 4000)
       } else {
         setBulkFetchMsg(data.message || 'Nothing to fetch')

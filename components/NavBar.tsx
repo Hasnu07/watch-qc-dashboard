@@ -26,8 +26,6 @@ export default function NavBar() {
 
   const visibleNav = NAV.filter(item => !('masterOnly' in item && item.masterOnly) || isMaster)
 
-  if (pathname === '/login') return null
-
   const handleSignOut = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
@@ -44,6 +42,10 @@ export default function NavBar() {
       })
       .catch(() => {})
   }, [isMaster])
+
+  // Early return AFTER all hooks — returning before a hook violates the Rules
+  // of Hooks and crashes React when navigating to/from /login.
+  if (pathname === '/login') return null
 
   const toggleWhatsAppAutoSend = async () => {
     if (!isMaster || waSaving) return

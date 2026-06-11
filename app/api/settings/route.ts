@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireSession, requireMaster } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 const SETTING_KEYS = [
   'greenapi_instance_id',
   'greenapi_api_token',

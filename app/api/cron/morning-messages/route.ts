@@ -18,14 +18,16 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [instanceSetting, tokenSetting] = await Promise.all([
+    const [instanceSetting, tokenSetting, urlSetting] = await Promise.all([
       prisma.setting.findUnique({ where: { key: 'greenapi_instance_id' } }),
       prisma.setting.findUnique({ where: { key: 'greenapi_api_token' } }),
+      prisma.setting.findUnique({ where: { key: 'greenapi_api_url' } }),
     ])
 
     if (!instanceSetting?.value || !tokenSetting?.value) {
       return NextResponse.json({ ok: false, reason: 'GreenAPI not configured' })
     }
+    const apiUrl = urlSetting?.value || 'https://api.green-api.com'
 
     const members = await prisma.teamMember.findMany()
     if (members.length === 0) {
@@ -38,7 +40,8 @@ export async function GET(req: NextRequest) {
           instanceSetting.value,
           tokenSetting.value,
           toChatId(m.whatsapp_number),
-          'Good morning! Please list your tasks for today.'
+          'Good morning! Please list your tasks for today.',
+          apiUrl
         )
       )
     )

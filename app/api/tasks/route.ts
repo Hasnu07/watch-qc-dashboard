@@ -5,6 +5,8 @@ import { emitTaskEvent } from '@/lib/events'
 import { getTodayPKT } from '@/lib/utils'
 import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
 
+export const dynamic = 'force-dynamic'
+
 async function getGreenAPISettings() {
   const [inst, tok, url] = await Promise.all([
     prisma.setting.findUnique({ where: { key: 'greenapi_instance_id' } }),

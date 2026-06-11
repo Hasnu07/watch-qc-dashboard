@@ -127,7 +127,7 @@ function MemberAvatar({ name, department, unassigned }: { name: string; departme
   }
   return (
     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${DEPT_CONFIG[department].solid}`}>
-      {name.charAt(0).toUpperCase()}
+      {(name || '?').charAt(0).toUpperCase()}
     </div>
   )
 }

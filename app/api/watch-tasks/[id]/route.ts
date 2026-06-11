@@ -19,6 +19,7 @@ export async function PATCH(
     if (session instanceof NextResponse) return session
 
     const id = parseInt(params.id, 10)
+    if (!Number.isFinite(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
     const body = await req.json()
 
     const existing = await prisma.watchTask.findUnique({

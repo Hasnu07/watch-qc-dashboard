@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
 import { hashPassword, defaultMemberPassword, requireSession, requireMaster } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 async function getGreenAPISettings() {
   const [inst, tok, url] = await Promise.all([
     prisma.setting.findUnique({ where: { key: 'greenapi_instance_id' } }),

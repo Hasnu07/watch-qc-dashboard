@@ -16,6 +16,7 @@ export async function PATCH(
     if (forbidden) return forbidden
 
     const id = parseInt(params.id, 10)
+    if (!Number.isFinite(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
     const body = await req.json()
     const existing = await prisma.watch.findUnique({ where: { id } })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -98,7 +99,8 @@ export async function DELETE(
     if (forbidden) return forbidden
 
     const id = parseInt(params.id, 10)
-    await prisma.watch.delete({ where: { id } })
+    if (!Number.isFinite(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+    await prisma.watch.delete({ where: { id } }).catch(() => {})
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)
