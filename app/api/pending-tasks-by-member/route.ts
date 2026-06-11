@@ -192,6 +192,7 @@ export async function GET(req: NextRequest) {
           id: member.id,
           name: member.name,
           department: member.department,
+          team: member.team ?? null,
         },
         pending_count,
         overdue_count,

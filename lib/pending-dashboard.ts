@@ -48,7 +48,7 @@ export interface PendingTeamTask {
 }
 
 export interface MemberPending {
-  member: { id: number; name: string; department: string }
+  member: { id: number; name: string; department: string; team?: string | null }
   pending_count: number
   overdue_count: number
   due_soon_count: number

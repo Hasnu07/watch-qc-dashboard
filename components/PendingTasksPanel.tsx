@@ -138,6 +138,22 @@ const FILTER_OPTIONS: { id: PendingFilter; label: string }[] = [
   { id: 'due_soon', label: 'Due soon' },
 ]
 
+// Team sections for the Pending page, in display order. A member's `team`
+// field (set in Settings/DB) decides which section they appear under.
+const TEAM_ORDER: { id: string; label: string; icon: string }[] = [
+  { id: 'ACCOUNTING', label: 'Accounting', icon: '💰' },
+  { id: 'SALES', label: 'Sales', icon: '🤝' },
+  { id: 'GRAPHICS', label: 'Graphics', icon: '🎨' },
+  { id: 'ADMIN', label: 'Admin', icon: '🛡️' },
+  { id: 'TRAVEL', label: 'Travel', icon: '✈️' },
+  { id: 'OTHER', label: 'Other', icon: '👤' },
+]
+
+function teamOf(member: { team?: string | null }): string {
+  const t = (member.team || '').toUpperCase()
+  return TEAM_ORDER.some(x => x.id === t) ? t : 'OTHER'
+}
+
 function buildExpandedIds(
   filter: PendingFilter,
   members: MemberPending[],
@@ -440,25 +456,41 @@ export default function PendingTasksPanel({
         </div>
       )}
 
-      {visibleMembers.map(({ member, pending_count, overdue_count, team_tasks, watch_groups }) => (
-        <MemberCard
-          key={member.id}
-          memberKey={member.id}
-          name={member.name}
-          department={member.department}
-          pending_count={pending_count}
-          overdue_count={overdue_count}
-          team_tasks={team_tasks}
-          watch_groups={watch_groups}
-          isOpen={expanded.has(member.id)}
-          onToggle={() => toggleExpanded(member.id)}
-          now={now}
-          toggling={toggling}
-          onCompleteTeamTask={completeTeamTask}
-          onOpenWatch={onOpenWatch}
-          canInteractWatchTasks={canInteractWatchFor(member.name)}
-        />
-      ))}
+      {TEAM_ORDER.map(team => {
+        const teamMembers = visibleMembers.filter(m => teamOf(m.member) === team.id)
+        if (teamMembers.length === 0) return null
+        return (
+          <div key={team.id} className="pending-team-section space-y-2">
+            <div className="flex items-center gap-2 px-1 pt-2 pb-1">
+              <span aria-hidden>{team.icon}</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-muted">{team.label}</span>
+              <span className="text-[10px] text-muted/70">
+                {teamMembers.reduce((sum, m) => sum + m.pending_count, 0)} pending
+              </span>
+              <div className="flex-1 h-px bg-default ml-2" />
+            </div>
+            {teamMembers.map(({ member, pending_count, overdue_count, team_tasks, watch_groups }) => (
+              <MemberCard
+                key={member.id}
+                memberKey={member.id}
+                name={member.name}
+                department={member.department}
+                pending_count={pending_count}
+                overdue_count={overdue_count}
+                team_tasks={team_tasks}
+                watch_groups={watch_groups}
+                isOpen={expanded.has(member.id)}
+                onToggle={() => toggleExpanded(member.id)}
+                now={now}
+                toggling={toggling}
+                onCompleteTeamTask={completeTeamTask}
+                onOpenWatch={onOpenWatch}
+                canInteractWatchTasks={canInteractWatchFor(member.name)}
+              />
+            ))}
+          </div>
+        )
+      })}
 
       {showUnassigned && (
         <MemberCard

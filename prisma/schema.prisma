@@ -153,6 +153,9 @@ model TeamMember {
   name              String
   whatsapp_number   String          @unique
   department        Department      @default(LOGISTICS)
+  // Display/grouping team for the Pending page (ACCOUNTING/SALES/GRAPHICS/ADMIN/TRAVEL).
+  // Separate from `department`, which drives the watch-task work categories.
+  team              String?
   login_username    String?
   password_hash     String?
   role              MemberRole      @default(MEMBER)
