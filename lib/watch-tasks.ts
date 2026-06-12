@@ -2,6 +2,7 @@ import { prisma } from './prisma'
 import { getVisibleWatches } from './watch-visibility'
 import { sendWhatsAppMessage, toChatId } from './greenapi'
 import { emitWatchTaskEvent } from './events'
+import { labelsForTaskList } from './accessory-tasks'
 
 const APP_LINK = 'https://qc-dashboard-q907.onrender.com'
 
