@@ -74,20 +74,16 @@ async function notifySellTasksCreated(watchName: string, templates: Array<{ labe
   const allMembers = await prisma.teamMember.findMany()
   const memberMap = new Map(allMembers.map(m => [m.name.toLowerCase(), m.whatsapp_number]))
 
-  // Group tasks by assignee
-  const byPerson = new Map<string, string[]>()
+  const assignees = new Set<string>()
   for (const t of templates) {
-    if (!t.default_assignee) continue
-    if (!byPerson.has(t.default_assignee)) byPerson.set(t.default_assignee, [])
-    byPerson.get(t.default_assignee)!.push(t.label)
+    if (t.default_assignee) assignees.add(t.default_assignee)
   }
 
   await Promise.allSettled(
-    Array.from(byPerson.entries()).map(([name, labels]) => {
+    Array.from(assignees).map((name) => {
       const number = memberMap.get(name.toLowerCase())
       if (!number) return Promise.resolve()
-      const taskLines = labels.map(l => `• ${l}`).join('\n')
-      const msg = `🏷️ *${watchName}* has been sold!\n\nYour assigned sell tasks:\n${taskLines}\n\n🔗 ${APP_LINK}`
+      const msg = `Your tasks for *${watchName}* (Sell) have been updated\n\n🔗 ${APP_LINK}`
       return sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(number), msg, settings.apiUrl)
     })
   )

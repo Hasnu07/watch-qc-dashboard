@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { emitWatchTaskEvent } from '@/lib/events'
-import { sendTaskCompletedNotification, TASK_LABELS, checkAndUnlockLocation } from '@/lib/watch-tasks'
-import { ACCESSORY_GROUP_LABEL, ACCESSORY_TASK_TYPES, isAccessoryTaskType } from '@/lib/accessory-tasks'
+import { sendAllTasksCompletedNotification, TASK_LABELS, checkAndUnlockLocation } from '@/lib/watch-tasks'
 import { logWatchActivity } from '@/lib/watch-activity'
 import {
   canAssignWatchTask,
@@ -115,19 +114,11 @@ export async function PATCH(
       const taskLabel = TASK_LABELS[task.task_type] ?? task.task_type
       logWatchActivity(task.watch_id, 'task_completed', taskLabel, session.name).catch(console.error)
 
-      if (isAccessoryTaskType(task.task_type)) {
-        const remaining = await prisma.watchTask.count({
-          where: {
-            watch_id: task.watch_id,
-            task_type: { in: [...ACCESSORY_TASK_TYPES] },
-            is_completed: false,
-          },
-        })
-        if (remaining === 0) {
-          sendTaskCompletedNotification(task.assigned_to, watchName, ACCESSORY_GROUP_LABEL).catch(console.error)
-        }
-      } else {
-        sendTaskCompletedNotification(task.assigned_to, watchName, taskLabel).catch(console.error)
+      const remaining = await prisma.watchTask.count({
+        where: { watch_id: task.watch_id, phase: task.phase, is_completed: false },
+      })
+      if (remaining === 0) {
+        sendAllTasksCompletedNotification(task.watch_id, watchName).catch(console.error)
       }
     } else if (body.is_completed === false || body.metadata) {
       emitWatchTaskEvent({

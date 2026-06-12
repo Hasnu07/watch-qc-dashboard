@@ -2,7 +2,6 @@ import { prisma } from './prisma'
 import { getVisibleWatches } from './watch-visibility'
 import { sendWhatsAppMessage, toChatId } from './greenapi'
 import { emitWatchTaskEvent } from './events'
-import { labelsForTaskList } from './accessory-tasks'
 
 const APP_LINK = 'https://qc-dashboard-q907.onrender.com'
 
@@ -136,7 +135,6 @@ function resolveAssignee(taskType: string, dept: string, taskDefaults: Record<st
 async function notifyAssignedPersons(
   watchName: string,
   tasks: Array<{ task_type: string; assigned_to: string | null }>,
-  intro = 'New watch added'
 ) {
   const settings = await getGreenAPISettings()
   if (!settings) return
@@ -144,21 +142,16 @@ async function notifyAssignedPersons(
   const allMembers = await prisma.teamMember.findMany()
   const memberMap = new Map(allMembers.map(m => [m.name.toLowerCase(), m.whatsapp_number]))
 
-  // Group tasks by assignee name
-  const byPerson = new Map<string, string[]>()
+  const assignees = new Set<string>()
   for (const t of tasks) {
-    if (!t.assigned_to) continue
-    if (!byPerson.has(t.assigned_to)) byPerson.set(t.assigned_to, [])
-    byPerson.get(t.assigned_to)!.push(t.task_type)
+    if (t.assigned_to) assignees.add(t.assigned_to)
   }
 
   await Promise.allSettled(
-    Array.from(byPerson.entries()).map(([name, taskTypes]) => {
+    Array.from(assignees).map((name) => {
       const number = memberMap.get(name.toLowerCase())
       if (!number) return Promise.resolve()
-      const labels = labelsForTaskList(taskTypes, tt => TASK_LABELS[tt] ?? tt)
-      const taskLines = labels.map(l => `• ${l}`).join('\n')
-      const msg = `📋 ${intro}: *${watchName}*\n\nYour assigned tasks:\n${taskLines}\n\n🔗 ${APP_LINK}`
+      const msg = `Your tasks for *${watchName}* (Buy) have been updated\n\n🔗 ${APP_LINK}`
       return sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(number), msg, settings.apiUrl)
     })
   )
@@ -178,7 +171,7 @@ export async function assignWatchTasks(watchId: number, watchName: string, silen
   )
 
   if (!silent) {
-    notifyAssignedPersons(watchName, updatedTasks, 'Tasks assigned for').catch(console.error)
+    notifyAssignedPersons(watchName, updatedTasks).catch(console.error)
   }
 }
 
@@ -198,8 +191,7 @@ export async function createWatchTasks(watchId: number, watchName: string, silen
   await prisma.watchTask.createMany({ data: taskData })
 
   if (!silent) {
-    // Notify each person of their specific assigned tasks
-    notifyAssignedPersons(watchName, taskData, 'New watch added').catch(console.error)
+    notifyAssignedPersons(watchName, taskData).catch(console.error)
   }
 }
 
@@ -226,15 +218,28 @@ export async function checkAndUnlockLocation(watchId: number) {
   }
 }
 
-export async function sendTaskCompletedNotification(
-  assigneeName: string | null,
-  watchName: string,
-  taskLabel: string,
-) {
-  notifyAssignee(
-    assigneeName,
-    `${watchName} — ${taskLabel} has been marked complete.\n\n🔗 ${APP_LINK}`,
-  ).catch(console.error)
+export async function sendAllTasksCompletedNotification(watchId: number, watchName: string) {
+  const settings = await getGreenAPISettings()
+  if (!settings) return
+
+  const allMembers = await prisma.teamMember.findMany()
+  const memberMap = new Map(allMembers.map(m => [m.name.toLowerCase(), m.whatsapp_number]))
+
+  const tasks = await prisma.watchTask.findMany({
+    where: { watch_id: watchId, assigned_to: { not: null } },
+    select: { assigned_to: true },
+  })
+
+  const assignees = [...new Set(tasks.map(t => t.assigned_to!))]
+
+  await Promise.allSettled(
+    assignees.map((name) => {
+      const number = memberMap.get(name.toLowerCase())
+      if (!number) return Promise.resolve()
+      const msg = `Your tasks for *${watchName}* have been completed, good work`
+      return sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(number), msg, settings.apiUrl)
+    })
+  )
 }
 
 export async function sendPendingTaskReminders() {

@@ -119,9 +119,18 @@ function IconTrendUp({ className }: { className?: string }) {
   )
 }
 
+function IconTrash({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 11v6M14 11v6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export default function WatchCard<W extends Watch>({
   watch, compact = false, highlighted = false, searchHighlight = '',
-  onCardClick, onOpenTasks, onImageFetched,
+  onCardClick, onRemoveRequest, onOpenTasks, onImageFetched,
 }: WatchCardProps<W>) {
   const isSell = watch.watch_type === 'SELL'
   const rowClass = isSell ? 'list-row-sell' : 'list-row-buy'
@@ -216,6 +225,13 @@ export default function WatchCard<W extends Watch>({
           <button type="button" onClick={e => { e.stopPropagation(); onOpenTasks(watch) }}
             className={tasksBtnClass}>
             Tasks
+          </button>
+        )}
+        {onRemoveRequest && (
+          <button type="button" onClick={e => { e.stopPropagation(); onRemoveRequest(watch) }}
+            className="ml-1 p-1.5 rounded text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+            title="Remove watch">
+            <IconTrash />
           </button>
         )}
       </div>
@@ -337,6 +353,18 @@ export default function WatchCard<W extends Watch>({
             className="watch-card-premium__fob-link">
             Open FOB →
           </a>
+        )}
+
+        {onRemoveRequest && (
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onRemoveRequest(watch) }}
+            className="mt-2 flex items-center gap-1.5 text-[11px] text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors rounded px-2 py-1 w-full justify-center"
+            title="Remove watch"
+          >
+            <IconTrash />
+            Remove
+          </button>
         )}
       </div>
     </article>
