@@ -9,6 +9,7 @@ interface TeamMember {
   name: string
   whatsapp_number: string
   department: Department
+  team?: string | null
 }
 
 interface Task {
@@ -33,11 +34,42 @@ const REMINDER_OPTIONS = [
   { value: '', label: 'On completion only' },
 ]
 
-const DEPT_COLORS: Record<Department, string> = {
-  ACCOUNTING: 'bg-ink',
-  SALES: 'bg-accent',
-  LOGISTICS: 'bg-muted',
+function memberTeamKey(m: TeamMember): string {
+  return (m.team || m.department || '').toUpperCase()
 }
+
+function teamAvatarBg(team: string): string {
+  switch (team) {
+    case 'LOGISTICS':  return 'bg-amber-500'
+    case 'ACCOUNTING': return 'bg-emerald-500'
+    case 'SALES':      return 'bg-blue-500'
+    case 'GRAPHICS':   return 'bg-purple-500'
+    case 'ADMIN':      return 'bg-rose-500'
+    case 'TRAVEL':     return 'bg-cyan-500'
+    default:           return 'bg-gray-500'
+  }
+}
+
+function teamBorderClass(team: string): string {
+  switch (team) {
+    case 'LOGISTICS':  return 'border-amber-500/50'
+    case 'ACCOUNTING': return 'border-emerald-500/50'
+    case 'SALES':      return 'border-blue-500/50'
+    case 'GRAPHICS':   return 'border-purple-500/50'
+    case 'ADMIN':      return 'border-rose-500/50'
+    case 'TRAVEL':     return 'border-cyan-500/50'
+    default:           return ''
+  }
+}
+
+const TEAM_LIST = [
+  { id: 'LOGISTICS',  label: 'Logistics',  icon: '📦' },
+  { id: 'ACCOUNTING', label: 'Accounting', icon: '💰' },
+  { id: 'SALES',      label: 'Sales',      icon: '🤝' },
+  { id: 'GRAPHICS',   label: 'Graphics',   icon: '🎨' },
+  { id: 'ADMIN',      label: 'Admin',      icon: '🛡️' },
+  { id: 'TRAVEL',     label: 'Travel',     icon: '✈️' },
+] as const
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -45,8 +77,9 @@ function formatTime(iso: string) {
 
 function Avatar({ member, size = 'md', selected = false }: { member: TeamMember; size?: 'sm' | 'md'; selected?: boolean }) {
   const s = size === 'sm' ? 'w-5 h-5 text-[10px]' : 'w-7 h-7 text-xs'
+  const bg = selected ? 'bg-white/25' : teamAvatarBg(memberTeamKey(member))
   return (
-    <div className={`${s} rounded-full flex items-center justify-center text-white font-black flex-shrink-0 ${selected ? 'bg-white/25' : DEPT_COLORS[member.department]}`}>
+    <div className={`${s} rounded-full flex items-center justify-center text-white font-black flex-shrink-0 ${bg}`}>
       {(member.name || '?').charAt(0).toUpperCase()}
     </div>
   )
@@ -60,24 +93,50 @@ function PersonGrid({ members, selected, onSelect, label }: {
 }) {
   return (
     <div>
-      <label className="section-label block mb-2">{label}</label>
+      {label && <label className="section-label block mb-2">{label}</label>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {members.map(m => (
+        {members.map(m => {
+          const isSelected = selected === String(m.id)
+          const borderCls = isSelected ? '' : teamBorderClass(memberTeamKey(m))
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => onSelect(String(m.id))}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-2xl border text-sm font-semibold transition-all text-left ${
+                isSelected ? 'chip-active' : `chip ${borderCls} hover:border-accent/40 hover:text-ink`
+              }`}
+            >
+              <Avatar member={m} selected={isSelected} />
+              <span className="truncate">{m.name}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function TeamGrid({ selected, onSelect }: { selected: string; onSelect: (id: string) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {TEAM_LIST.map(t => {
+        const isSelected = selected === t.id
+        const borderCls = isSelected ? '' : teamBorderClass(t.id)
+        return (
           <button
-            key={m.id}
+            key={t.id}
             type="button"
-            onClick={() => onSelect(String(m.id))}
+            onClick={() => onSelect(t.id)}
             className={`flex items-center gap-2 px-3 py-2.5 rounded-2xl border text-sm font-semibold transition-all text-left ${
-              selected === String(m.id)
-                ? 'chip-active'
-                : 'chip hover:border-accent/40 hover:text-ink'
+              isSelected ? 'chip-active' : `chip ${borderCls} hover:border-accent/40 hover:text-ink`
             }`}
           >
-            <Avatar member={m} selected={selected === String(m.id)} />
-            <span className="truncate">{m.name}</span>
+            <span className="text-base leading-none">{t.icon}</span>
+            <span className="truncate">{t.label}</span>
           </button>
-        ))}
-      </div>
+        )
+      })}
     </div>
   )
 }
@@ -151,6 +210,8 @@ export default function AdminTasksPage() {
   const [form, setForm] = useState({
     assigned_by_id: '',
     team_member_id: '',
+    assign_to_type: 'person' as 'person' | 'team',
+    team_target: '',
     message_text: '',
     reminder_interval_minutes: '',
   })
@@ -174,24 +235,43 @@ export default function AdminTasksPage() {
 
   const assignTask = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.assigned_by_id || !form.team_member_id || !form.message_text.trim()) return
+    if (!form.assigned_by_id || !form.message_text.trim()) return
+    if (form.assign_to_type === 'person' && !form.team_member_id) return
+    if (form.assign_to_type === 'team' && !form.team_target) return
     setSubmitting(true)
     try {
-      const res = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assigned_by_id: form.assigned_by_id,
-          team_member_id: form.team_member_id,
-          message_text: form.message_text.trim(),
-          reminder_interval_minutes: form.reminder_interval_minutes || null,
-        }),
-      })
-      if (res.ok) {
-        setForm({ assigned_by_id: '', team_member_id: '', message_text: '', reminder_interval_minutes: '' })
-        setShowForm(false)
-        fetchTasks()
+      if (form.assign_to_type === 'team') {
+        const teamMembers = members.filter(m =>
+          (m.team || m.department || '').toUpperCase() === form.team_target.toUpperCase()
+        )
+        await Promise.all(teamMembers.map(m =>
+          fetch('/api/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              assigned_by_id: form.assigned_by_id,
+              team_member_id: String(m.id),
+              message_text: form.message_text.trim(),
+              reminder_interval_minutes: form.reminder_interval_minutes || null,
+            }),
+          })
+        ))
+      } else {
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assigned_by_id: form.assigned_by_id,
+            team_member_id: form.team_member_id,
+            message_text: form.message_text.trim(),
+            reminder_interval_minutes: form.reminder_interval_minutes || null,
+          }),
+        })
+        if (!res.ok) return
       }
+      setForm({ assigned_by_id: '', team_member_id: '', assign_to_type: 'person', team_target: '', message_text: '', reminder_interval_minutes: '' })
+      setShowForm(false)
+      fetchTasks()
     } catch (err) { console.error(err) }
     finally { setSubmitting(false) }
   }
@@ -217,7 +297,8 @@ export default function AdminTasksPage() {
   const pendingCount = tasks.filter(t => !t.is_completed).length
   const doneCount = tasks.filter(t => t.is_completed).length
 
-  const canSubmit = form.assigned_by_id && form.team_member_id && form.message_text.trim() && !submitting
+  const canAssignTo = form.assign_to_type === 'person' ? !!form.team_member_id : !!form.team_target
+  const canSubmit = !!form.assigned_by_id && canAssignTo && !!form.message_text.trim() && !submitting
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -251,18 +332,50 @@ export default function AdminTasksPage() {
                 label="Assigned By (Who is giving the task)"
               />
 
+
               <div className="flex items-center gap-3 text-muted">
                 <div className="flex-1 h-px bg-border-strong" />
                 <span className="text-lg">↓</span>
                 <div className="flex-1 h-px bg-border-strong" />
               </div>
 
-              <PersonGrid
-                members={members}
-                selected={form.team_member_id}
-                onSelect={id => setForm(f => ({ ...f, team_member_id: id }))}
-                label="Assigned To (Who will do the task)"
-              />
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="section-label">Assigned To</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, assign_to_type: 'person', team_target: '' }))}
+                      className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all ${form.assign_to_type === 'person' ? 'chip-active' : 'chip hover:border-accent/40'}`}
+                    >
+                      👤 Person
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, assign_to_type: 'team', team_member_id: '' }))}
+                      className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all ${form.assign_to_type === 'team' ? 'chip-active' : 'chip hover:border-accent/40'}`}
+                    >
+                      👥 Entire Team
+                    </button>
+                  </div>
+                </div>
+                {form.assign_to_type === 'team' && (
+                  <p className="text-xs text-muted mb-3">All members of the selected team will receive the task &amp; WhatsApp message.</p>
+                )}
+                {form.assign_to_type === 'person' ? (
+                  <PersonGrid
+                    members={members}
+                    selected={form.team_member_id}
+                    onSelect={id => setForm(f => ({ ...f, team_member_id: id }))}
+                    label=""
+                  />
+                ) : (
+                  <TeamGrid
+                    selected={form.team_target}
+                    onSelect={id => setForm(f => ({ ...f, team_target: id }))}
+                  />
+                )}
+              </div>
 
               <div>
                 <label className="section-label block mb-2">Task Description</label>
