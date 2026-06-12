@@ -230,7 +230,7 @@ export async function sendAllTasksCompletedNotification(watchId: number, watchNa
     select: { assigned_to: true },
   })
 
-  const assignees = [...new Set(tasks.map(t => t.assigned_to!))]
+  const assignees = Array.from(new Set(tasks.map(t => t.assigned_to!)))
 
   await Promise.allSettled(
     assignees.map((name) => {
