@@ -6,11 +6,22 @@ import { useCurrentMember } from '@/hooks/useCurrentMember'
 
 type Department = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 
+// Team (drives the Pending page grouping) — separate from department.
+const TEAM_OPTIONS = [
+  { id: 'LOGISTICS', label: '📦 Logistics' },
+  { id: 'ACCOUNTING', label: '💰 Accounting' },
+  { id: 'SALES', label: '🤝 Sales' },
+  { id: 'GRAPHICS', label: '🎨 Graphics' },
+  { id: 'ADMIN', label: '🛡️ Admin' },
+  { id: 'TRAVEL', label: '✈️ Travel' },
+] as const
+
 interface TeamMember {
   id: number
   name: string
   whatsapp_number: string
   department: Department
+  team?: string | null
 }
 
 interface Settings {
@@ -291,6 +302,19 @@ export default function SettingsPage() {
     setDeleteConfirm(null)
     setEditingMember(id)
     setEditNumber(current)
+  }
+
+  const updateMemberTeam = async (id: number, team: string) => {
+    // optimistic
+    setMembers(prev => prev.map(m => m.id === id ? { ...m, team } : m))
+    try {
+      const res = await fetch(`/api/team-members/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team }),
+      })
+      if (!res.ok) { setMemberError('Could not update team.'); fetchMembers() }
+    } catch { setMemberError('Could not update team.'); fetchMembers() }
   }
 
   const saveMemberNumber = async (id: number) => {
@@ -800,6 +824,18 @@ export default function SettingsPage() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 flex-shrink-0">
+                          {/* Team selector — sets the member's team (Pending page grouping) */}
+                          <select
+                            value={(member.team || '').toUpperCase()}
+                            onChange={e => updateMemberTeam(member.id, e.target.value)}
+                            title="Team"
+                            className="input-field text-xs py-1 pl-2 pr-6 w-32 mr-1"
+                          >
+                            <option value="">No team</option>
+                            {TEAM_OPTIONS.map(t => (
+                              <option key={t.id} value={t.id}>{t.label}</option>
+                            ))}
+                          </select>
                           <button onClick={() => startEditNumber(member.id, member.whatsapp_number)}
                             title="Edit number"
                             className="text-muted hover:text-ink transition-colors p-2 rounded-full hover:bg-card">
