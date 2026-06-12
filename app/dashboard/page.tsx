@@ -147,7 +147,6 @@ function DashboardPageInner() {
   const [quickStock, setQuickStock] = useState('')
   const [pipelineStats, setPipelineStats] = useState<PipelineStats | null>(null)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
-  const [undoRemove, setUndoRemove] = useState<{ id: number; watch: Watch; timer: ReturnType<typeof setTimeout> } | null>(null)
   const [bulkFetchMsg, setBulkFetchMsg] = useState('')
   const [bulkFetching, setBulkFetching] = useState(false)
   const [buyDisplayLimit, setBuyDisplayLimit] = useState(INVENTORY_PAGE_SIZE)
@@ -268,29 +267,15 @@ function DashboardPageInner() {
     const watch = watches.find(w => w.id === id)
     if (!watch) return
     setRemoveTarget(null)
-    if (undoRemove) {
-      clearTimeout(undoRemove.timer)
-      setUndoRemove(null)
-    }
     setWatches(prev => prev.filter(w => w.id !== id))
     if (selectedWatch?.id === id) setSelectedWatch(null)
     if (focusedWatchId === id) setFocusedWatchId(null)
-    const timer = setTimeout(async () => {
-      setUndoRemove(null)
-      try {
-        const res = await fetch(`/api/watches/${id}`, { method: 'DELETE' })
-        if (!res.ok) fetchWatches()
-      } catch { fetchWatches() }
-    }, 8000)
-    setUndoRemove({ id, watch, timer })
+    try {
+      const res = await fetch(`/api/watches/${id}`, { method: 'DELETE' })
+      if (!res.ok) fetchWatches()
+    } catch { fetchWatches() }
   }
 
-  const undoRemoveAction = () => {
-    if (!undoRemove) return
-    clearTimeout(undoRemove.timer)
-    setWatches(prev => [...prev, undoRemove.watch])
-    setUndoRemove(null)
-  }
 
   const handleOpenTasks = (watch: Watch) => {
     const isSell = watch.watch_type === 'SELL'
@@ -734,12 +719,6 @@ function DashboardPageInner() {
             if (w) setSelectedWatch(w)
           }}
         />
-      )}
-      {undoRemove && (
-        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-5 py-3 bg-ink text-card rounded-full text-sm">
-          <span>Removed #{undoRemove.watch.stock_no || undoRemove.watch.id}</span>
-          <button type="button" onClick={undoRemoveAction} className="font-semibold text-sand hover:text-white">Undo</button>
-        </div>
       )}
     </div>
   )
