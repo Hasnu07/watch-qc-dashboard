@@ -35,14 +35,20 @@ export async function POST(req: NextRequest) {
     if (forbidden) return forbidden
 
     const body = await req.json()
-    const { name, whatsapp_number, department } = body
+    const { name, whatsapp_number, team, department } = body
 
     if (!name || !whatsapp_number) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // Team is the single member category. department is the watch-task work
+    // enum (only 3 values) — derive it from team so the required field stays valid.
+    const validTeams = ['LOGISTICS', 'ACCOUNTING', 'SALES', 'GRAPHICS', 'ADMIN', 'TRAVEL']
     const validDepts = ['LOGISTICS', 'ACCOUNTING', 'SALES']
-    const dept = validDepts.includes(department) ? department : 'LOGISTICS'
+    const chosenTeam = validTeams.includes(String(team || '').toUpperCase())
+      ? String(team).toUpperCase()
+      : (validDepts.includes(department) ? department : 'LOGISTICS')
+    const dept = validDepts.includes(chosenTeam) ? chosenTeam : 'LOGISTICS'
 
     const cleanNumber = whatsapp_number.replace(/[^0-9]/g, '')
     const loginUsername = name.trim()
@@ -53,6 +59,7 @@ export async function POST(req: NextRequest) {
         name: loginUsername,
         whatsapp_number: cleanNumber,
         department: dept,
+        team: chosenTeam,
         login_username: loginUsername,
         password_hash: hashPassword(loginUsername, password),
         role: 'MEMBER',
@@ -65,7 +72,7 @@ export async function POST(req: NextRequest) {
       sendWhatsAppMessage(
         settings.instanceId, settings.token,
         toChatId(cleanNumber),
-        `👋 Welcome to Watch QC Dashboard, ${name}! You've been added to the ${dept.charAt(0) + dept.slice(1).toLowerCase()} team.\n\n🔗 https://qc-dashboard-q907.onrender.com`,
+        `👋 Welcome to Watch QC Dashboard, ${name}! You've been added to the ${chosenTeam.charAt(0) + chosenTeam.slice(1).toLowerCase()} team.\n\n🔗 https://qc-dashboard-q907.onrender.com`,
         settings.apiUrl
       ).catch(console.error)
     }).catch(console.error)

@@ -6,15 +6,20 @@ import { useCurrentMember } from '@/hooks/useCurrentMember'
 
 type Department = 'LOGISTICS' | 'ACCOUNTING' | 'SALES'
 
-// Team (drives the Pending page grouping) — separate from department.
-const TEAM_OPTIONS = [
-  { id: 'LOGISTICS', label: '📦 Logistics' },
-  { id: 'ACCOUNTING', label: '💰 Accounting' },
-  { id: 'SALES', label: '🤝 Sales' },
-  { id: 'GRAPHICS', label: '🎨 Graphics' },
-  { id: 'ADMIN', label: '🛡️ Admin' },
-  { id: 'TRAVEL', label: '✈️ Travel' },
+// Single team category — drives both the Settings grouping and the Pending page.
+const TEAM_GROUPS = [
+  { id: 'LOGISTICS', label: 'Logistics', icon: '📦' },
+  { id: 'ACCOUNTING', label: 'Accounting', icon: '💰' },
+  { id: 'SALES', label: 'Sales', icon: '🤝' },
+  { id: 'GRAPHICS', label: 'Graphics', icon: '🎨' },
+  { id: 'ADMIN', label: 'Admin', icon: '🛡️' },
+  { id: 'TRAVEL', label: 'Travel', icon: '✈️' },
 ] as const
+
+const teamIdOf = (m: { team?: string | null }) => {
+  const t = (m.team || '').toUpperCase()
+  return TEAM_GROUPS.some(g => g.id === t) ? t : ''
+}
 
 interface TeamMember {
   id: number
@@ -93,8 +98,6 @@ const DEPT_CONFIG = {
   SALES: { label: 'Sales', icon: '🤝', color: 'text-ink', bg: 'bg-panel', border: 'border-default' },
 } as const
 
-const DEPT_ORDER: Department[] = ['LOGISTICS', 'ACCOUNTING', 'SALES']
-
 export default function SettingsPage() {
   const router = useRouter()
   const { member, isMaster, loading: authLoading } = useCurrentMember()
@@ -133,7 +136,7 @@ export default function SettingsPage() {
   const [testResult, setTestResult] = useState<{ successCount: number; total: number; report: TestResult[] } | null>(null)
   const [testError, setTestError] = useState('')
   const [members, setMembers] = useState<TeamMember[]>([])
-  const [newMember, setNewMember] = useState({ name: '', whatsapp_number: '', department: 'LOGISTICS' as Department })
+  const [newMember, setNewMember] = useState({ name: '', whatsapp_number: '', team: 'LOGISTICS' })
   const [taskDefaults, setTaskDefaults] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
@@ -282,10 +285,10 @@ export default function SettingsPage() {
       const res = await fetch('/api/team-members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newMember.name.trim(), whatsapp_number: cleanNumber, department: newMember.department }),
+        body: JSON.stringify({ name: newMember.name.trim(), whatsapp_number: cleanNumber, team: newMember.team }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
-      setNewMember({ name: '', whatsapp_number: '', department: 'LOGISTICS' })
+      setNewMember({ name: '', whatsapp_number: '', team: 'LOGISTICS' })
       fetchMembers()
     } catch (err) { setMemberError(err instanceof Error ? err.message : 'Failed') }
     finally { setAddingMember(false) }
@@ -339,7 +342,6 @@ export default function SettingsPage() {
 
   const inputClass = 'input-field'
 
-  const membersByDept = (dept: Department) => members.filter(m => m.department === dept)
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 flex-1 overflow-y-auto sm:px-8 sm:py-10">
@@ -764,28 +766,23 @@ export default function SettingsPage() {
           </span>
         </div>
         <p className="text-muted text-sm mb-5">
-          Grouped by department. WhatsApp format: 92XXXXXXXXXX
+          Grouped by team. WhatsApp format: 92XXXXXXXXXX
         </p>
 
-        {/* Members by dept */}
-        {DEPT_ORDER.map(dept => {
-          const cfg = DEPT_CONFIG[dept]
-          const deptMembers = membersByDept(dept)
+        {/* Members by team */}
+        {TEAM_GROUPS.map(group => {
+          const groupMembers = members.filter(m => teamIdOf(m) === group.id)
+          if (groupMembers.length === 0) return null
           return (
-            <div key={dept} className="mb-5">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg mb-2 border ${cfg.bg} ${cfg.border}`}>
-                <span>{cfg.icon}</span>
-                <span className={`text-sm font-bold uppercase tracking-wide ${cfg.color}`}>{cfg.label}</span>
-                <span className="text-muted text-xs ml-auto">{deptMembers.length} member{deptMembers.length !== 1 ? 's' : ''}</span>
+            <div key={group.id} className="mb-5">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg mb-2 border bg-panel border-default">
+                <span>{group.icon}</span>
+                <span className="text-sm font-bold uppercase tracking-wide text-ink">{group.label}</span>
+                <span className="text-muted text-xs ml-auto">{groupMembers.length} member{groupMembers.length !== 1 ? 's' : ''}</span>
               </div>
 
-              {deptMembers.length === 0 ? (
-                <div className="text-muted text-sm text-center py-4 bg-panel rounded-2xl border border-default">
-                  No members in {cfg.label} yet
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {deptMembers.map(member => (
+              <div className="space-y-2">
+                {groupMembers.map(member => (
                     <div key={member.id}
                       className="flex items-center justify-between bg-panel rounded-2xl px-4 py-3 border border-default">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -832,8 +829,8 @@ export default function SettingsPage() {
                             className="input-field text-xs py-1 pl-2 pr-6 w-32 mr-1"
                           >
                             <option value="">No team</option>
-                            {TEAM_OPTIONS.map(t => (
-                              <option key={t.id} value={t.id}>{t.label}</option>
+                            {TEAM_GROUPS.map(t => (
+                              <option key={t.id} value={t.id}>{t.icon} {t.label}</option>
                             ))}
                           </select>
                           <button onClick={() => startEditNumber(member.id, member.whatsapp_number)}
@@ -856,8 +853,7 @@ export default function SettingsPage() {
                       )}
                     </div>
                   ))}
-                </div>
-              )}
+              </div>
             </div>
           )
         })}
@@ -866,20 +862,19 @@ export default function SettingsPage() {
         <form onSubmit={addMember} className="border-t border-default pt-6 mt-4">
           <p className="text-muted text-sm mb-3 font-medium">Add new member</p>
 
-          {/* Department selector */}
-          <div className="flex gap-2 mb-3">
-            {DEPT_ORDER.map(dept => {
-              const cfg = DEPT_CONFIG[dept]
-              const active = newMember.department === dept
+          {/* Team selector */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {TEAM_GROUPS.map(group => {
+              const active = newMember.team === group.id
               return (
-                <button key={dept} type="button"
-                  onClick={() => setNewMember({ ...newMember, department: dept })}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-2xl border text-sm font-semibold transition-all ${
+                <button key={group.id} type="button"
+                  onClick={() => setNewMember({ ...newMember, team: group.id })}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-2xl border text-sm font-semibold transition-all ${
                     active
-                      ? `${cfg.bg} ${cfg.border} ${cfg.color}`
+                      ? 'bg-accent/10 border-accent/40 text-accent'
                       : 'bg-panel border-default text-muted hover:text-ink'
                   }`}>
-                  <span>{cfg.icon}</span> {cfg.label}
+                  <span>{group.icon}</span> {group.label}
                 </button>
               )
             })}
