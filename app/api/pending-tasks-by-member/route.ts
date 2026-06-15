@@ -138,7 +138,9 @@ export async function GET(req: NextRequest) {
           message_text: true,
           date: true,
           team_member_id: true,
+          assigned_team: true,
           created_at: true,
+          assignees: { select: { team_member_id: true } },
         },
       }),
       prisma.watchTask.findMany({
@@ -173,11 +175,15 @@ export async function GET(req: NextRequest) {
 
     const membersData = members.map(member => {
       const memberTeamTasks = teamTasks
-        .filter(t => t.team_member_id === member.id)
+        .filter(t =>
+          t.team_member_id === member.id
+          || t.assignees.some(a => a.team_member_id === member.id)
+        )
         .map(t => ({
           id: t.id,
           message_text: t.message_text,
           date: t.date,
+          assigned_team: t.assigned_team,
           created_at: t.created_at.toISOString(),
           pipeline_started_at: pipelineStartedAtIso(t.created_at, pipelineEpoch),
         }))

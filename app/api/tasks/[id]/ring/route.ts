@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
+import { TASK_INCLUDE, resolveTaskAssignees } from '@/lib/task-assignees'
 
 async function getGreenAPISettings() {
   const [inst, tok, url] = await Promise.all([
@@ -22,9 +23,12 @@ export async function POST(
 
     const task = await prisma.task.findUnique({
       where: { id: taskId },
-      include: { team_member: true, assigned_by: true },
+      include: TASK_INCLUDE,
     })
     if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+
+    const assignees = resolveTaskAssignees(task)
+    if (!assignees.length) return NextResponse.json({ error: 'No assignees found' }, { status: 400 })
 
     const settings = await getGreenAPISettings()
     if (!settings) return NextResponse.json({ error: 'WhatsApp not configured' }, { status: 503 })
@@ -40,17 +44,21 @@ export async function POST(
       `and click the ✅ check mark.\n\n` +
       `If you had any issues with the task kindly tell the reason.`
 
-    const sent = await sendWhatsAppMessage(
-      settings.instanceId,
-      settings.token,
-      toChatId(task.team_member.whatsapp_number),
-      message,
-      settings.apiUrl
-    )
+    const results = await Promise.all(assignees.map(assignee =>
+      sendWhatsAppMessage(
+        settings.instanceId,
+        settings.token,
+        toChatId(assignee.whatsapp_number),
+        message,
+        settings.apiUrl
+      )
+    ))
 
-    if (!sent) return NextResponse.json({ error: 'Failed to send WhatsApp message' }, { status: 500 })
+    if (!results.some(Boolean)) {
+      return NextResponse.json({ error: 'Failed to send WhatsApp message' }, { status: 500 })
+    }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, sent: results.filter(Boolean).length })
   } catch (err) {
     console.error(err)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })

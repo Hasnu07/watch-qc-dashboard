@@ -14,17 +14,59 @@ interface TeamMember {
 
 interface Task {
   id: number
-  team_member_id: number
+  team_member_id: number | null
+  assigned_team: string | null
   assigned_by_id: number | null
   message_text: string
   date: string
   estimated_minutes: number | null
   is_completed: boolean
   completed_at: string | null
+  completed_by: string | null
   reminder_interval_minutes: number | null
   created_at: string
-  team_member: TeamMember
+  team_member: TeamMember | null
   assigned_by: TeamMember | null
+  assignees: Array<{ team_member: TeamMember }>
+}
+
+function taskAssignees(task: Task): TeamMember[] {
+  if (task.assignees?.length) return task.assignees.map(a => a.team_member)
+  if (task.team_member) return [task.team_member]
+  return []
+}
+
+function teamLabel(team: string): string {
+  return TEAM_LIST.find(t => t.id === team)?.label ?? team
+}
+
+function AssigneeDisplay({ task }: { task: Task }) {
+  const assignees = taskAssignees(task)
+  if (!assignees.length) return null
+
+  if (task.assigned_team && assignees.length > 1) {
+    const teamMeta = TEAM_LIST.find(t => t.id === task.assigned_team)
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {teamMeta && <span className="text-xs" title={teamLabel(task.assigned_team)}>{teamMeta.icon}</span>}
+        <div className="flex -space-x-1">
+          {assignees.map(m => (
+            <Avatar key={m.id} member={m} size="sm" />
+          ))}
+        </div>
+        <span className="text-xs font-semibold text-ink">
+          {assignees.map(m => m.name).join(', ')}
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <Avatar member={assignees[0]} size="sm" />
+      <span className="text-xs font-semibold text-ink">{assignees[0].name}</span>
+    </div>
+  )
 }
 
 const REMINDER_OPTIONS = [
@@ -241,21 +283,17 @@ export default function AdminTasksPage() {
     setSubmitting(true)
     try {
       if (form.assign_to_type === 'team') {
-        const teamMembers = members.filter(m =>
-          (m.team || m.department || '').toUpperCase() === form.team_target.toUpperCase()
-        )
-        await Promise.all(teamMembers.map(m =>
-          fetch('/api/tasks', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              assigned_by_id: form.assigned_by_id,
-              team_member_id: String(m.id),
-              message_text: form.message_text.trim(),
-              reminder_interval_minutes: form.reminder_interval_minutes || null,
-            }),
-          })
-        ))
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assigned_by_id: form.assigned_by_id,
+            team_target: form.team_target,
+            message_text: form.message_text.trim(),
+            reminder_interval_minutes: form.reminder_interval_minutes || null,
+          }),
+        })
+        if (!res.ok) return
       } else {
         const res = await fetch('/api/tasks', {
           method: 'POST',
@@ -360,7 +398,7 @@ export default function AdminTasksPage() {
                   </div>
                 </div>
                 {form.assign_to_type === 'team' && (
-                  <p className="text-xs text-muted mb-3">All members of the selected team will receive the task &amp; WhatsApp message.</p>
+                  <p className="text-xs text-muted mb-3">Creates one shared task for the team — all members receive the WhatsApp message.</p>
                 )}
                 {form.assign_to_type === 'person' ? (
                   <PersonGrid
@@ -496,7 +534,7 @@ export default function AdminTasksPage() {
                               <button
                                 onClick={() => ringTask(task.id)}
                                 disabled={ringing[task.id] === 'sending'}
-                                title="Ring assignee on WhatsApp"
+                                title={taskAssignees(task).length > 1 ? 'Ring all assignees on WhatsApp' : 'Ring assignee on WhatsApp'}
                                 className={`btn-ghost text-xs py-1 px-2.5 ${
                                   ringing[task.id] === 'sent' ? 'border-accent/40 text-accent bg-accent/5' :
                                   ringing[task.id] === 'error' ? 'text-muted' :
@@ -529,10 +567,7 @@ export default function AdminTasksPage() {
                               <span className="text-muted text-xs">→</span>
                             </>
                           )}
-                          <div className="flex items-center gap-1.5">
-                            <Avatar member={task.team_member} size="sm" />
-                            <span className="text-xs font-semibold text-ink">{task.team_member.name}</span>
-                          </div>
+                          <AssigneeDisplay task={task} />
                           <ReminderBadge minutes={task.reminder_interval_minutes} />
                           <span className="text-xs text-muted ml-auto">{formatTime(task.created_at)}</span>
                         </div>
@@ -542,7 +577,9 @@ export default function AdminTasksPage() {
                             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                             </svg>
-                            <span className="font-semibold">Completed by {task.team_member.name}</span>
+                            <span className="font-semibold">
+                              Completed by {task.completed_by || taskAssignees(task)[0]?.name || 'Team'}
+                            </span>
                             <span className="text-accent/70">· {formatTime(task.completed_at)}</span>
                             {task.estimated_minutes && (
                               <span className="ml-1 text-muted">· ~{task.estimated_minutes} min</span>

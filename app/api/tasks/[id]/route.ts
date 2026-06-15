@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
+import { TASK_INCLUDE, resolveTaskAssignees } from '@/lib/task-assignees'
 
 async function getGreenAPISettings() {
   const [inst, tok, url] = await Promise.all([
@@ -21,6 +22,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (body.is_completed !== undefined) {
       data.is_completed = body.is_completed
       data.completed_at = body.is_completed ? new Date() : null
+      data.completed_by = body.is_completed
+        ? (body.completed_by?.trim() || null)
+        : null
     }
     if (body.message_text !== undefined) data.message_text = body.message_text
     if (body.reminder_interval_minutes !== undefined) data.reminder_interval_minutes = body.reminder_interval_minutes
@@ -28,14 +32,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const task = await prisma.task.update({
       where: { id },
       data,
-      include: { team_member: true, assigned_by: true },
+      include: TASK_INCLUDE,
     })
 
-    // When marked complete, notify the assigner
     if (body.is_completed && task.assigned_by?.whatsapp_number) {
+      const assignees = resolveTaskAssignees(task)
+      const completerName = task.completed_by
+        || (assignees.length === 1 ? assignees[0].name : 'Team')
       getGreenAPISettings().then(async (settings) => {
         if (!settings) return
-        const msg = `✅ Task completed!\n\n*${task.team_member.name}* has completed the task assigned by you:\n\n"${task.message_text}"\n\n🔗 https://qc-dashboard-q907.onrender.com`
+        const msg = `✅ Task completed!\n\n*${completerName}* has completed the task assigned by you:\n\n"${task.message_text}"\n\n🔗 https://qc-dashboard-q907.onrender.com`
         await sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(task.assigned_by!.whatsapp_number), msg, settings.apiUrl)
       }).catch(console.error)
     }

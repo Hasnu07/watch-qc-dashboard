@@ -18,12 +18,14 @@ export type TaskEventPayload = {
   type: 'new_task' | 'task_updated'
   task: {
     id: number
-    team_member_id: number
+    team_member_id: number | null
+    assigned_team: string | null
     message_text: string
     date: string
     estimated_minutes: number | null
     created_at: string
-    team_member: { id: number; name: string; whatsapp_number: string; department: string }
+    team_member: { id: number; name: string; whatsapp_number: string; department: string } | null
+    assignees?: Array<{ team_member: { id: number; name: string; whatsapp_number: string; department: string } }>
   }
 }
 

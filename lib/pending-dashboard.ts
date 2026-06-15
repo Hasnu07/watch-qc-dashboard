@@ -43,6 +43,7 @@ export interface PendingTeamTask {
   id: number
   message_text: string
   date: string
+  assigned_team?: string | null
   created_at: string
   pipeline_started_at: string
 }
