@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
+import { TASK_INCLUDE, resolveTaskAssignees } from '@/lib/task-assignees'
 
 async function getGreenAPISettings() {
   const [inst, tok, url] = await Promise.all([
@@ -26,11 +27,10 @@ export async function POST(
 
     const task = await prisma.task.findUnique({
       where: { id: taskId },
-      include: { team_member: true, assigned_by: true },
+      include: TASK_INCLUDE,
     })
     if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
 
-    // Must have an assigner to notify
     if (!task.assigned_by) {
       return NextResponse.json({ error: 'No assigner to notify' }, { status: 400 })
     }
@@ -38,10 +38,14 @@ export async function POST(
     const settings = await getGreenAPISettings()
     if (!settings) return NextResponse.json({ error: 'WhatsApp not configured' }, { status: 503 })
 
+    const assignees = resolveTaskAssignees(task)
+    const reporterName = body.reporter_name?.trim()
+      || (assignees.length === 1 ? assignees[0].name : 'A team member')
+
     const message =
       `❌ *Task Not Completed*\n\n` +
       `📋 Task: _"${task.message_text}"_\n` +
-      `👤 Reported by: *${task.team_member.name}*\n\n` +
+      `👤 Reported by: *${reporterName}*\n\n` +
       `📝 *Reason:*\n${reason}\n\n` +
       `🔗 View on dashboard:\nhttps://qc-dashboard-q907.onrender.com/`
 
