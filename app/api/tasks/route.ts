@@ -4,7 +4,11 @@ import { estimateTaskMinutes } from '@/lib/claude'
 import { emitTaskEvent, type TaskEventPayload } from '@/lib/events'
 import { getTodayPKT } from '@/lib/utils'
 import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
-import { TASK_INCLUDE, resolveTaskAssignees } from '@/lib/task-assignees'
+import {
+  TASK_INCLUDE,
+  enrichTasksWithAssignees,
+  resolveTaskAssignees,
+} from '@/lib/task-assignees'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,7 +71,6 @@ function serializeTask(task: {
   date: string
   estimated_minutes: number | null
   created_at: Date
-  completed_at: Date | null
   team_member: TaskEventPayload['task']['team_member']
   assignees?: TaskEventPayload['task']['assignees']
 }): TaskEventPayload['task'] {
@@ -106,7 +109,7 @@ export async function GET(req: NextRequest) {
       const id = parseInt(memberId, 10)
       where.OR = [
         { team_member_id: id },
-        { assignees: { some: { team_member_id: id } } },
+        { assignee_ids: { has: id } },
       ]
     }
     if (search) where.message_text = { contains: search, mode: 'insensitive' }
@@ -117,7 +120,7 @@ export async function GET(req: NextRequest) {
       orderBy: { created_at: 'desc' },
     })
 
-    return NextResponse.json(tasks)
+    return NextResponse.json(await enrichTasksWithAssignees(tasks))
   } catch (err) {
     console.error(err)
     return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 })
@@ -150,20 +153,19 @@ export async function POST(req: NextRequest) {
       data: {
         team_member_id: isTeamTask ? null : assigneeIds[0],
         assigned_team: assignedTeam,
+        assignee_ids: assigneeIds,
         assigned_by_id: assigned_by_id ? parseInt(assigned_by_id, 10) : null,
         message_text: message_text.trim(),
         date: taskDate,
         estimated_minutes: null,
         reminder_interval_minutes: reminder_interval_minutes ? parseInt(reminder_interval_minutes, 10) : null,
-        assignees: {
-          create: assigneeIds.map(team_member_id => ({ team_member_id })),
-        },
       },
       include: TASK_INCLUDE,
     })
 
-    const assignees = resolveTaskAssignees(task)
-    const assignerName = task.assigned_by?.name ?? 'Admin'
+    const [enriched] = await enrichTasksWithAssignees([task])
+    const assignees = resolveTaskAssignees(enriched)
+    const assignerName = enriched.assigned_by?.name ?? 'Admin'
     const reminderNote = reminder_interval_minutes
       ? `\n⏰ You'll be reminded ${REMINDER_LABELS[reminder_interval_minutes] ?? `every ${reminder_interval_minutes} min`}.`
       : ''
@@ -182,12 +184,13 @@ export async function POST(req: NextRequest) {
         data: { estimated_minutes: minutes },
         include: TASK_INCLUDE,
       })
-      emitTaskEvent({ type: 'task_updated', task: serializeTask(updated) })
+      const [enrichedUpdated] = await enrichTasksWithAssignees([updated])
+      emitTaskEvent({ type: 'task_updated', task: serializeTask(enrichedUpdated) })
     }).catch(console.error)
 
-    emitTaskEvent({ type: 'new_task', task: serializeTask(task) })
+    emitTaskEvent({ type: 'new_task', task: serializeTask(enriched) })
 
-    return NextResponse.json(task, { status: 201 })
+    return NextResponse.json(enriched, { status: 201 })
   } catch (err) {
     console.error(err)
     return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })

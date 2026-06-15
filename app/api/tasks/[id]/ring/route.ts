@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
-import { TASK_INCLUDE, resolveTaskAssignees } from '@/lib/task-assignees'
+import {
+  TASK_INCLUDE,
+  enrichTasksWithAssignees,
+  resolveTaskAssignees,
+} from '@/lib/task-assignees'
 
 async function getGreenAPISettings() {
   const [inst, tok, url] = await Promise.all([
@@ -27,18 +31,19 @@ export async function POST(
     })
     if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
 
-    const assignees = resolveTaskAssignees(task)
+    const [enriched] = await enrichTasksWithAssignees([task])
+    const assignees = resolveTaskAssignees(enriched)
     if (!assignees.length) return NextResponse.json({ error: 'No assignees found' }, { status: 400 })
 
     const settings = await getGreenAPISettings()
     if (!settings) return NextResponse.json({ error: 'WhatsApp not configured' }, { status: 503 })
 
-    const ringerName = task.assigned_by?.name ?? 'Admin'
+    const ringerName = enriched.assigned_by?.name ?? 'Admin'
 
     const message =
       `🔔 You have been ringed by *${ringerName}*\n\n` +
       `Tell the reason why your task is still on the dashboard.\n\n` +
-      `*"${task.message_text}"*\n\n` +
+      `*"${enriched.message_text}"*\n\n` +
       `If your task is done go on:\n` +
       `🔗 https://qc-dashboard-q907.onrender.com/\n` +
       `and click the ✅ check mark.\n\n` +

@@ -29,18 +29,22 @@ npm install --include=dev
 echo "[render-build] Generating Prisma client..."
 npx prisma generate
 
-if [ "${RUN_DB_JOBS_ON_BUILD:-0}" = "1" ]; then
-  echo "[render-build] RUN_DB_JOBS_ON_BUILD=1 -> running DB jobs"
-  echo "[render-build] Pushing schema (with retry)..."
-  retry npx prisma db push --accept-data-loss
+echo "[render-build] Pushing schema (with retry)..."
+if retry npx prisma db push --skip-generate; then
+  echo "[render-build] Backfilling task assignee_ids (with retry)..."
+  retry node scripts/backfill-task-assignees.mjs || echo "[render-build] Backfill skipped or failed (non-fatal)"
+else
+  echo "[render-build] ⚠ Schema push failed — app may error until DB is migrated"
+fi
 
-  echo "[render-build] Restoring QC data — team, watches, tasks (with retry)..."
+if [ "${RUN_DB_JOBS_ON_BUILD:-0}" = "1" ]; then
+  echo "[render-build] RUN_DB_JOBS_ON_BUILD=1 -> running extra DB jobs"
   retry node scripts/restore-qc-data.mjs
 
   echo "[render-build] Seeding member logins (with retry)..."
   retry node scripts/seed-member-logins.mjs
 else
-  echo "[render-build] Skipping DB jobs during build (safe mode)."
+  echo "[render-build] Skipping restore/seed jobs (safe mode)."
 fi
 
 echo "[render-build] Running Next build..."

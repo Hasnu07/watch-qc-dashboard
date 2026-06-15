@@ -139,8 +139,8 @@ export async function GET(req: NextRequest) {
           date: true,
           team_member_id: true,
           assigned_team: true,
+          assignee_ids: true,
           created_at: true,
-          assignees: { select: { team_member_id: true } },
         },
       }),
       prisma.watchTask.findMany({
@@ -177,7 +177,7 @@ export async function GET(req: NextRequest) {
       const memberTeamTasks = teamTasks
         .filter(t =>
           t.team_member_id === member.id
-          || t.assignees.some(a => a.team_member_id === member.id)
+          || (t.assignee_ids ?? []).includes(member.id)
         )
         .map(t => ({
           id: t.id,

@@ -162,7 +162,6 @@ model TeamMember {
   created_at        DateTime        @default(now())
   tasks_assigned_to Task[]          @relation("AssignedTo")
   tasks_assigned_by Task[]          @relation("AssignedBy")
-  task_assignments  TaskAssignee[]
   sessions          MemberSession[]
 }
 
@@ -179,6 +178,7 @@ model Task {
   team_member_id            Int?
   team_member               TeamMember?    @relation("AssignedTo", fields: [team_member_id], references: [id], onDelete: Cascade)
   assigned_team             String?
+  assignee_ids              Int[]          @default([])
   assigned_by_id            Int?
   assigned_by               TeamMember?    @relation("AssignedBy", fields: [assigned_by_id], references: [id], onDelete: SetNull)
   message_text              String
@@ -189,17 +189,6 @@ model Task {
   completed_by              String?
   reminder_interval_minutes Int?
   created_at                DateTime       @default(now())
-  assignees                 TaskAssignee[]
-}
-
-model TaskAssignee {
-  id             Int        @id @default(autoincrement())
-  task_id        Int
-  task           Task       @relation(fields: [task_id], references: [id], onDelete: Cascade)
-  team_member_id Int
-  team_member    TeamMember @relation(fields: [team_member_id], references: [id], onDelete: Cascade)
-
-  @@unique([task_id, team_member_id])
 }
 
 model Setting {

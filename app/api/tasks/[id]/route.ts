@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendWhatsAppMessage, toChatId } from '@/lib/greenapi'
-import { TASK_INCLUDE, resolveTaskAssignees } from '@/lib/task-assignees'
+import {
+  TASK_INCLUDE,
+  enrichTasksWithAssignees,
+  resolveTaskAssignees,
+} from '@/lib/task-assignees'
 
 async function getGreenAPISettings() {
   const [inst, tok, url] = await Promise.all([
@@ -35,18 +39,20 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       include: TASK_INCLUDE,
     })
 
-    if (body.is_completed && task.assigned_by?.whatsapp_number) {
-      const assignees = resolveTaskAssignees(task)
-      const completerName = task.completed_by
+    const [enriched] = await enrichTasksWithAssignees([task])
+
+    if (body.is_completed && enriched.assigned_by?.whatsapp_number) {
+      const assignees = resolveTaskAssignees(enriched)
+      const completerName = enriched.completed_by
         || (assignees.length === 1 ? assignees[0].name : 'Team')
       getGreenAPISettings().then(async (settings) => {
         if (!settings) return
-        const msg = `✅ Task completed!\n\n*${completerName}* has completed the task assigned by you:\n\n"${task.message_text}"\n\n🔗 https://qc-dashboard-q907.onrender.com`
-        await sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(task.assigned_by!.whatsapp_number), msg, settings.apiUrl)
+        const msg = `✅ Task completed!\n\n*${completerName}* has completed the task assigned by you:\n\n"${enriched.message_text}"\n\n🔗 https://qc-dashboard-q907.onrender.com`
+        await sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(enriched.assigned_by!.whatsapp_number), msg, settings.apiUrl)
       }).catch(console.error)
     }
 
-    return NextResponse.json(task)
+    return NextResponse.json(enriched)
   } catch (err) {
     console.error(err)
     return NextResponse.json({ error: 'Failed to update task' }, { status: 500 })
