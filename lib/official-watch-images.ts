@@ -163,6 +163,50 @@ async function searchSerperImages(query: string, signal: AbortSignal): Promise<s
   }
 }
 
+// Chrono24 is the primary image fallback — it has images for virtually every luxury watch
+// and is less likely to block server-side requests than general search engines.
+async function fetchChrono24Image(
+  brand: string | null | undefined,
+  model: string | null | undefined,
+  ref: string | null | undefined,
+  signal: AbortSignal,
+): Promise<string | null> {
+  const parts = [ref, brand, model].filter(Boolean)
+  if (parts.length === 0) return null
+
+  try {
+    const res = await fetch(
+      `https://www.chrono24.com/search/index.htm?dosearch=1&query=${encodeURIComponent(parts.join(' '))}&resultview=list`,
+      {
+        headers: {
+          'User-Agent': BROWSER_UA,
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          Referer: 'https://www.chrono24.com/',
+        },
+        signal,
+      },
+    )
+    if (!res.ok) return null
+
+    const html = await res.text()
+    // Matches both inline src and lazy-load data-* attributes from the Chrono24 CDN
+    const cdnRe = /(?:https?:)?\/\/cdn\.chrono24\.com\/images\/uhren\/[^\s"'<>&]+\.jpg/gi
+    const found: string[] = []
+    let m: RegExpExecArray | null
+    while ((m = cdnRe.exec(html)) !== null) {
+      const url = m[0].startsWith('//') ? `https:${m[0]}` : m[0]
+      if (!url.includes('-39.')) found.push(url) // skip 39px micro-thumbnails
+    }
+
+    if (found.length === 0) return null
+    // Prefer medium-res (-560) over small thumbnails (-280) when available
+    return found.find(u => u.includes('-560.')) || found.find(u => u.includes('-280.')) || found[0]
+  } catch {
+    return null
+  }
+}
+
 async function fetchBingImages(query: string, signal: AbortSignal): Promise<string[]> {
   try {
     const res = await fetch(
@@ -222,15 +266,20 @@ export async function searchOfficialBrandImage(
   if (!brand) return null
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 20000)
+  const timeout = setTimeout(() => controller.abort(), 25000)
 
   try {
+    // 1. Direct brand CDN (Rolex, Patek, Omega) — no scraping risk
     const directUrl = await resolveDirectBrandImage(brand.key, ref, model, controller.signal)
     if (directUrl) return directUrl
 
+    // 2. Chrono24 marketplace — comprehensive, watch-specific, reliable
+    const chrono24Url = await fetchChrono24Image(brandName, model, ref, controller.signal)
+    if (chrono24Url) return chrono24Url
+
+    // 3. Search engine fallback (Serper API if key set, otherwise Bing)
     const queries = buildOfficialQueries(brand, ref, model)
     if (queries.length === 0) return null
-
     const searched = await searchWithProviders(queries, ref, brand.domains, brand.key, controller.signal)
     return searched ? normalizeOfficialImageUrl(searched) : null
   } catch {
@@ -249,10 +298,15 @@ export async function fetchGenericWatchImage(
   if (parts.length === 0) return null
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 15000)
+  const timeout = setTimeout(() => controller.abort(), 20000)
 
   try {
-    const query = `${parts.join(' ')} watch official`
+    // 1. Chrono24 — primary, watch-specific source
+    const chrono24Url = await fetchChrono24Image(brandName, model, ref, controller.signal)
+    if (chrono24Url) return chrono24Url
+
+    // 2. Bing image search — secondary fallback
+    const query = `${parts.join(' ')} watch`
     const urls = await fetchBingImages(query, controller.signal)
     const scored = urls
       .map(url => ({ url, score: scoreOfficialImage(url, ref, []) }))
