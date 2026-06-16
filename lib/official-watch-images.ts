@@ -239,3 +239,29 @@ export async function searchOfficialBrandImage(
     clearTimeout(timeout)
   }
 }
+
+export async function fetchGenericWatchImage(
+  brandName: string | null | undefined,
+  model: string | null | undefined,
+  ref: string | null | undefined,
+): Promise<string | null> {
+  const parts = [brandName, model, ref].filter(Boolean)
+  if (parts.length === 0) return null
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15000)
+
+  try {
+    const query = `${parts.join(' ')} watch official`
+    const urls = await fetchBingImages(query, controller.signal)
+    const scored = urls
+      .map(url => ({ url, score: scoreOfficialImage(url, ref, []) }))
+      .filter(item => item.score > 0 && /\.(png|jpe?g|webp)($|\?)/i.test(item.url))
+      .sort((a, b) => b.score - a.score)
+    return scored[0]?.url || null
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timeout)
+  }
+}

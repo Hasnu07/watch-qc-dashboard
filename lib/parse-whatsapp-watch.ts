@@ -36,8 +36,8 @@ const BRANDS = [
 
 function field(text: string, ...keys: string[]): string | null {
   for (const key of keys) {
-    // Accept both "Key: value" and looser OCR/chat variants like "Key value"
-    const re = new RegExp(`^${key}\\s*:?\\s*(.+)$`, 'im')
+    // (?![/\w]) prevents "Bracelet" from matching "Bracelet/Strap: value"
+    const re = new RegExp(`^${key}(?![/\\w])\\s*:?\\s*(.+)$`, 'im')
     const m = text.match(re)
     if (m) return m[1].trim()
   }

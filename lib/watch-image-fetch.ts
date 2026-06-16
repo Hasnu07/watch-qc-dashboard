@@ -72,5 +72,12 @@ export async function findWatchImageUrl(
     return { url: normalizeOfficialImageUrl(officialUrl), source: 'official_brand' }
   }
 
+  // Generic Bing fallback when brand is unknown or not in our brand list
+  if (watch.model || watch.ref_no) {
+    const { fetchGenericWatchImage } = await import('./official-watch-images')
+    const genericUrl = await fetchGenericWatchImage(watch.brand, watch.model, watch.ref_no)
+    if (genericUrl) return { url: genericUrl, source: 'official_brand' }
+  }
+
   return null
 }

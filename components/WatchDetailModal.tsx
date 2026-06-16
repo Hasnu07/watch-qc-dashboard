@@ -418,7 +418,7 @@ export default function WatchDetailModal({ watch: initialWatch, onClose, onUpdat
                 <label className={labelCls}>Image URL</label>
                 <div className="flex gap-2">
                   <input type="url" value={watch.image_url || ''} onChange={e => setW('image_url', e.target.value || null)} placeholder="https://..." className={`${inputCls} flex-1`} />
-                  <button type="button" onClick={fetchOfficialImage} disabled={fetchingImage || !watch.brand}
+                  <button type="button" onClick={fetchOfficialImage} disabled={fetchingImage || (!watch.brand && !watch.model && !watch.ref_no)}
                     className="btn-secondary whitespace-nowrap text-xs px-4 disabled:opacity-50">
                     {fetchingImage ? 'Fetching…' : 'Fetch official'}
                   </button>
