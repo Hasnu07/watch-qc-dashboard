@@ -139,13 +139,19 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
   }
 
   // ── BRAND + MODEL ────────────────────────────────────────────────────────
-  let brand: string | null = null
+  // Read explicit Brand: field first; fall back to splitting the Model: line
+  let brand: string | null = field(t, 'Brand')
   let model: string | null = null
   const modelRaw = field(t, 'Model')
   if (modelRaw) {
-    const split = splitBrandModel(modelRaw)
-    brand = split.brand
-    model = split.model
+    if (brand) {
+      // Brand already known — model is exactly the Model: value
+      model = modelRaw
+    } else {
+      const split = splitBrandModel(modelRaw)
+      brand = split.brand
+      model = split.model
+    }
   }
 
   // ── REFERENCE ────────────────────────────────────────────────────────────
@@ -183,7 +189,7 @@ export function parseWhatsAppWatch(text: string): ParsedWatch {
 
   // ── DIAL & BRACELET ──────────────────────────────────────────────────────
   const dial_colour = field(t, 'Dial')
-  const bracelet = field(t, 'Bracelet')
+  const bracelet = field(t, 'Bracelet/Strap', 'Bracelet')
   const case_material = field(t, 'Case Material', 'Case', 'Material') // rarely in messages
   const watch_date = field(t, 'Watch Date', 'Date', 'Year')
 
