@@ -163,42 +163,28 @@ async function searchSerperImages(query: string, signal: AbortSignal): Promise<s
   }
 }
 
-async function fetchDdgImages(query: string, signal: AbortSignal): Promise<string[]> {
+async function fetchBingImages(query: string, signal: AbortSignal): Promise<string[]> {
   try {
-    const searchRes = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}&iax=images&ia=images`, {
-      headers: {
-        'User-Agent': BROWSER_UA,
-        Accept: 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      signal,
-    })
-    if (!searchRes.ok) return []
-
-    const html = await searchRes.text()
-    const vqdMatch =
-      html.match(/vqd=["']?([\d-]+)/) ||
-      html.match(/vqd=([\d-]+)&/) ||
-      html.match(/"vqd":"([^"]+)"/)
-    if (!vqdMatch) return []
-
-    const imageRes = await fetch(
-      `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(query)}&vqd=${encodeURIComponent(vqdMatch[1])}&f=,,,,,&p=1`,
+    const res = await fetch(
+      `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&form=HDRSC2&first=1`,
       {
         headers: {
           'User-Agent': BROWSER_UA,
-          Referer: 'https://duckduckgo.com/',
-          Accept: 'application/json',
+          Accept: 'text/html,application/xhtml+xml',
+          'Accept-Language': 'en-US,en;q=0.9',
         },
         signal,
       },
     )
-    if (!imageRes.ok) return []
-
-    const data = (await imageRes.json()) as { results?: Array<{ image?: string }> }
-    return (data.results || [])
-      .map(result => result.image?.trim() || '')
-      .filter(url => /^https?:\/\//i.test(url))
+    if (!res.ok) return []
+    const html = await res.text()
+    const urls: string[] = []
+    const re = /"murl":"(https?:[^"]+)"/g
+    let m: RegExpExecArray | null
+    while ((m = re.exec(html)) !== null) {
+      try { urls.push(decodeURIComponent(m[1])) } catch { urls.push(m[1]) }
+    }
+    return urls
   } catch {
     return []
   }
@@ -213,8 +199,8 @@ async function searchWithProviders(
 ): Promise<string | null> {
   const hasSerper = !!process.env.SERPER_API_KEY?.trim()
   const providers = hasSerper
-    ? [searchSerperImages, fetchDdgImages]
-    : [fetchDdgImages, searchSerperImages]
+    ? [searchSerperImages, fetchBingImages]
+    : [fetchBingImages, searchSerperImages]
 
   const candidates = new Set<string>()
   for (const query of queries) {

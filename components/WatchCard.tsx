@@ -136,6 +136,7 @@ export default function WatchCard<W extends Watch>({
   const rowClass = isSell ? 'list-row-sell' : 'list-row-buy'
   const tasksBtnClass = isSell ? 'btn-tasks-sell' : 'btn-tasks-buy'
   const [fetchingImage, setFetchingImage] = useState(false)
+  const [fetchImageError, setFetchImageError] = useState<string | null>(null)
 
   const summary: TaskSummary = watch.task_summary ?? {
     LOGISTICS: { total: 0, completed: 0 },
@@ -152,13 +153,21 @@ export default function WatchCard<W extends Watch>({
     e.stopPropagation()
     if (fetchingImage) return
     setFetchingImage(true)
+    setFetchImageError(null)
     try {
-      await fetch(`/api/watches/${watch.id}/fetch-image`, {
+      const res = await fetch(`/api/watches/${watch.id}/fetch-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ force: !!watch.image_url }),
       })
-      onImageFetched?.()
+      if (res.ok) {
+        onImageFetched?.()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setFetchImageError(data.error || 'Image not found')
+      }
+    } catch {
+      setFetchImageError('Request failed')
     } finally {
       setFetchingImage(false)
     }
@@ -302,6 +311,9 @@ export default function WatchCard<W extends Watch>({
               className="watch-card-premium__fetch-btn">
               {fetchingImage ? 'Finding…' : 'Fetch image'}
             </button>
+            {fetchImageError && (
+              <p className="text-[10px] text-negative mt-1 text-center px-2 leading-tight">{fetchImageError}</p>
+            )}
           </div>
         )}
       </div>
