@@ -99,6 +99,18 @@ async function findDuplicateWatch(
   return null
 }
 
+const WATCH_RELEVANCE_RE = [
+  /\b(patek|rolex|audemars|piguet|richard\s*mille|vacheron|cartier|omega|breitling|iwc|hublot|panerai|jaeger|tudor|seiko|zenith|chopard|bulgari|bvlgari|longines|a\.\s*lange)\b/i,
+  /\b(seller|sold|bought|purchase|buy)\s*[:\s]/i,
+  /\bref(?:erence)?\s*[:#\-]?\s*[A-Z0-9]{3,}/i,
+  /[€£$]\s*\d[\d,.]+|\d[\d,.]+\s*(eur|gbp|usd|aed|hkd|usdt)\b/i,
+  /purchase\s*price|payment\s*status|location\s*:/i,
+]
+
+function mightBeWatchRelated(text: string): boolean {
+  return WATCH_RELEVANCE_RE.some(re => re.test(text))
+}
+
 type ImportedWatch = Awaited<ReturnType<typeof prisma.watch.create>>
 
 function scheduleBackgroundImageFetch(watch: ImportedWatch) {
@@ -150,7 +162,9 @@ export async function importWatchFromMessage(
   }
 
   if (parsed.should_import === false) {
-    if (opts.source === 'webhook' || opts.source === 'paste') {
+    // Only queue for review if the message has watch-related content.
+    // Pure chat messages (emojis, @mentions, casual text) are silently dropped.
+    if ((opts.source === 'webhook' || opts.source === 'paste') && (opts.source === 'paste' || mightBeWatchRelated(trimmed))) {
       await saveImportInbox({
         source: opts.source,
         message_text: trimmed,
