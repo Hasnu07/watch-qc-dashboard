@@ -29,7 +29,13 @@ export interface ImportResult {
   duplicate?: boolean
 }
 
-async function findDuplicateWatch(stockNo: string | null | undefined, watchType: string, messageHash: string) {
+async function findDuplicateWatch(
+  stockNo: string | null | undefined,
+  watchType: string,
+  messageHash: string,
+  parsed?: { ref_no?: string | null; brand?: string | null; model?: string | null; bought_from?: string | null; sold_to?: string | null },
+) {
+  // 1. Exact stock number match
   if (stockNo) {
     const byStock = await prisma.watch.findFirst({
       where: { stock_no: stockNo, watch_type: watchType },
@@ -37,6 +43,8 @@ async function findDuplicateWatch(stockNo: string | null | undefined, watchType:
     })
     if (byStock) return byStock
   }
+
+  // 2. Same message hash within 48 h
   try {
     const dupActivity = await prisma.watchActivity.findFirst({
       where: {
@@ -51,6 +59,43 @@ async function findDuplicateWatch(stockNo: string | null | undefined, watchType:
   } catch {
     // WatchActivity table may not exist yet during migration
   }
+
+  // 3. Same ref_no + brand + watch_type within 30 days (catches forwarded/reformatted messages)
+  if (parsed?.ref_no && parsed?.brand) {
+    const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const byRef = await prisma.watch.findFirst({
+      where: {
+        ref_no: { equals: parsed.ref_no, mode: 'insensitive' },
+        brand: { equals: parsed.brand, mode: 'insensitive' },
+        watch_type: watchType,
+        created_at: { gte: since30d },
+      },
+      orderBy: { created_at: 'desc' },
+    })
+    if (byRef) return byRef
+  }
+
+  // 4. Same brand + model + seller/buyer + watch_type within 7 days (no ref available)
+  if (!parsed?.ref_no && parsed?.brand && parsed?.model) {
+    const counterparty = watchType === 'SELL' ? parsed.sold_to : parsed.bought_from
+    const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const byBrandModel = await prisma.watch.findFirst({
+      where: {
+        brand: { equals: parsed.brand, mode: 'insensitive' },
+        model: { equals: parsed.model, mode: 'insensitive' },
+        watch_type: watchType,
+        created_at: { gte: since7d },
+        ...(counterparty && watchType === 'SELL'
+          ? { sold_to: { equals: counterparty, mode: 'insensitive' } }
+          : counterparty
+          ? { bought_from: { equals: counterparty, mode: 'insensitive' } }
+          : {}),
+      },
+      orderBy: { created_at: 'desc' },
+    })
+    if (byBrandModel) return byBrandModel
+  }
+
   return null
 }
 
@@ -121,7 +166,7 @@ export async function importWatchFromMessage(
   const msgHash = hashMessage(trimmed)
 
   if (!opts.force) {
-    const duplicate = await findDuplicateWatch(parsed.stock_no, watchType, msgHash)
+    const duplicate = await findDuplicateWatch(parsed.stock_no, watchType, msgHash, parsed)
     if (duplicate) {
       await saveImportInbox({
         source: opts.source || 'webhook',
