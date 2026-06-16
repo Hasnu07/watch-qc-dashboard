@@ -40,6 +40,13 @@ export async function dismissImportInbox(id: number) {
   return prisma.importInbox.update({ where: { id }, data: { status: 'dismissed' } })
 }
 
+export async function dismissAllImportInbox() {
+  return prisma.importInbox.updateMany({
+    where: { status: 'pending' },
+    data: { status: 'dismissed' },
+  })
+}
+
 export async function markImportInboxImported(id: number, watchId: number) {
   return prisma.importInbox.update({
     where: { id },

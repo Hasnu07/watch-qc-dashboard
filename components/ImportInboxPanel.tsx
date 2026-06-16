@@ -43,15 +43,28 @@ export default function ImportInboxPanel({ onImported }: Props) {
     } finally { setLoading(false) }
   }
 
+  const dismissAll = async () => {
+    setLoading(true)
+    try {
+      await fetch('/api/import-inbox', { method: 'DELETE' })
+      setItems([])
+    } finally { setLoading(false) }
+  }
+
   if (items.length === 0) return null
 
   return (
     <div className="mb-4 rounded-xl border border-default bg-panel overflow-hidden">
-      <button type="button" onClick={() => setOpen(o => !o)}
-        className="w-full px-4 py-3 flex items-center justify-between text-left">
-        <span className="text-sm font-medium text-ink">Review imports · {items.length}</span>
-        <span className="text-muted text-xs">{open ? '▾' : '▸'}</span>
-      </button>
+      <div className="px-4 py-3 flex items-center justify-between">
+        <button type="button" onClick={() => setOpen(o => !o)} className="text-left flex items-center gap-2">
+          <span className="text-sm font-medium text-ink">Review imports · {items.length}</span>
+          <span className="text-muted text-xs">{open ? '▾' : '▸'}</span>
+        </button>
+        <button type="button" onClick={dismissAll} disabled={loading}
+          className="text-xs text-muted hover:text-negative disabled:opacity-50 transition-colors">
+          Dismiss all
+        </button>
+      </div>
       {open && (
         <div className="border-t border-default divide-y divide-default max-h-48 overflow-y-auto">
           {items.map(item => (
