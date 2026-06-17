@@ -12,6 +12,13 @@ interface TeamMember {
   team?: string | null
 }
 
+interface TaskNote {
+  id: number
+  text: string
+  author: string | null
+  created_at: string
+}
+
 interface Task {
   id: number
   team_member_id: number | null
@@ -28,6 +35,7 @@ interface Task {
   team_member: TeamMember | null
   assigned_by: TeamMember | null
   assignees: Array<{ team_member: TeamMember }>
+  notes: TaskNote[]
 }
 
 function taskAssignees(task: Task): TeamMember[] {
@@ -204,6 +212,10 @@ export default function AdminTasksPage() {
   const [ncOpen, setNcOpen] = useState<number | null>(null)
   const [ncReason, setNcReason] = useState('')
   const [ncStatus, setNcStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [notesOpen, setNotesOpen] = useState<number | null>(null)
+  const [noteText, setNoteText] = useState('')
+  const [noteAuthor, setNoteAuthor] = useState('')
+  const [noteStatus, setNoteStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
   const ringTask = async (taskId: number) => {
     setRinging(prev => ({ ...prev, [taskId]: 'sending' }))
@@ -246,6 +258,44 @@ export default function AdminTasksPage() {
       }
     } catch {
       setNcStatus('error')
+    }
+  }
+
+  const openNotesForm = (taskId: number) => {
+    setNotesOpen(taskId)
+    setNoteText('')
+    setNoteStatus('idle')
+    // Close the nc form if open
+    if (ncOpen !== null) closeNcForm()
+  }
+
+  const closeNotesForm = () => {
+    setNotesOpen(null)
+    setNoteText('')
+    setNoteStatus('idle')
+  }
+
+  const submitNote = async (taskId: number) => {
+    if (!noteText.trim()) return
+    setNoteStatus('sending')
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: noteText.trim(), author: noteAuthor.trim() || null }),
+      })
+      if (res.ok) {
+        setNoteStatus('sent')
+        setNoteText('')
+        fetchTasks()
+        setTimeout(() => {
+          setNoteStatus('idle')
+        }, 2000)
+      } else {
+        setNoteStatus('error')
+      }
+    } catch {
+      setNoteStatus('error')
     }
   }
 
@@ -547,6 +597,13 @@ export default function AdminTasksPage() {
                                  <>🔔 <span>Ring</span></>}
                               </button>
                               <button
+                                onClick={() => notesOpen === task.id ? closeNotesForm() : openNotesForm(task.id)}
+                                title="Add a note"
+                                className={`btn-ghost text-xs py-1 px-2.5 ${notesOpen === task.id ? 'border-accent/50 text-accent' : ''}`}
+                              >
+                                📝 <span>Notes{task.notes?.length ? ` (${task.notes.length})` : ''}</span>
+                              </button>
+                              <button
                                 onClick={() => ncOpen === task.id ? closeNcForm() : openNcForm(task.id)}
                                 title="Report task not completed"
                                 className={`btn-ghost text-xs py-1 px-2.5 ${ncOpen === task.id ? 'border-accent/50 text-accent' : ''}`}
@@ -598,6 +655,66 @@ export default function AdminTasksPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Existing notes — always visible when present */}
+                  {task.notes?.length > 0 && (
+                    <div className="mx-4 mb-3 space-y-2">
+                      {task.notes.map(note => (
+                        <div key={note.id} className="flex gap-2 text-xs bg-panel/60 border border-default rounded-xl px-3 py-2">
+                          <span className="text-base leading-none mt-0.5">📝</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-ink leading-snug">{note.text}</p>
+                            <p className="text-muted mt-0.5">
+                              {note.author ? <span className="font-semibold">{note.author} · </span> : null}
+                              {formatTime(note.created_at)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Notes inline form */}
+                  {notesOpen === task.id && (
+                    <div className="px-4 pb-4 border-t border-default bg-panel/50 rounded-b-3xl">
+                      <div className="pt-4 space-y-2">
+                        <p className="section-label">Add a note</p>
+                        <p className="text-xs text-muted">
+                          Note will be sent to {taskAssignees(task).map(a => a.name).join(', ') || 'assignee'} via WhatsApp.
+                        </p>
+                        <input
+                          type="text"
+                          value={noteAuthor}
+                          onChange={e => setNoteAuthor(e.target.value)}
+                          placeholder="Your name (optional)"
+                          className="input-field py-1.5 text-sm"
+                          disabled={noteStatus === 'sending'}
+                        />
+                        <textarea
+                          value={noteText}
+                          onChange={e => setNoteText(e.target.value)}
+                          placeholder="Write your note here…"
+                          rows={3}
+                          disabled={noteStatus === 'sending' || noteStatus === 'sent'}
+                          className="input-field rounded-2xl resize-none disabled:opacity-50"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => submitNote(task.id)}
+                            disabled={!noteText.trim() || noteStatus === 'sending' || noteStatus === 'sent'}
+                            className={`flex-1 btn-primary text-xs disabled:opacity-40 ${noteStatus === 'sending' ? 'animate-pulse' : ''}`}
+                          >
+                            {noteStatus === 'sent' ? '✅ Note sent!' :
+                             noteStatus === 'error' ? 'Failed — try again' :
+                             noteStatus === 'sending' ? 'Sending…' : 'Send note'}
+                          </button>
+                          <button onClick={closeNotesForm} disabled={noteStatus === 'sending'} className="btn-ghost text-xs disabled:opacity-40">
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Not Completed inline reason form */}
                   {ncOpen === task.id && (

@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
 
     const tasks = await prisma.task.findMany({
       where,
-      include: TASK_INCLUDE,
+      include: { ...TASK_INCLUDE, notes: { orderBy: { created_at: 'asc' } } },
       orderBy: { created_at: 'desc' },
     })
 
