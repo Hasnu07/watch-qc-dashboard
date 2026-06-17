@@ -680,7 +680,7 @@ export default function AdminTasksPage() {
                       <div className="pt-4 space-y-2">
                         <p className="section-label">Add a note</p>
                         <p className="text-xs text-muted">
-                          Note will be sent to {taskAssignees(task).map(a => a.name).join(', ') || 'assignee'} via WhatsApp.
+                          Note will be sent to {task.assigned_by?.name || 'the assigner'} via WhatsApp.
                         </p>
                         <input
                           type="text"

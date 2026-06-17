@@ -30,19 +30,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const note = await prisma.taskNote.create({ data: { task_id: taskId, text, author } })
 
-    // Notify all assignees via WhatsApp
+    // Notify the assigner (the person who gave out the task) via WhatsApp
     const [enriched] = await enrichTasksWithAssignees([task])
-    const assignees = resolveTaskAssignees(enriched)
+    const assigneeNames = resolveTaskAssignees(enriched).map(a => a.name).join(', ')
 
-    if (assignees.length > 0) {
+    if (task.assigned_by?.whatsapp_number) {
       getGreenAPISettings().then(async (settings) => {
         if (!settings) return
-        const fromLine = author ? `\n\nFrom: *${author}*` : ''
-        const msg = `📝 Note on your task:\n\n*"${enriched.message_text}"*${fromLine}\n\n${text}\n\n🔗 ${APP_LINK}`
-        await Promise.allSettled(
-          assignees.map(a =>
-            sendWhatsAppMessage(settings.instanceId, settings.token, toChatId(a.whatsapp_number), msg, settings.apiUrl)
-          )
+        const fromLine = author ? ` by *${author}*` : (assigneeNames ? ` by *${assigneeNames}*` : '')
+        const msg = `📝 Note added${fromLine} on the task you assigned:\n\n*"${enriched.message_text}"*\n\n${text}\n\n🔗 ${APP_LINK}`
+        await sendWhatsAppMessage(
+          settings.instanceId,
+          settings.token,
+          toChatId(task.assigned_by!.whatsapp_number),
+          msg,
+          settings.apiUrl,
         )
       }).catch(console.error)
     }
